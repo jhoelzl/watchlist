@@ -1,0 +1,7 @@
+# Einfach eine URL pro Zeile, oder mit Optionen:
+#   selector: CSS-Selektor, nur dieser Bereich wird beobachtet
+#   ignore:   Liste von Regex, die vor dem Vergleich entfernt werden
+- url: https://example.com
+- url: https://www.iana.org/domains/reserved
+  selector: "#body"
+  ignore: ["\\d{1,2}:\\d{2}"]
