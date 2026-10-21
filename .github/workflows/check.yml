@@ -42,7 +42,8 @@ jobs:
           path: site
       - name: Alarm bei Fehler
         if: failure()
-        run: uv run --frozen --no-dev check.py --alert "Der Workflow ist fehlgeschlagen: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          uv run --frozen --no-dev check.py --alert "Der Workflow ist fehlgeschlagen: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
