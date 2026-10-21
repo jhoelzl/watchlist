@@ -1,7 +1,7 @@
 {
  "https://cloud.google.com/text-to-speech/docs/release-notes": {
   "changed": "",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Google",
   "name": "Cloud TTS release notes | Cloud Text-to-Speech | Google Cloud Documentation",
@@ -9,7 +9,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry": {
   "changed": "",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Azure",
   "name": "Use Azure LLM Speech - Speech Service - Foundry Tools | Microsoft Learn",
@@ -17,7 +17,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text": {
   "changed": "2026-10-21 20:14 UTC",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Azure",
   "name": "What's new - Speech service - Foundry Tools | Microsoft Learn",
@@ -25,7 +25,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live": {
   "changed": "2026-10-21 20:14 UTC",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Azure",
   "name": "Voice Live API Overview - Foundry Tools | Microsoft Learn",
@@ -33,7 +33,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to": {
   "changed": "2026-10-21 20:14 UTC",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Azure",
   "name": "How to use the Voice Live API - Foundry Tools | Microsoft Learn",
@@ -41,7 +41,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize": {
   "changed": "2026-10-21 20:14 UTC",
-  "checked": "2026-10-21 20:24 UTC",
+  "checked": "2026-10-21 20:25 UTC",
   "error": "",
   "group": "Azure",
   "name": "How to customize Voice Live input and output - Foundry Tools | Microsoft Learn",
