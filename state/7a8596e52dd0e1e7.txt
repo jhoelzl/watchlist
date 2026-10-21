@@ -704,12 +704,12 @@ rate
 string property to adjust the speaking speed for any standard Azure text to speech voices and custom voices.
 The rate value should range from 0.5 to 1.5, with higher values indicating faster speeds.
 {
-â¯ "voice": {
-â¯ â¯ "name": "en-US-Ava:DragonHDLatestNeural",
-â¯ â¯ "type": "azure-standard",
-â¯ â¯ "temperature": 0.8, // optional
-ââ¯ "rate": "1.2"
-â¯ }
+"voice": {
+"name": "en-US-Ava:DragonHDLatestNeural",
+"type": "azure-standard",
+"temperature": 0.8, // optional
+"rate": "1.2"
+}
 }
 Audio timestamps
 When you use Azure voices, and

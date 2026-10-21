@@ -360,7 +360,7 @@ recognizer
 using Microsoft Entra token credentials.
 Speech SDK for JavaScript
 New features:
-Updated development dependency: TypeScript 3.5.3 â 4.5
+Updated development dependency: TypeScript 3.5.3 → 4.5
 Updated TranslationRecognizer to use V2 endpoints by default.
 Updated SpeechRecognizer to use V2 endpoints.
 This results in no longer receiving NoMatch results.
@@ -606,12 +606,12 @@ Support for source language identification in embedded multi-lingual translation
 Support for embedded speech-to-text, text to speech and translation for iOS and Swift/Objective-C released in preview.
 Embedded support is provided in MicrosoftCognitiveServicesSpeechEmbedded-iOS Cocoapod.
 Bug fixes
-Fix for iOS SDK x2 times binary size growth Â· Issue #2113 Â· Azure-Samples/cognitive-services-speech-sdk (github.com)
-Fix for Unable to get word level time stamps from Azure speech to text API Â· Issue #2156 Â· Azure-Samples/cognitive-services-speech-sdk (github.com)
+Fix for iOS SDK x2 times binary size growth · Issue #2113 · Azure-Samples/cognitive-services-speech-sdk (github.com)
+Fix for Unable to get word level time stamps from Azure speech to text API · Issue #2156 · Azure-Samples/cognitive-services-speech-sdk (github.com)
 Fix for DialogServiceConnector destruction phase to disconnect events correctly. This was causing crashes occasionally.
 Fix for exception during creation of a recognizer when MAS is used.
 FPIEProcessor.dll from Microsoft.CognitiveServices.Speech.Extension.MAS NuGet package for Windows UWP x64 and Arm64 had dependency on VC runtime libraries for native C++. The issue has been rectified by updating the dependency to correct VC runtime libraries (for UWP).
-Fix for [MAS] Recurrent calls to recognizeOnceAsync lead to SPXERR_ALREADY_INITIALIZED when using MAS Â· Issue #2124 Â· Azure-Samples/cognitive-services-speech-sdk (github.com)
+Fix for [MAS] Recurrent calls to recognizeOnceAsync lead to SPXERR_ALREADY_INITIALIZED when using MAS · Issue #2124 · Azure-Samples/cognitive-services-speech-sdk (github.com)
 Fix for embedded speech recognition crash when phrase lists are used.
 Samples
 Embedded iOS samples for speech-to-text, text to speech and translation.
@@ -656,9 +656,9 @@ none
 Speech SDK 1.32.1: September 2023 release
 Bug fixes
 Android packages updates with latest security fixes from OpenSSL1.1.1v
-JS â WebWorkerLoadType property added to allow bypass of data URL load for timeout worker
-JS â Fix Conversation Translation disconnect after 10 minutes
-JS â Conversation Translation auth token from Conversation now propagates to Translation service connection
+JS – WebWorkerLoadType property added to allow bypass of data URL load for timeout worker
+JS – Fix Conversation Translation disconnect after 10 minutes
+JS – Conversation Translation auth token from Conversation now propagates to Translation service connection
 Samples
 Conversation transcription with Swift APIs
 Speech SDK 1.31.0: August 2023 release
@@ -853,7 +853,7 @@ Notification about upcoming changes
 We plan to remove Online Certificate Status Protocol (OCSP) in the next JavaScript SDK release. This allows clients to better conform to browser and Node standards for certificate handling. Version 1.27 is the last release that includes our custom OCSP module.
 New Features
 JavaScript
-â Added support for microphone input from the browser with Speaker Identification and Verification.
+– Added support for microphone input from the browser with Speaker Identification and Verification.
 Embedded Speech Recognition
 - Update support for
 PropertyId::Speech_SegmentationSilenceTimeoutMs
@@ -3194,11 +3194,11 @@ and
 spx batch
 commands
 Output properties
---output [â¦] result XXX property
+--output […] result XXX property
 (PropertyId or string)
---output [â¦] connection message received XXX property
+--output […] connection message received XXX property
 (PropertyId or string)
---output [â¦] recognizer XXX property
+--output […] recognizer XXX property
 (PropertyId or string)
 Azure WebJob integration
 spx webjob
@@ -3279,15 +3279,15 @@ here
 .
 New features
 spx csr dataset upload --kind audio|language|acoustic
-â create datasets from local data, not just from URLs.
+– create datasets from local data, not just from URLs.
 spx csr evaluation create|status|list|update|delete
-â compare new models against baseline truth/other models.
+– compare new models against baseline truth/other models.
 spx * list
-â supports non-paged experience (doesn't require --top X --skip X).
+– supports non-paged experience (doesn't require --top X --skip X).
 spx * --http header A=B
-â support custom headers (added for Office for custom authentication).
+– support custom headers (added for Office for custom authentication).
 spx help
-â improved text and back-tick text color coded (blue).
+– improved text and back-tick text color coded (blue).
 2020-June release
 Added in-CLI help search features:
 spx help find --text TEXT
@@ -3427,7 +3427,7 @@ General Conversation
 Neural HD 2.5 update to Latest in Production
 Neural HD 2.5 is promoted to
 Latest in Production
-, delivering improvements in natural prosody, expressiveness, and output consistencyâparticularly for longâform and complex content. This update expands support for expressive speaking styles and paralinguistic elements, enabling more humanâlike and emotionally rich speech across narration, conversational AI, and virtual assistant scenarios.
+, delivering improvements in natural prosody, expressiveness, and output consistency—particularly for long‑form and complex content. This update expands support for expressive speaking styles and paralinguistic elements, enabling more human‑like and emotionally rich speech across narration, conversational AI, and virtual assistant scenarios.
 Key enhancements include:
 Improved expressive range and stability across domains
 Styles and paralinguistic tags supported via
@@ -3437,16 +3437,16 @@ Note
 Styles and paralinguistic features are available on all
 HDLatestNeural
 voices, except for voices with primary locale as
-enâIN
+en‑IN
 .
 Neural HD Omni quality and expressiveness update
-Neural HD Omni voices receive a quality upgrade with added support for expressive styles and paralinguistic tags across the Omni voice set. This enhancement improves emotional control and conversational naturalness while preserving each voiceâs unique character, making it well suited for customer service, accessibility, and creative scenarios.
+Neural HD Omni voices receive a quality upgrade with added support for expressive styles and paralinguistic tags across the Omni voice set. This enhancement improves emotional control and conversational naturalness while preserving each voice’s unique character, making it well suited for customer service, accessibility, and creative scenarios.
 Note
 Styles and paralinguistic features are available on all
 HDOmniLatestNeural
 voices.
-Neural HD Flash â lowâlatency HD voices
-Neural HD Flash introduces a lowâlatency variant of Neural HD, optimized for responsivenessâcritical scenarios such as voice assistants and call center automation. HD Flash balances fast synthesis with clear pronunciation and natural prosody, allowing developers to choose between expressiveness and latency based on application needs.
+Neural HD Flash – low‑latency HD voices
+Neural HD Flash introduces a low‑latency variant of Neural HD, optimized for responsiveness‑critical scenarios such as voice assistants and call center automation. HD Flash balances fast synthesis with clear pronunciation and natural prosody, allowing developers to choose between expressiveness and latency based on application needs.
 Neural HD regional availability expansion
 Starting in March 2026, Neural HD voices expand beyond their original regions and are now available in:
 West US 2
@@ -3455,19 +3455,19 @@ Central India
 Canada Central
 France Central
 Sweden Central
-Neural HD MultiâTalker voices expansion
-Neural HD MultiâTalker voices now support multiâspeaker synthesis across additional input languages, extending beyond enâUS to include
-frâFR, esâES, deâDE, itâIT, ptâBR, koâKR, jaâJP, and zhâCN
+Neural HD Multi‑Talker voices expansion
+Neural HD Multi‑Talker voices now support multi‑speaker synthesis across additional input languages, extending beyond en‑US to include
+fr‑FR, es‑ES, de‑DE, it‑IT, pt‑BR, ko‑KR, ja‑JP, and zh‑CN
 .
 Several new models:
-enâMultiTalkerâ1:DragonHDLatestNeural
+en‑MultiTalker‑1:DragonHDLatestNeural
 ,
 fr-Multitalker:DragonHDLatestNeural
 ,
 zh-Multitalker:DragonHDLatestNeural
-introduce an expanded set of speakers, enabling more flexible dialogue creation for podcasts, storytelling, and roleâbased narration.
+introduce an expanded set of speakers, enabling more flexible dialogue creation for podcasts, storytelling, and role‑based narration.
 Speakers in
-enâMultiTalkerâ1:DragonHDLatestNeural
+en‑MultiTalker‑1:DragonHDLatestNeural
 Gender
 Speaker names
 Female
@@ -3496,8 +3496,8 @@ Pricing
 .
 December 2025 release
 Public preview of new voice type Dragon HD Omni
-Dragon HD Omni unifies a broad range of prebuilt voices into one advanced voice model, improving contextual adaptation, prosody, expressiveness, and maintaining each voiceâs unique character. It delivers more accurate, flexible, and lifelike speech for scenarios such as customer service, accessibility, and creative production.
-Locale (BCPâ47)
+Dragon HD Omni unifies a broad range of prebuilt voices into one advanced voice model, improving contextual adaptation, prosody, expressiveness, and maintaining each voice’s unique character. It delivers more accurate, flexible, and lifelike speech for scenarios such as customer service, accessibility, and creative production.
+Locale (BCP‑47)
 Voice name
 en-US
 en-US-Ava-DragonHDOmniLatestNeural
@@ -3710,7 +3710,7 @@ en-US-Jane:DragonHDLatestNeural
 (Female)
 July 2025 release
 Public preview Personal Voice upgraded to v2.1
-Our new âDragonV2.1â model brings improvements to the naturalness of speech, offering more realistic and stable prosody while maintaining better pronunciation accuracy.
+Our new “DragonV2.1” model brings improvements to the naturalness of speech, offering more realistic and stable prosody while maintaining better pronunciation accuracy.
 June 2025 release
 VoiceLive API update
 Support more GenAI models: GPT-4.1, GPT-4.1 Mini, Phi-4 mini and Phi-4 Multimodal models are now natively supported.
@@ -4266,7 +4266,7 @@ Hungarian (Hungary)
 ms-MY
 Malay (Malaysia)
 nb-NO
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 nl-NL
 Dutch (Netherlands)
 pl-PL
@@ -4284,7 +4284,7 @@ Swedish (Sweden)
 th-TH
 Thai (Thailand)
 r-TR
-Turkish (TÃ¼rkiye)
+Turkish (Türkiye)
 vi-VN
 Vietnamese (Vietnam)
 zh-HK
@@ -4325,13 +4325,13 @@ Hungarian (Hungary)
 ms-MY
 Malay (Malaysia)
 nb-NO
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 pt-PT
 Portuguese (Portugal)
 sv-SE
 Swedish (Sweden)
 tr-TR
-Turkish (TÃ¼rkiye)
+Turkish (Türkiye)
 ta-IN
 Tamil (India)
 zh-HK
@@ -4393,7 +4393,7 @@ Korean (Korea)
 ms-MY
 Malay (Malaysia)
 nb-NO
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 nl-BE
 Dutch (Belgium)
 nl-NL
@@ -4415,7 +4415,7 @@ Swedish (Sweden)
 th-TH
 Thai (Thailand)
 tr-TR
-Turkish (TÃ¼rkiye)
+Turkish (Türkiye)
 vi-VN
 Vietnamese (Vietnam)
 zh-HK
@@ -4790,7 +4790,7 @@ Japanese (Japan)
 ko-KR
 Korean (Korea)
 nb-NO
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 nl-NL
 Dutch (Netherlands)
 pl-PL
@@ -4802,7 +4802,7 @@ Swedish (Sweden)
 th-TH
 Thai (Thailand)
 tr-TR
-Turkish (TÃ¼rkiye)
+Turkish (Türkiye)
 zh-CN
 Chinese (Mandarin, Simplified)
 zh-HK
@@ -5276,7 +5276,7 @@ Japanese (Japan)
 ,
 Korean (Korea)
 ,
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 ,
 Dutch (Belgium)
 ,
@@ -5294,7 +5294,7 @@ Swedish (Sweden)
 ,
 Thai (Thailand)
 ,
-Turkish (TÃ¼rkiye)
+Turkish (Türkiye)
 ,
 Chinese (Mandarin, Simplified)
 ,
@@ -7564,9 +7564,9 @@ Malay (Malaysia), Joseph in
 mt-MT
 Maltese (Malta), Finn in
 nb-NO
-Norwegian, BokmÃ¥l (Norway), Pernille in
+Norwegian, Bokmål (Norway), Pernille in
 nb-NO
-Norwegian, BokmÃ¥l (Norway), Fenna in
+Norwegian, Bokmål (Norway), Fenna in
 nl-NL
 Dutch (Netherlands), Maarten in
 nl-NL
@@ -7596,7 +7596,7 @@ Swedish (Sweden), Niwat in
 th-TH
 Thai (Thailand), Ahmet in
 tr-TR
-Turkish (TÃ¼rkiye), NamMinh in
+Turkish (Türkiye), NamMinh in
 vi-VN
 Vietnamese (Vietnam), HsiaoChen in
 zh-TW
@@ -7792,7 +7792,7 @@ Azure LLM Speech 07 2026 improves multilingual transcription quality across supp
 published blog
 .
 MAI-transcribe-2 release
-Microsoft AI teamâs newest speech-to-text model transcribes across accents, speaking styles, and noisy environments, and now covers 60 languages with automatic language detection for multilingual recordings. This generation adds speaker diarization and word-level timestamps, along with keyword biasing for domain aware transcription that better recognizes industry and scientific terms, proper names, and other domain specific terminology. Further details are covered in the
+Microsoft AI team’s newest speech-to-text model transcribes across accents, speaking styles, and noisy environments, and now covers 60 languages with automatic language detection for multilingual recordings. This generation adds speaker diarization and word-level timestamps, along with keyword biasing for domain aware transcription that better recognizes industry and scientific terms, proper names, and other domain specific terminology. Further details are covered in the
 model card
 .
 August 2026 release
@@ -8184,7 +8184,7 @@ Korean (Korea)
 ko-KR
 Malay (Malaysia)
 ms-MY
-Norwegian BokmÃ¥l (Norway)
+Norwegian Bokmål (Norway)
 nb-NO
 Polish (Poland)
 pl-PL
@@ -8337,7 +8337,7 @@ Phrase list
 Added phrase list support for the following locales: ar-SA, de-CH, en-IE, en-ZA, es-US, id-ID, nl-NL, pl-PL, pt-PT, ru-RU, sv-SE, th-TH, vi-VN, zh-HK, zh-TW.
 November 2023 release
 Introducing Bilingual Speech Modeling!
-We're thrilled to unveil a groundbreaking addition to our real-time speech modelingâBilingual Speech Modeling. This significant enhancement allows our speech model to seamlessly support bilingual language pairs, such as English and Spanish, as well as English and French. This feature empowers users to effortlessly switch between languages during real-time interactions, marking a pivotal moment in our commitment to enhancing communication experiences.
+We're thrilled to unveil a groundbreaking addition to our real-time speech modeling—Bilingual Speech Modeling. This significant enhancement allows our speech model to seamlessly support bilingual language pairs, such as English and Spanish, as well as English and French. This feature empowers users to effortlessly switch between languages during real-time interactions, marking a pivotal moment in our commitment to enhancing communication experiences.
 Key Highlights:
 Bilingual Support: With our latest release, users can seamlessly switch between English and Spanish or between English and French during real-time speech interactions. This functionality is tailored to accommodate bilingual speakers who frequently transition between these two languages.
 Enhanced user experience: Bilingual speakers, whether at work, home, or in various community settings, find this feature immensely beneficial. The model's ability to comprehend and respond to both English and Spanish in real time opens up new possibilities for effective and fluid communication.
@@ -8347,7 +8347,7 @@ es-US
 (Spanish and English) or
 fr-CA
 (French and English) when you call the Speech Service API or try it out on Speech Studio. Feel free to speak either language or mix them together. The model is designed to adapt dynamically, providing accurate and context-aware responses in both languages.
-It's time to elevate your communication game with our latest feature releaseâseamless, multi-lingual communication at your fingertips!
+It's time to elevate your communication game with our latest feature release—seamless, multi-lingual communication at your fingertips!
 Speech To text models update
 We're excited to introduce a significant update to our speech models, promising enhanced accuracy, improved readability, and refined entity recognition. This upgrade comes with a robust new structure, bolstered by an expanded training dataset, ensuring a marked advancement in overall performance. It includes newly released models for en-US, zh-CN, ja-JP, it-IT, pt-BR, es-MX, es-ES, fr-FR, de-DE, ko-KR, tr-TR, sv-SE, and he-IL.
 Highlights:
@@ -8752,16 +8752,16 @@ Voice Live API version
 2026-07-15
 is generally available and is now the default service version used by the SDKs.
 New features:
-Azure realtime native voices â added 12 native voice options (Aarti, Andrew, Ava, Denise, Diya, Elsa, Florian, Francisca, Meera, Xiaoxiao, Ximena, and Yunxi) for use with the
+Azure realtime native voices — added 12 native voice options (Aarti, Andrew, Ava, Denise, Diya, Elsa, Florian, Francisca, Meera, Xiaoxiao, Ximena, and Yunxi) for use with the
 azure-realtime
 model.
-Parallel tool calls â control whether the model can invoke tools in parallel.
-Echo cancellation reference source â configure the echo cancellation reference path and stereo channel input on
+Parallel tool calls — control whether the model can invoke tools in parallel.
+Echo cancellation reference source — configure the echo cancellation reference path and stereo channel input on
 AudioEchoCancellation
 .
-Streaming text input â incrementally stream text input into a conversation item with new input text delta and done events.
-Hosted agent invocation passthrough â attach input data for a hosted agent invocation on a single response request and receive streaming invocation deltas.
-Session expiration â sessions now expose a server-set expiration time.
+Streaming text input — incrementally stream text input into a conversation item with new input text delta and done events.
+Hosted agent invocation passthrough — attach input data for a hosted agent invocation on a single response request and receive streaming invocation deltas.
+Session expiration — sessions now expose a server-set expiration time.
 Breaking change:
 The image content part URL field is renamed from
 url
@@ -8793,17 +8793,17 @@ Voice Live API Reference 2026-04-10
 .
 The following previously preview features are now generally available:
 Proactive messages
-â allow your voice agent to speak first before user interaction.
+— allow your voice agent to speak first before user interaction.
 Auto-truncation
-â handle voice interruptions in chat history.
+— handle voice interruptions in chat history.
 MCP server integration
-â add Model Context Protocol servers to Voice Live sessions.
+— add Model Context Protocol servers to Voice Live sessions.
 Voice Agent integration with Foundry Agent Service
-â build real-time voice agents with Foundry Agent Service.
+— build real-time voice agents with Foundry Agent Service.
 Java and JavaScript SDK support.
 New GA feature:
 Telemetry and tracing
-â built-in OpenTelemetry instrumentation for monitoring Voice Live sessions.
+— built-in OpenTelemetry instrumentation for monitoring Voice Live sessions.
 New preview feature:
 MAI Transcribe
 is available in preview as a speech recognition model option for Voice Live.
@@ -8837,7 +8837,7 @@ is available in preview, with updated event and configuration coverage for Voice
 Voice Live API Reference 2026-01-01-preview
 .
 November 2025
-The Voice Live API is generally available. Transform conversations into seamless experiences with Voice Live APIâthe all-in-one solution that combines speech recognition, generative AI, and text-to-speech into a single low-latency interface for building intelligent voice agents. For more information, see
+The Voice Live API is generally available. Transform conversations into seamless experiences with Voice Live API—the all-in-one solution that combines speech recognition, generative AI, and text-to-speech into a single low-latency interface for building intelligent voice agents. For more information, see
 Voice Live
 .
 2026-July release
@@ -8901,25 +8901,25 @@ Custom speech to text
 Neural text to speech
 Speech language identification
 Vulnerability fixes
-â
-â
-â
-â
+✅
+✅
+✅
+✅
 Migrated OS from Ubuntu 20.04 to Ubuntu 22.04
-â
-â
-â
-â
+✅
+✅
+✅
+✅
 New Locales: ar-ly, fr-be, nl-be and uz-uz
-â
-â
+✅
+✅
 Updated nuget packages, Go version
-â
-â
+✅
+✅
 Added model download parallelization to decrease model download time
-â
-â
-â
+✅
+✅
+✅
 2024-October release
 Add support for the latest model versions:
 Speech language identification 1.16.0

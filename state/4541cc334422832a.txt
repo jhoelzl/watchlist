@@ -42,49 +42,45 @@ Azure Transcribe (default)
 Azure LLM Speech (enhanced)
 MAI-Transcribe-2
 Transcription
-â
-(speech-to-text model)
-â
-(multimodal model)
-â
-(speech-to-text model)
+✅ (speech-to-text model)
+✅ (multimodal model)
+✅ (speech-to-text model)
 Translation
-â
-â
-(multimodal model)
-â
+❌
+✅ (multimodal model)
+❌
 Diarization
-â
-â
-â
+✅
+✅
+✅
 Channel (stereo)
-â
-â
-â
+✅
+✅
+❌
 Profanity filtering
-â
-â
-â
+✅
+✅
+✅
 Specify locale
-â
-â
-â
+✅
+✅
+✅
 Custom prompting
-â
-â
-â
+❌
+✅
+❌
 Phrase list
-â
-â
-â
+✅
+✅
+✅
 Segment-level timestamps
-â
-â
-â
+✅
+✅
+✅
 Word-level timestamps
-â
-â
-â
+✅
+✅
+✅
 Supported languages
 The service operates in multi-lingual mode by default, so you don't need to specify the input language locale. Optionally, to guide recognition toward a specific language locale, you can set the
 locales
@@ -290,8 +286,7 @@ property contains segment-level and word-level details.
 "durationMilliseconds": 57187,
 "combinedPhrases": [
 {
-"text": "With custom speech,you can evaluate and improve the microsoft speech to text accuracy for your applications and products ç°æçè¯­é³è½¬ææ¬,å©ç¨éç¨è¯­è¨æ¨¡åä½ä¸ºä¸ä¸ªåºæ¬æ¨¡å,ä½¿ç¨microsoftèªææ°æ®è¿è¡è®­ç»,å¹¶åæ å¸¸ç¨çå£è¯­ãæ­¤åºç¡æ¨¡åä½¿ç¨é£äºä»£è¡¨åå¸¸è§é¢åçæ¹è¨ååé³è¿è¡äºé¢å
-è®­ç»ã Quand vous effectuez une demande de reconnaissance vocale, le modÃ¨le de base le plus rÃ©cent pour chaque langue prise en charge est utilisÃ© par dÃ©faut. Le modÃ¨le de base fonctionne trÃ¨s bien dans la plupart des scÃ©narios de reconnaissance vocale. A custom model can be used to augment the base model to improve recognition of domain specific vocabulary specified to the application by providing text data to train the model. It can also be used to improve recognition based for the specific audio conditions of the application by providing audio data with reference transcriptions."
+"text": "With custom speech,you can evaluate and improve the microsoft speech to text accuracy for your applications and products 现成的语音转文本,利用通用语言模型作为一个基本模型,使用microsoft自有数据进行训练,并反映常用的口语。此基础模型使用那些代表各常见领域的方言和发音进行了预先训练。 Quand vous effectuez une demande de reconnaissance vocale, le modèle de base le plus récent pour chaque langue prise en charge est utilisé par défaut. Le modèle de base fonctionne très bien dans la plupart des scénarios de reconnaissance vocale. A custom model can be used to augment the base model to improve recognition of domain specific vocabulary specified to the application by providing text data to train the model. It can also be used to improve recognition based for the specific audio conditions of the application by providing audio data with reference transcriptions."
 }
 ],
 "phrases": [
@@ -324,28 +319,27 @@ property contains segment-level and word-level details.
 {
 "offsetMilliseconds": 8000,
 "durationMilliseconds": 8600,
-"text": "ç°æçè¯­é³è½¬ææ¬,å©ç¨éç¨è¯­è¨æ¨¡åä½ä¸ºä¸ä¸ªåºæ¬æ¨¡å,ä½¿ç¨microsoftèªææ°æ®è¿è¡è®­ç»,å¹¶åæ å¸¸ç¨çå£è¯­ãæ­¤åºç¡æ¨¡åä½¿ç¨é£äºä»£è¡¨åå¸¸è§é¢åçæ¹è¨ååé³è¿è¡äºé¢å
-è®­ç»ã",
+"text": "现成的语音转文本,利用通用语言模型作为一个基本模型,使用microsoft自有数据进行训练,并反映常用的口语。此基础模型使用那些代表各常见领域的方言和发音进行了预先训练。",
 "words": [
 {
-"text": "ç°",
+"text": "现",
 "offsetMilliseconds": 8000,
 "durationMilliseconds": 40
 },
 {
-"text": "æ",
+"text": "成",
 "offsetMilliseconds": 8040,
 "durationMilliseconds": 40
 },
 // More transcription results...
 // Redacted for brevity
 {
-"text": "è®­",
+"text": "训",
 "offsetMilliseconds": 16400,
 "durationMilliseconds": 40
 },
 {
-"text": "ç»",
+"text": "练",
 "offsetMilliseconds": 16560,
 "durationMilliseconds": 40
 },
@@ -624,7 +618,7 @@ Use
 Output must be in lexical format.
 to enforce lexical formatting instead of the default display format.
 Use
-Pay attention to *phrase1*, *phrase2*, â¦
+Pay attention to *phrase1*, *phrase2*, …
 to improve recognition of specific phrases or acronyms.
 For more information, see the following reference:
 EnhancedModeProperties
@@ -808,7 +802,7 @@ Use
 Output must be in lexical format.
 to enforce lexical formatting instead of the default display format.
 Use
-Pay attention to *phrase1*, *phrase2*, â¦
+Pay attention to *phrase1*, *phrase2*, …
 to improve recognition of specific phrases or acronyms.
 For more information, see the following reference:
 EnhancedModeProperties
@@ -1004,7 +998,7 @@ Use
 Output must be in lexical format.
 to enforce lexical formatting instead of the default display format.
 Use
-Pay attention to *phrase1*, *phrase2*, â¦
+Pay attention to *phrase1*, *phrase2*, …
 to improve recognition of specific phrases or acronyms.
 Output
 The application prints the transcription result to the console:
@@ -1305,7 +1299,7 @@ Use
 Output must be in lexical format.
 to enforce lexical formatting instead of the default display format.
 Use
-Pay attention to *phrase1*, *phrase2*, â¦
+Pay attention to *phrase1*, *phrase2*, …
 to improve recognition of specific phrases or acronyms.
 Clean up resources
 When you finish the quickstart, delete the project folder:

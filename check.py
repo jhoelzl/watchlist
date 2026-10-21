@@ -139,6 +139,8 @@ def fetch_body(url, js, cond=None):
     if resp.status_code == 304:
         return None, cond
     resp.raise_for_status()
+    if "charset" not in resp.headers.get("Content-Type", "").lower():
+        resp.encoding = "utf-8"
     validators = {
         "etag": resp.headers.get("ETag"),
         "last_modified": resp.headers.get("Last-Modified"),

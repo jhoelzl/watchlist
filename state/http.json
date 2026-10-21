@@ -3,6 +3,11 @@
   "config": "35e48f63b62e",
   "last_modified": "Tue, 20 Oct 2026 21:00:59 GMT"
  },
+ "https://learn.microsoft.com/en-us/azure/ai-services/language-service/whats-new?tabs=csharp": {
+  "config": "35e48f63b62e",
+  "etag": "\"Ye+kImuLSaukQ502utJFIZvJZnM=\"",
+  "last_modified": "Tue, 13 Oct 2026 16:17:20 GMT"
+ },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry": {
   "config": "35e48f63b62e",
   "etag": "\"iiadFOPoQ0LqIChLnPN7y7/Tapg=\"",
@@ -27,5 +32,28 @@
   "config": "35e48f63b62e",
   "etag": "\"W6YfCyjQkTeJybPPpk+YbdebN+8=\"",
   "last_modified": "Tue, 13 Oct 2026 16:17:20 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/foundry-classic/openai/whats-new": {
+  "config": "35e48f63b62e",
+  "etag": "\"CKry5kOI4kM2j/zTYLDKU+xv1gU=\"",
+  "last_modified": "Tue, 13 Oct 2026 16:17:19 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/realtime-audio?tabs=keyless%2Clinux&pivots=programming-language-python#quickstart": {
+  "config": "35e48f63b62e",
+  "etag": "\"xk8EpEfuTGsuAtUObUaHwnBdLdA=\"",
+  "last_modified": "Tue, 13 Oct 2026 16:17:19 GMT"
+ },
+ "https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli?view=azure-cli-latest": {
+  "config": "35e48f63b62e",
+  "etag": "\"q+qJ+6G8HRHneQ2+zFT0SM0itAQ=\"",
+  "last_modified": "Tue, 06 Oct 2026 05:22:36 GMT"
+ },
+ "https://www.commend.com/en/products/cloud-services/ivy-live-translation/": {
+  "config": "79f2c6dbd1b1",
+  "last_modified": "Wed, 21 Oct 2026 17:36:43 GMT"
+ },
+ "https://www.commend.com/en/products/cloud-services/virtual-assistant-ivy/": {
+  "config": "35e48f63b62e",
+  "last_modified": "Wed, 21 Oct 2026 17:38:51 GMT"
  }
 }

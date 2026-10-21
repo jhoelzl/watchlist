@@ -32,7 +32,7 @@ Custom Speech: With custom speech, you can evaluate and improve the accuracy of 
 What is custom speech?
 to learn more.
 Speech output customization:
-Custom lexicon: Custom lexicon allows you to easily customize pronunciation forâ¯both standard Azure text to speech voices and custom voices to improve speech synthesis accuracy for your use case. See
+Custom lexicon: Custom lexicon allows you to easily customize pronunciation for both standard Azure text to speech voices and custom voices to improve speech synthesis accuracy for your use case. See
 custom lexicon for text to speech
 to learn more.
 Custom voice: Custom voice comes in two types. Professional custom voice lets you build a highly natural-sounding voice for your brand or characters by providing human speech samples as fine-tuning data. Personal voice enables your users to get AI generated replication of their own voices with a short speech sample. See
@@ -45,7 +45,7 @@ What is custom text to speech avatar?
 to learn more.
 Speech input customization
 Phrase list
-Use phrase list for lightweight just-in-time customization on audio input. To configure phrase list, you can set theâ¯phrase_listâ¯in the
+Use phrase list for lightweight just-in-time customization on audio input. To configure phrase list, you can set the phrase_list in the
 session.update
 message.
 {
@@ -57,7 +57,7 @@ message.
 }
 }
 Note
-Phrase list currently doesn't support whisper-1,â¯gpt-4o-transcribe, gpt-4o-mini-transcribe, andâ¯gpt-4o-transcribe-diarize. To learn more about phrase list, see
+Phrase list currently doesn't support whisper-1, gpt-4o-transcribe, gpt-4o-mini-transcribe, and gpt-4o-transcribe-diarize. To learn more about phrase list, see
 phrase list for speech to text
 .
 Custom speech configuration
@@ -89,16 +89,16 @@ Speech output customization
 Custom lexicon
 Use the
 custom_lexicon_url
-string property to customize pronunciation forâ¯both standard Azure text to speech voices and custom voices. To learn more about how to format the custom lexicon (the same as Speech Synthesis Markup Language (SSML)), see
+string property to customize pronunciation for both standard Azure text to speech voices and custom voices. To learn more about how to format the custom lexicon (the same as Speech Synthesis Markup Language (SSML)), see
 custom lexicon for text to speech
 .
 {
-â¯ "voice": {
-â¯ â¯ "name": "en-US-Ava:DragonHDLatestNeural",
-â¯ â¯ "type": "azure-standard",
-â¯ â¯ "temperature": 0.8, // optional
-ââ¯â¯ "custom_lexicon_url": "<custom lexicon url>"
-â¯ }
+"voice": {
+"name": "en-US-Ava:DragonHDLatestNeural",
+"type": "azure-standard",
+"temperature": 0.8, // optional
+"custom_lexicon_url": "<custom lexicon url>"
+}
 }
 Azure custom voices
 You can use a custom voice for audio output. Custom voice comes in two types: professional custom voice, trained on studio recordings for your brand or characters, and personal voice, which replicates a user's own voice from a short speech sample.
