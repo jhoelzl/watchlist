@@ -1,0 +1,31 @@
+{
+ "https://cloud.google.com/text-to-speech/docs/release-notes": {
+  "config": "35e48f63b62e",
+  "last_modified": "Tue, 20 Oct 2026 21:00:59 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry": {
+  "config": "35e48f63b62e",
+  "etag": "\"iiadFOPoQ0LqIChLnPN7y7/Tapg=\"",
+  "last_modified": "Mon, 19 Oct 2026 22:13:30 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text": {
+  "config": "35e48f63b62e",
+  "etag": "\"gdlrl8nyLb1Dr/PcXds/wngJTc0=\"",
+  "last_modified": "Mon, 19 Oct 2026 22:10:21 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live": {
+  "config": "35e48f63b62e",
+  "etag": "\"U+1mgdXNI9d9zJ3ltby36SI3ybM=\"",
+  "last_modified": "Sun, 18 Oct 2026 11:08:28 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to": {
+  "config": "35e48f63b62e",
+  "etag": "\"aawjY0JeLZD9uRjzc0mf+rCtFDg=\"",
+  "last_modified": "Tue, 13 Oct 2026 16:17:21 GMT"
+ },
+ "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize": {
+  "config": "35e48f63b62e",
+  "etag": "\"W6YfCyjQkTeJybPPpk+YbdebN+8=\"",
+  "last_modified": "Tue, 13 Oct 2026 16:17:20 GMT"
+ }
+}

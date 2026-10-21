@@ -14,7 +14,7 @@ pre{background:#f6f8fa;padding:.5rem;white-space:pre-wrap;word-break:break-word;
 .add{background:#e6ffec;color:#116329}.del{background:#ffebe9;color:#82071e}
 """
 
-STATUS = {"ok": ("ok", "OK"), "new": ("new", "Neu"), "error": ("err", "Fehler")}
+STATUS = {"ok": ("ok", "OK"), "new": ("new", "Neu"), "error": ("err", "Fehler"), "warn": ("new", "Zu wenig Text")}
 
 
 def esc(s):

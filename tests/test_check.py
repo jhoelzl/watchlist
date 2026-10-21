@@ -164,7 +164,8 @@ def test_run_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
     monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
     pages = iter(["eins", "eins", "zwei"])
-    monkeypatch.setattr(check, "fetch", lambda url, opts: ("T", next(pages), False))
+    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
     sent = []
     monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append(s))
 

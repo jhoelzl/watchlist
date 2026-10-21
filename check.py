@@ -8,7 +8,8 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
+from urllib.parse import urlparse
+from urllib.robotparser import RobotFileParser
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -20,6 +21,13 @@ STATE = ROOT / "state"
 MAX_DIFF_LINES = 60
 MAX_HISTORY = 100
 DEFAULT_GROUP = "Allgemein"
+ROBOTS_AGENT = "watchlist"
+# Textwächter: Eine Seite mit vorher mind. GUARD_MIN_CHARS Zeichen, die unter
+# min_ratio (Standard 30 %) schrumpft, gilt als Fehlabruf (Cookie-Wand, Bot-Block).
+GUARD_MIN_CHARS = 500
+DEFAULT_MIN_RATIO = 0.3
+GUARD_ALERT_AFTER = 2
+FAIL_ALERT_AFTER = 3
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -83,7 +91,31 @@ def parse_html(body, selector):
     return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
 
 
-def fetch_body(url, js):
+def robots_allowed(url, cache):
+    """Prüft robots.txt pro Host (einmal pro Lauf). Fehlt die Datei oder ist sie nicht lesbar, ist alles erlaubt."""
+    parts = urlparse(url)
+    base = f"{parts.scheme}://{parts.netloc}"
+    if base not in cache:
+        rp = RobotFileParser()
+        try:
+            r = requests.get(f"{base}/robots.txt", headers=HEADERS, timeout=15)
+            if r.status_code == 200:
+                rp.parse(r.text.splitlines())
+            else:
+                rp.allow_all = True
+        except requests.RequestException:
+            rp.allow_all = True
+        cache[base] = rp
+    return cache[base].can_fetch(ROBOTS_AGENT, url)
+
+
+def config_hash(opts):
+    relevant = {k: opts.get(k) for k in ("selector", "ignore", "js")}
+    return hashlib.sha1(json.dumps(relevant, sort_keys=True).encode()).hexdigest()[:12]
+
+
+def fetch_body(url, js, cond=None):
+    """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
     if js:
         try:
             from playwright.sync_api import sync_playwright
@@ -94,21 +126,36 @@ def fetch_body(url, js):
             try:
                 page = browser.new_page(user_agent=USER_AGENT)
                 page.goto(url, wait_until="networkidle", timeout=60000)
-                return page.content()
+                return page.content(), {}
             finally:
                 browser.close()
-    resp = requests.get(url, headers=HEADERS, timeout=30)
+    headers = dict(HEADERS)
+    cond = cond or {}
+    if cond.get("etag"):
+        headers["If-None-Match"] = cond["etag"]
+    if cond.get("last_modified"):
+        headers["If-Modified-Since"] = cond["last_modified"]
+    resp = requests.get(url, headers=headers, timeout=30)
+    if resp.status_code == 304:
+        return None, cond
     resp.raise_for_status()
-    return resp.text
+    validators = {
+        "etag": resp.headers.get("ETag"),
+        "last_modified": resp.headers.get("Last-Modified"),
+    }
+    return resp.text, {k: v for k, v in validators.items() if v}
 
 
-def fetch(url, opts):
-    body = fetch_body(url, opts.get("js", False))
+def fetch(url, opts, cond=None):
+    """Liefert (Titel, Text, ist_feed, Validatoren). Text ist None bei 304 Not Modified."""
+    body, validators = fetch_body(url, opts.get("js", False), cond)
+    if body is None:
+        return None, None, False, validators
     feed = is_feed(body)
     title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
     for pattern in opts.get("ignore", []):
         text = re.sub(pattern, "", text)
-    return title, drop_blank_lines(text), feed
+    return title, drop_blank_lines(text), feed, validators
 
 
 def make_diff(old, new, only_added):
@@ -229,13 +276,13 @@ def send_heartbeat(now, entries, status, history, meta):
         return
     since = (now - timedelta(days=31)).strftime("%Y-%m-%d")
     recent = [h for h in history if h["time"][:10] >= since]
-    failing = [f"{s['name']}: {s['error']}" for s in status.values() if s["status"] == "error"]
+    failing = [f"{s['name']}: {s['error']}" for s in status.values() if s["status"] in ("error", "warn")]
     lines = [
         f"Watchlist läuft. {len(entries)} Seite(n) werden geprüft.",
         f"Änderungen in den letzten 31 Tagen: {len(recent)}",
     ]
     lines += [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
-    lines.append(f"Seiten mit Abruffehler: {len(failing)}")
+    lines.append(f"Seiten mit Problemen (Fehler/zu wenig Text): {len(failing)}")
     lines += [f"- {f}" for f in failing]
     send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))
     meta["heartbeat"] = month
@@ -249,7 +296,10 @@ def run():
     old_status = read_json(STATE / "status.json", {})
     history = read_json(STATE / "history.json", [])
     meta = read_json(STATE / "meta.json", {})
-    status, changes, errors = {}, [], []
+    status, changes, problems = {}, [], []
+    http_cache = read_json(STATE / "http.json", {})
+    new_cache = {}
+    robots = {}
 
     print(f"Prüfe {len(entries)} URL(s)...")
     for opts in entries:
@@ -257,6 +307,7 @@ def run():
         key = hashlib.sha1(url.encode()).hexdigest()[:16]
         snap = STATE / f"{key}.txt"
         fail = STATE / f"{key}.fail"
+        short = STATE / f"{key}.short"
         prev = old_status.get(url, {})
         entry = {
             "name": opts.get("name") or prev.get("name") or url,
@@ -267,39 +318,65 @@ def run():
             "error": "",
         }
         status[url] = entry
+        cfg = config_hash(opts)
+        cached = http_cache.get(url, {})
+        cond = cached if snap.exists() and cached.get("config") == cfg else {}
         try:
-            title, text, feed = fetch(url, opts)
+            if not opts.get("ignore_robots") and not robots_allowed(url, robots):
+                raise RuntimeError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)")
+            title, text, feed, validators = fetch(url, opts, cond)
         except Exception as ex:
             n = int(fail.read_text()) + 1 if fail.exists() else 1
             fail.write_text(str(n))
             entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"))
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
-            if n == 3:
-                errors.append(f"{url}: {ex}")
+            if n == FAIL_ALERT_AFTER:
+                problems.append(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}")
             continue
         fail.unlink(missing_ok=True)
+
+        if text is None:
+            short.unlink(missing_ok=True)
+            new_cache[url] = cached
+            print(f"[UNVERÄNDERT] {entry['name']} [304 Not Modified, nicht neu geladen]")
+            continue
 
         name = opts.get("name") or title or url
         entry["name"] = name
         kind = "Feed" if feed else "Seite"
-        if not snap.exists():
+        old = snap.read_text() if snap.exists() else None
+
+        min_ratio = float(opts.get("min_ratio", DEFAULT_MIN_RATIO))
+        if old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio:
+            n = int(short.read_text()) + 1 if short.exists() else 1
+            short.write_text(str(n))
+            msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
+            entry.update(status="warn", error=msg, checked=prev.get("checked", "-"))
+            print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
+            if n == GUARD_ALERT_AFTER:
+                problems.append(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}")
+            continue
+        short.unlink(missing_ok=True)
+
+        if old is None:
             entry["status"] = "new"
-            print(f"[NEU]       {name} [{kind}] (Baseline gespeichert, {len(text)} Zeichen)")
+            hint = " - ACHTUNG: sehr wenig Text, Selector prüfen" if len(text) < 200 else ""
+            print(f"[NEU]       {name} [{kind}] (Baseline gespeichert, {len(text)} Zeichen{hint})")
+        elif old == text:
+            print(f"[UNVERÄNDERT] {name} [{kind}] ({len(text)} Zeichen)")
         else:
-            old = snap.read_text()
-            if old == text:
-                print(f"[UNVERÄNDERT] {name} [{kind}] ({len(text)} Zeichen)")
+            print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
+            diff, extra = make_diff(old, text, opts.get("only_added", feed))
+            if diff:
+                entry["changed"] = stamp
+                change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
+                changes.append(change)
+                history.append({**change, "time": stamp})
             else:
-                print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
-                diff, extra = make_diff(old, text, opts.get("only_added", feed))
-                if diff:
-                    entry["changed"] = stamp
-                    change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
-                    changes.append(change)
-                    history.append({**change, "time": stamp})
-                else:
-                    print("            (nur entfernte Zeilen, keine Mail)")
+                print("            (nur entfernte Zeilen, keine Mail)")
         snap.write_text(text)
+        if validators:
+            new_cache[url] = {**validators, "config": cfg}
 
     if changes:
         if len(changes) == 1:
@@ -308,19 +385,18 @@ def run():
             subject = f"Watchlist: {len(changes)} Seiten geändert ({', '.join(group_changes(changes))})"
         print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
         send_mail(subject, render_text(changes), render_html(changes))
-    if errors:
-        send_mail(
-            "Watchlist: Abruf schlägt dauerhaft fehl",
-            "3 Fehlversuche in Folge:\n\n" + "\n".join(errors),
-        )
+    if problems:
+        send_mail("Watchlist: Probleme beim Abruf", "\n\n".join(problems))
 
     history = history[-MAX_HISTORY:]
     send_heartbeat(now, entries, status, history, meta)
     write_json(STATE / "status.json", status)
     write_json(STATE / "history.json", history)
     write_json(STATE / "meta.json", meta)
+    write_json(STATE / "http.json", new_cache)
     dashboard.build(list({**v, "url": k} for k, v in status.items()), history, stamp)
-    print(f"{len(entries)} geprüft, {len(changes)} geändert, {len(errors)} Fehler")
+    bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
+    print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
 
 
 def main(argv):

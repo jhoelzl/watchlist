@@ -6,6 +6,9 @@
 #   ignore:     Liste von Regex, die vor dem Vergleich entfernt werden
 #   only_added: true = Mail zeigt nur neue Zeilen (bei RSS/Atom-Feeds Standard)
 #   js:         true = Seite mit Playwright rendern (für per JavaScript geladene Inhalte)
+#   min_ratio:  Textwächter, Standard 0.3 (0 = aus)
+#   ignore_robots: true = robots.txt-Sperre übergehen
+# Neue URL bequem hinzufügen: uv run add.py <url>
 defaults:
   ignore:
     - 'Last updated on\s*\S+'

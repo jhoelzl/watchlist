@@ -1,5 +1,8 @@
 # watchlist
 
+[![check](https://github.com/jhoelzl/watchlist/actions/workflows/check.yml/badge.svg)](https://github.com/jhoelzl/watchlist/actions/workflows/check.yml)
+[![tests](https://github.com/jhoelzl/watchlist/actions/workflows/tests.yml/badge.svg)](https://github.com/jhoelzl/watchlist/actions/workflows/tests.yml)
+
 Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Änderungen eine gruppierte HTML-Mail mit Diff über Resend.
 
 ## Setup
@@ -23,13 +26,29 @@ urls:
     ignore: ['\d{2}:\d{2}']    # optional, Regex wird vor dem Vergleich entfernt
     only_added: true           # optional, Mail zeigt nur neue Zeilen
     js: true                   # optional, Seite mit Playwright (Chromium) rendern
+    min_ratio: 0.3             # optional, Textwächter (0 = aus), siehe unten
+    ignore_robots: true        # optional, robots.txt-Sperre übergehen
   - url: https://example.com/feed.xml   # RSS/Atom wird automatisch erkannt
 ```
 - Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
 - Eine reine Liste von URLs ohne `defaults`/`urls` funktioniert weiterhin.
 - `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn `js: true` in `urls.yml` vorkommt.
 
+## URL hinzufügen
+```
+uv run add.py https://example.com/seite          # fragt Name, Gruppe und Selector ab
+uv run add.py https://example.com/seite -y       # Vorschläge ohne Rückfrage übernehmen
+uv run add.py <url> --group Azure --selector main --js
+```
+Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) und die Gruppe vorhandener URLs desselben Hosts vor und hängt den Eintrag an `urls.yml` an (Kommentare bleiben erhalten). Die Baseline entsteht beim nächsten Lauf (`uv run check.py`).
+
+## Rücksicht auf Server und Fehlabrufe
+- **robots.txt** wird pro Host einmal je Lauf geprüft. Verbietet sie eine URL, zählt das als Abruffehler (Override: `ignore_robots: true`). Fehlt die Datei oder ist sie nicht erreichbar, ist alles erlaubt.
+- **ETag / Last-Modified:** Antwortet der Server mit `304 Not Modified`, wird die Seite nicht neu geladen. Die Werte stehen in `state/http.json`. Ändert sich `selector`, `ignore` oder `js`, wird wieder voll geladen. Nicht alle Server unterstützen das (z. B. Google nur eingeschränkt).
+- **Textwächter:** Liefert eine Seite plötzlich unter 30 % des bisherigen Textes (nur bei Snapshots ab 500 Zeichen), gilt das als Fehlabruf (Cookie-Wand, Bot-Block). Der Snapshot bleibt unverändert, es gibt keine Änderungsmail, das Dashboard zeigt „Zu wenig Text", und nach dem 2. Lauf in Folge kommt eine Warnmail. Mit `min_ratio` anpassbar, `0` schaltet den Wächter für diese URL aus.
+
 ## Betrieb
+- **Badge:** Die Badges oben zeigen den Status des letzten Laufs. Bei einem privaten Repo siehst du sie nur, wenn du bei GitHub eingeloggt bist.
 - **Lebenszeichen:** Im ersten Lauf eines neuen Monats kommt eine Mail mit Anzahl der Seiten, Änderungen und Fehlern. Bleibt sie aus, läuft der Zeitplan nicht mehr (GitHub deaktiviert ihn nach 60 Tagen ohne Repo-Aktivität).
 - **Alarm:** Schlägt der Workflow fehl (z. B. Resend-Fehler), versucht ein letzter Schritt eine Alarmmail mit Link zum Lauf zu senden. Zusätzlich meldet GitHub fehlgeschlagene Läufe selbst per Mail.
 - **Dashboard:** `site/index.html` wird bei jedem Lauf erzeugt und committet (Status pro URL, letzte Prüfung, Änderungsverlauf). Lokal einfach im Browser öffnen.
