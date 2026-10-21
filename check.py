@@ -50,7 +50,8 @@ def send_mail(subject, body):
         },
         timeout=30,
     )
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"Resend {r.status_code}: {r.text}")
     print(f"Mail gesendet: {subject} (Resend-ID {r.json().get('id')})")
 
 

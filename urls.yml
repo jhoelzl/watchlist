@@ -5,3 +5,9 @@
   selector: main
 - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live
   selector: main
+- url: https://cloud.google.com/text-to-speech/docs/release-notes
+  selector: main
+- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to
+  selector: main
+- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize
+  selector: main
