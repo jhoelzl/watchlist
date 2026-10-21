@@ -64,6 +64,8 @@ uv run check.py                       # Mails werden nur ausgegeben, wenn RESEND
 uv run --extra js playwright install chromium   # einmalig, nur für js: true
 uv run --extra js check.py            # mit js: true
 uv run pytest                         # Tests
+uv run ruff check .                   # Lint
+uv run mypy check.py add.py dashboard.py  # Typcheck
 ```
 Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.
 Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...`.

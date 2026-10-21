@@ -7,10 +7,11 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
+
 import requests
 import yaml
 from bs4 import BeautifulSoup
@@ -147,7 +148,7 @@ def fetch_body(url, js, cond=None):
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
-            raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)")
+            raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)") from None
         with sync_playwright() as p:
             browser = p.chromium.launch()
             try:
@@ -319,7 +320,7 @@ def send_heartbeat(now, entries, status, history, meta):
 
 def run():
     STATE.mkdir(exist_ok=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stamp = now.strftime("%Y-%m-%d %H:%M UTC")
     entries = load_config(ROOT / "urls.yml")
     old_status = read_json(STATE / "status.json", {})

@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -125,7 +125,7 @@ def test_heartbeat_first_run_is_silent(monkeypatch):
     sent = []
     monkeypatch.setattr(check, "send_mail", lambda *a, **k: sent.append(a))
     meta = {}
-    now = datetime(2026, 10, 21, tzinfo=timezone.utc)
+    now = datetime(2026, 10, 21, tzinfo=UTC)
     check.send_heartbeat(now, [], {}, [], meta)
     assert sent == [] and meta["heartbeat"] == "2026-10"
 
@@ -136,7 +136,7 @@ def test_heartbeat_sent_once_per_month(monkeypatch):
     meta = {"heartbeat": "2026-10"}
     status = {"u": {"name": "Seite", "status": "error", "error": "kaputt"}}
     hist = [{"time": "2026-11-02 06:00 UTC", "name": "Seite"}]
-    nov = datetime(2026, 11, 3, tzinfo=timezone.utc)
+    nov = datetime(2026, 11, 3, tzinfo=UTC)
     check.send_heartbeat(nov, [1], status, hist, meta)
     check.send_heartbeat(nov, [1], status, hist, meta)
     assert len(sent) == 1

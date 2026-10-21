@@ -17,4 +17,6 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.1
         with:
           enable-cache: true
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen mypy check.py add.py dashboard.py
       - run: uv run --frozen pytest -q

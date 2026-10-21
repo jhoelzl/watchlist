@@ -1,11 +1,11 @@
 import json
 
 import pytest
+from test_features import FakeResp, env, set_pages, status_of  # noqa: F401
 
 import add
 import check
 import dashboard
-from test_features import FakeResp, env, set_pages, status_of  # noqa: F401
 
 
 @pytest.fixture
