@@ -26,3 +26,6 @@ urls:
   - url: https://cloud.google.com/text-to-speech/docs/release-notes
     group: Google
     selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry
+    group: Azure
+    selector: main
