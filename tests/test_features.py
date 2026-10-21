@@ -97,9 +97,7 @@ def env(tmp_path, monkeypatch):
 
 def set_pages(monkeypatch, pages):
     it = iter(pages)
-    monkeypatch.setattr(
-        check, "fetch", lambda url, opts, cond=None: ("T", next(it), False, {"etag": '"v"'})
-    )
+    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(it), False, {"etag": '"v"'}))
 
 
 def status_of(tmp, url="https://a"):
@@ -170,6 +168,7 @@ def test_ignore_robots_option(env, monkeypatch):
 
 
 # add.py
+
 
 def test_suggest_selector():
     long = "<p>" + "text " * 200 + "</p>"

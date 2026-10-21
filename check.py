@@ -32,10 +32,7 @@ GUARD_ALERT_AFTER = 2
 FAIL_ALERT_AFTER = 3
 RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
 MAX_RETRY_AFTER = 30
-USER_AGENT = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
 
 
@@ -194,11 +191,7 @@ def make_diff(old, new, only_added):
         seen = set(old_l)
         diff = ["+" + l for l in new_l if l not in seen]
     else:
-        diff = [
-            l
-            for l in difflib.unified_diff(old_l, new_l, lineterm="", n=1)
-            if not l.startswith(("---", "+++"))
-        ]
+        diff = [l for l in difflib.unified_diff(old_l, new_l, lineterm="", n=1) if not l.startswith(("---", "+++"))]
     extra = max(0, len(diff) - MAX_DIFF_LINES)
     return diff[:MAX_DIFF_LINES], extra
 
@@ -226,9 +219,7 @@ def render_text(changes):
 def render_html(changes):
     parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
     for group, items in group_changes(changes).items():
-        parts.append(
-            f'<h2 style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>'
-        )
+        parts.append(f'<h2 style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>')
         for c in items:
             parts.append(
                 f'<h3 style="margin:16px 0 4px">{html.escape(c["name"])}</h3>'
@@ -361,9 +352,7 @@ def run():
             entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"))
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == FAIL_ALERT_AFTER:
-                problems.append(
-                    {"text": f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", "counter": fail, "value": n}
-                )
+                problems.append({"text": f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", "counter": fail, "value": n})
             continue
         fail.unlink(missing_ok=True)
 
@@ -406,8 +395,13 @@ def run():
                 changes.append(change)
                 # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
                 pending.append(
-                    {"change": change, "snap": snap, "text": text, "entry": entry,
-                     "cache": {**validators, "config": cfg} if validators else None}
+                    {
+                        "change": change,
+                        "snap": snap,
+                        "text": text,
+                        "entry": entry,
+                        "cache": {**validators, "config": cfg} if validators else None,
+                    }
                 )
                 if cached:
                     new_cache[url] = cached
@@ -429,8 +423,10 @@ def run():
             send_mail(subject, render_text(changes), render_html(changes))
         except Exception as ex:
             sent_ok = ok = False
-            print(f"[MAILFEHLER] {ex}\n  Snapshots der {len(pending)} geänderten Seite(n) bleiben unverändert, "
-                  "die Änderung wird beim nächsten Lauf erneut erkannt.")
+            print(
+                f"[MAILFEHLER] {ex}\n  Snapshots der {len(pending)} geänderten Seite(n) bleiben unverändert, "
+                "die Änderung wird beim nächsten Lauf erneut erkannt."
+            )
         for p in pending:
             if sent_ok:
                 p["snap"].write_text(p["text"])

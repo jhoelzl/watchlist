@@ -65,6 +65,7 @@ uv run --extra js playwright install chromium   # einmalig, nur für js: true
 uv run --extra js check.py            # mit js: true
 uv run pytest                         # Tests
 uv run ruff check .                   # Lint
+uv run ruff format .                  # Formatieren (CI prüft mit --check)
 uv run mypy check.py add.py dashboard.py  # Typcheck
 ```
 Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.

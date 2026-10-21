@@ -87,12 +87,12 @@ def build(entries, history, generated):
         for e in items:
             cls, label = STATUS.get(e["status"], ("", e["status"]))
             err = f'<br><span class="muted">{esc(e["error"])}</span>' if e.get("error") else ""
-            text = f'{e.get("name", "")} {e["url"]} {e.get("error") or ""}'.lower()
+            text = f"{e.get('name', '')} {e['url']} {e.get('error') or ''}".lower()
             parts.append(
                 f'<tr data-t="{esc(text)}" data-g="{esc(group)}" data-s="{esc(e["status"])}">'
                 f'<td class="{cls}">{label}</td>'
                 f'<td><a href="{esc(e["url"])}">{esc(e["name"])}</a>{err}</td>'
-                f'<td>{esc(e.get("checked", "-"))}</td><td>{esc(e.get("changed") or "-")}</td></tr>'
+                f"<td>{esc(e.get('checked', '-'))}</td><td>{esc(e.get('changed') or '-')}</td></tr>"
             )
         parts.append("</table></section>")
 
@@ -101,12 +101,12 @@ def build(entries, history, generated):
         parts.append('<p class="muted">Noch keine Änderungen erkannt.</p>')
     for h in reversed(history[-50:]):
         more = f'<div class="muted">... und {h["extra"]} weitere Zeilen</div>' if h.get("extra") else ""
-        text = f'{h["name"]} {h["url"]} {" ".join(h["diff"])}'.lower()
+        text = f"{h['name']} {h['url']} {' '.join(h['diff'])}".lower()
         parts.append(
             f'<details data-t="{esc(text)}" data-g="{esc(group_of(h))}">'
-            f'<summary>{esc(h["time"])} - {esc(h["name"])}</summary>'
+            f"<summary>{esc(h['time'])} - {esc(h['name'])}</summary>"
             f'<p><a href="{esc(h["url"])}">{esc(h["url"])}</a></p>'
-            f'<pre>{diff_html(h["diff"])}{more}</pre></details>'
+            f"<pre>{diff_html(h['diff'])}{more}</pre></details>"
         )
     parts.append(f"<script>{JS}</script></body></html>")
 

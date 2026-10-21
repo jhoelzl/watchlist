@@ -81,9 +81,7 @@ def test_make_diff_truncates():
 
 def test_default_ignore_removes_last_updated():
     cfg = {"ignore": [r"Last updated on\s*\S+"]}
-    text = check.drop_blank_lines(
-        re.sub(cfg["ignore"][0], "", "vorher\nLast updated on\n2026-10-08\nnachher")
-    )
+    text = check.drop_blank_lines(re.sub(cfg["ignore"][0], "", "vorher\nLast updated on\n2026-10-08\nnachher"))
     assert text == "vorher\nnachher"
 
 
@@ -147,8 +145,7 @@ def test_heartbeat_sent_once_per_month(monkeypatch):
 def test_dashboard_build(tmp_path, monkeypatch):
     monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
     entries = [
-        {"url": "https://a", "name": "<A>", "group": "Azure", "status": "error",
-         "error": "Boom", "checked": "t1", "changed": ""},
+        {"url": "https://a", "name": "<A>", "group": "Azure", "status": "error", "error": "Boom", "checked": "t1", "changed": ""},
         {"url": "https://b", "name": "B", "group": "", "status": "ok", "checked": "t2", "changed": "t0"},
     ]
     hist = [{"time": "t0", "name": "B", "url": "https://b", "diff": ["+neu"], "extra": 1}]

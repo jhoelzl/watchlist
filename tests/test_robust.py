@@ -143,7 +143,9 @@ def test_add_main_feed_flag(tmp_path, monkeypatch):
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
     page = '<html><head><link rel="alternate" type="application/rss+xml" href="/f.xml"></head><body>x</body></html>'
-    rss = "<?xml version='1.0'?><rss><channel><title>T</title><item><title>A</title><link>https://x/1</link></item></channel></rss>"
+    rss = (
+        "<?xml version='1.0'?><rss><channel><title>T</title><item><title>A</title><link>https://x/1</link></item></channel></rss>"
+    )
     monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: (rss if url.endswith(".xml") else page, {}))
     add.main(["https://x/blog", "--feed", "-y"])
     assert [e["url"] for e in check.load_config(f)] == ["https://other", "https://x/f.xml"]
