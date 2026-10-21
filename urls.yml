@@ -1,15 +1,28 @@
-# Einfach eine URL pro Zeile, oder mit Optionen:
-#   selector: CSS-Selektor, nur dieser Bereich wird beobachtet
-#   ignore:   Liste von Regex, die vor dem Vergleich entfernt werden
-#   name:     Anzeigename in der Mail (sonst Seitentitel)
+# defaults gelten für alle URLs (ignore-Listen werden zusammengeführt, andere Optionen überschrieben).
+# Optionen pro URL:
+#   name:       Anzeigename (sonst Seitentitel)
+#   group:      Gruppe für Mail und Dashboard
+#   selector:   CSS-Selektor, nur dieser Bereich wird beobachtet
+#   ignore:     Liste von Regex, die vor dem Vergleich entfernt werden
 #   only_added: true = Mail zeigt nur neue Zeilen (bei RSS/Atom-Feeds Standard)
-- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text
-  selector: main
-- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live
-  selector: main
-- url: https://cloud.google.com/text-to-speech/docs/release-notes
-  selector: main
-- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to
-  selector: main
-- url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize
-  selector: main
+#   js:         true = Seite mit Playwright rendern (für per JavaScript geladene Inhalte)
+defaults:
+  ignore:
+    - 'Last updated on\s*\S+'
+
+urls:
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize
+    group: Azure
+    selector: main
+  - url: https://cloud.google.com/text-to-speech/docs/release-notes
+    group: Google
+    selector: main

@@ -1,28 +1,38 @@
 import difflib
 import hashlib
 import html
+import json
 import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
 import yaml
 from bs4 import BeautifulSoup
 
+import dashboard
+
 ROOT = Path(__file__).parent
 STATE = ROOT / "state"
 MAX_DIFF_LINES = 60
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-    "Accept-Language": "de,en;q=0.8",
-}
+MAX_HISTORY = 100
+DEFAULT_GROUP = "Allgemein"
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
 
 
 def clean(s):
     return re.sub(r"\s+", " ", s or "").strip()
+
+
+def drop_blank_lines(text):
+    return "\n".join(l for l in (l.strip() for l in text.splitlines()) if l)
 
 
 def is_feed(body):
@@ -70,18 +80,35 @@ def parse_html(body, selector):
         root = soup.select_one(selector)
         if root is None:
             raise ValueError(f"Selector nicht gefunden: {selector}")
-    lines = [clean(l) for l in root.get_text("\n").splitlines()]
-    return title, "\n".join(l for l in lines if l)
+    return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
+
+
+def fetch_body(url, js):
+    if js:
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)")
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            try:
+                page = browser.new_page(user_agent=USER_AGENT)
+                page.goto(url, wait_until="networkidle", timeout=60000)
+                return page.content()
+            finally:
+                browser.close()
+    resp = requests.get(url, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    return resp.text
 
 
 def fetch(url, opts):
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    feed = is_feed(resp.text)
-    title, text = parse_feed(resp.text) if feed else parse_html(resp.text, opts.get("selector"))
+    body = fetch_body(url, opts.get("js", False))
+    feed = is_feed(body)
+    title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
     for pattern in opts.get("ignore", []):
         text = re.sub(pattern, "", text)
-    return title, text, feed
+    return title, drop_blank_lines(text), feed
 
 
 def make_diff(old, new, only_added):
@@ -99,35 +126,51 @@ def make_diff(old, new, only_added):
     return diff[:MAX_DIFF_LINES], extra
 
 
-def render_text(c):
-    out = [f"{c['name']}\n{c['url']}\n"]
-    out += c["diff"]
-    if c["extra"]:
-        out.append(f"... und {c['extra']} weitere Zeilen")
-    return "\n".join(out)
+def group_changes(changes):
+    groups = {}
+    for c in changes:
+        groups.setdefault(c.get("group") or DEFAULT_GROUP, []).append(c)
+    return groups
+
+
+def render_text(changes):
+    out = []
+    for group, items in group_changes(changes).items():
+        out.append(f"=== {group} ===")
+        for c in items:
+            out.append(f"{c['name']}\n{c['url']}\n")
+            out += c["diff"]
+            if c["extra"]:
+                out.append(f"... und {c['extra']} weitere Zeilen")
+            out.append("")
+    return "\n".join(out).strip()
 
 
 def render_html(changes):
     parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
-    for c in changes:
+    for group, items in group_changes(changes).items():
         parts.append(
-            f'<h3 style="margin:24px 0 4px">{html.escape(c["name"])}</h3>'
-            f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a></p>'
-            '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
-            'word-break:break-word;font-size:12px">'
+            f'<h2 style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>'
         )
-        for l in c["diff"]:
-            style = ""
-            if l.startswith("+"):
-                style = "background:#e6ffec;color:#116329"
-            elif l.startswith("-"):
-                style = "background:#ffebe9;color:#82071e"
-            elif l.startswith("@@"):
-                style = "color:#6e7781"
-            parts.append(f'<div style="{style}">{html.escape(l) or "&nbsp;"}</div>')
-        if c["extra"]:
-            parts.append(f'<div style="color:#6e7781">... und {c["extra"]} weitere Zeilen</div>')
-        parts.append("</pre>")
+        for c in items:
+            parts.append(
+                f'<h3 style="margin:16px 0 4px">{html.escape(c["name"])}</h3>'
+                f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a></p>'
+                '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
+                'word-break:break-word;font-size:12px">'
+            )
+            for l in c["diff"]:
+                style = ""
+                if l.startswith("+"):
+                    style = "background:#e6ffec;color:#116329"
+                elif l.startswith("-"):
+                    style = "background:#ffebe9;color:#82071e"
+                elif l.startswith("@@"):
+                    style = "color:#6e7781"
+                parts.append(f'<div style="{style}">{html.escape(l) or "&nbsp;"}</div>')
+            if c["extra"]:
+                parts.append(f'<div style="color:#6e7781">... und {c["extra"]} weitere Zeilen</div>')
+            parts.append("</pre>")
     parts.append("</div>")
     return "".join(parts)
 
@@ -156,23 +199,80 @@ def send_mail(subject, text, html_body=None):
     print(f"Mail gesendet: {subject} (Resend-ID {r.json().get('id')})")
 
 
-def main():
+def load_config(path):
+    """Akzeptiert eine reine Liste oder {defaults: {...}, urls: [...]}."""
+    raw = yaml.safe_load(path.read_text()) or []
+    defaults, urls = ({}, raw) if isinstance(raw, list) else (raw.get("defaults") or {}, raw.get("urls") or [])
+    entries = []
+    for e in urls:
+        e = {"url": e} if isinstance(e, str) else dict(e)
+        merged = {**defaults, **e}
+        merged["ignore"] = list(defaults.get("ignore") or []) + list(e.get("ignore") or [])
+        entries.append(merged)
+    return entries
+
+
+def read_json(path, default):
+    return json.loads(path.read_text()) if path.exists() else default
+
+
+def write_json(path, data):
+    path.write_text(json.dumps(data, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def send_heartbeat(now, entries, status, history, meta):
+    month = now.strftime("%Y-%m")
+    if "heartbeat" not in meta:
+        meta["heartbeat"] = month
+        return
+    if meta["heartbeat"] == month:
+        return
+    since = (now - timedelta(days=31)).strftime("%Y-%m-%d")
+    recent = [h for h in history if h["time"][:10] >= since]
+    failing = [f"{s['name']}: {s['error']}" for s in status.values() if s["status"] == "error"]
+    lines = [
+        f"Watchlist läuft. {len(entries)} Seite(n) werden geprüft.",
+        f"Änderungen in den letzten 31 Tagen: {len(recent)}",
+    ]
+    lines += [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
+    lines.append(f"Seiten mit Abruffehler: {len(failing)}")
+    lines += [f"- {f}" for f in failing]
+    send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))
+    meta["heartbeat"] = month
+
+
+def run():
     STATE.mkdir(exist_ok=True)
-    entries = yaml.safe_load((ROOT / "urls.yml").read_text()) or []
-    changes, errors = [], []
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y-%m-%d %H:%M UTC")
+    entries = load_config(ROOT / "urls.yml")
+    old_status = read_json(STATE / "status.json", {})
+    history = read_json(STATE / "history.json", [])
+    meta = read_json(STATE / "meta.json", {})
+    status, changes, errors = {}, [], []
 
     print(f"Prüfe {len(entries)} URL(s)...")
-    for e in entries:
-        url = e["url"] if isinstance(e, dict) else e
-        opts = e if isinstance(e, dict) else {}
+    for opts in entries:
+        url = opts["url"]
         key = hashlib.sha1(url.encode()).hexdigest()[:16]
         snap = STATE / f"{key}.txt"
         fail = STATE / f"{key}.fail"
+        prev = old_status.get(url, {})
+        entry = {
+            "name": opts.get("name") or prev.get("name") or url,
+            "group": opts.get("group") or "",
+            "checked": stamp,
+            "changed": prev.get("changed", ""),
+            "status": "ok",
+            "error": "",
+        }
+        status[url] = entry
         try:
             title, text, feed = fetch(url, opts)
         except Exception as ex:
             n = int(fail.read_text()) + 1 if fail.exists() else 1
             fail.write_text(str(n))
+            entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"))
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == 3:
                 errors.append(f"{url}: {ex}")
@@ -180,8 +280,10 @@ def main():
         fail.unlink(missing_ok=True)
 
         name = opts.get("name") or title or url
+        entry["name"] = name
         kind = "Feed" if feed else "Seite"
         if not snap.exists():
+            entry["status"] = "new"
             print(f"[NEU]       {name} [{kind}] (Baseline gespeichert, {len(text)} Zeichen)")
         else:
             old = snap.read_text()
@@ -189,33 +291,44 @@ def main():
                 print(f"[UNVERÄNDERT] {name} [{kind}] ({len(text)} Zeichen)")
             else:
                 print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
-                only_added = opts.get("only_added", feed)
-                diff, extra = make_diff(old, text, only_added)
+                diff, extra = make_diff(old, text, opts.get("only_added", feed))
                 if diff:
-                    changes.append({"name": name, "url": url, "diff": diff, "extra": extra})
+                    entry["changed"] = stamp
+                    change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
+                    changes.append(change)
+                    history.append({**change, "time": stamp})
                 else:
                     print("            (nur entfernte Zeilen, keine Mail)")
         snap.write_text(text)
 
     if changes:
-        subject = (
-            f"Watchlist: {changes[0]['name']} geändert"
-            if len(changes) == 1
-            else f"Watchlist: {len(changes)} Seiten geändert"
-        )
+        if len(changes) == 1:
+            subject = f"Watchlist: {changes[0]['name']} geändert"
+        else:
+            subject = f"Watchlist: {len(changes)} Seiten geändert ({', '.join(group_changes(changes))})"
         print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
-        send_mail(
-            subject,
-            "\n\n==========\n\n".join(render_text(c) for c in changes),
-            render_html(changes),
-        )
+        send_mail(subject, render_text(changes), render_html(changes))
     if errors:
         send_mail(
             "Watchlist: Abruf schlägt dauerhaft fehl",
             "3 Fehlversuche in Folge:\n\n" + "\n".join(errors),
         )
+
+    history = history[-MAX_HISTORY:]
+    send_heartbeat(now, entries, status, history, meta)
+    write_json(STATE / "status.json", status)
+    write_json(STATE / "history.json", history)
+    write_json(STATE / "meta.json", meta)
+    dashboard.build(list({**v, "url": k} for k, v in status.items()), history, stamp)
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {len(errors)} Fehler")
 
 
+def main(argv):
+    if len(argv) >= 3 and argv[1] == "--alert":
+        send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
+        return
+    run()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main(sys.argv)
