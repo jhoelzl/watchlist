@@ -51,6 +51,7 @@ def send_mail(subject, body):
         timeout=30,
     )
     r.raise_for_status()
+    print(f"Mail gesendet: {subject} (Resend-ID {r.json().get('id')})")
 
 
 def main():
@@ -58,6 +59,7 @@ def main():
     entries = yaml.safe_load((ROOT / "urls.yml").read_text()) or []
     changes, errors = [], []
 
+    print(f"Prüfe {len(entries)} URL(s)...")
     for e in entries:
         url = e["url"] if isinstance(e, dict) else e
         opts = e if isinstance(e, dict) else {}
@@ -71,17 +73,20 @@ def main():
         except Exception as ex:
             n = int(fail.read_text()) + 1 if fail.exists() else 1
             fail.write_text(str(n))
-            print(f"FEHLER {url}: {ex}")
+            print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == 3:
                 errors.append(f"{url}: {ex}")
             continue
         fail.unlink(missing_ok=True)
 
         if not snap.exists():
-            print(f"Baseline: {url}")
+            print(f"[NEU]       {url} (Baseline gespeichert, {len(text)} Zeichen)")
         else:
             old = snap.read_text()
-            if old != text:
+            if old == text:
+                print(f"[UNVERÄNDERT] {url} ({len(text)} Zeichen)")
+            else:
+                print(f"[GEÄNDERT]  {url} ({len(old)} -> {len(text)} Zeichen)")
                 diff = "\n".join(
                     list(
                         difflib.unified_diff(
@@ -93,6 +98,7 @@ def main():
         snap.write_text(text)
 
     if changes:
+        print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
         send_mail(
             f"Watchlist: {len(changes)} Seite(n) geändert",
             "\n\n==========\n\n".join(changes),

@@ -12,7 +12,11 @@ Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Ä
 
 ## Lokal testen
 ```
-pip install -r requirements.txt
-python check.py
+uv run check.py
 ```
+Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.
+Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv run check.py`.
+
+Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).
+
 Ohne `RESEND_API_KEY` wird die Mail nur ausgegeben.
