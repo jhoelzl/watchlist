@@ -10,6 +10,17 @@ Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Ä
    - `MAIL_FROM` (optional, Standard `onboarding@resend.dev`)
 3. `urls.yml` pflegen, dann Actions → check → Run workflow (erzeugt die Baselines, keine Mail).
 
+## urls.yml
+```yaml
+- url: https://example.com/releases        # reicht als Minimum
+  name: "Mein Name"                        # optional, sonst der Seitentitel
+  selector: main                           # optional, nur dieser CSS-Bereich
+  ignore: ["Last updated on .*"]           # optional, Regex wird vor dem Vergleich entfernt
+  only_added: true                         # optional, Mail zeigt nur neue Zeilen
+- url: https://example.com/feed.xml        # RSS/Atom wird automatisch erkannt
+```
+Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
+
 ## Lokal testen
 ```
 uv run check.py
