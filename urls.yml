@@ -54,3 +54,12 @@ urls:
     group: Azure
     selector: main
     only_added: true
+  - url: https://www.allthatswing.at/
+    group: Dance
+    selector: main
+  - url: https://www.thelindycats.at/de/specials
+    group: Dance
+    selector: main
+  - url: https://www.thelindycats.at/de/workshops
+    group: Dance
+    selector: main
