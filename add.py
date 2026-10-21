@@ -2,7 +2,7 @@
 
 import argparse
 import sys
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import yaml
 from bs4 import BeautifulSoup
@@ -26,6 +26,26 @@ def suggest_selector(body):
             if total and size >= total * SELECTOR_MIN_SHARE:
                 return sel
     return None
+
+
+FEED_TYPES = ("application/rss+xml", "application/atom+xml")
+
+
+def find_feeds(body, base_url):
+    """Feed-URLs aus <link rel="alternate" type="application/rss+xml|atom+xml">, absolut und ohne Duplikate."""
+    soup = BeautifulSoup(body, "html.parser")
+    feeds = []
+    for link in soup.find_all("link"):
+        rel = link.get("rel") or []
+        rel = rel.split() if isinstance(rel, str) else rel
+        if "alternate" not in [r.lower() for r in rel]:
+            continue
+        if (link.get("type") or "").lower() not in FEED_TYPES or not link.get("href"):
+            continue
+        href = urljoin(base_url, link["href"])
+        if href not in feeds:
+            feeds.append(href)
+    return feeds
 
 
 def suggest_group(url, entries):
@@ -69,6 +89,7 @@ def main(argv=None):
     ap.add_argument("--group")
     ap.add_argument("--selector", help="'none' für die ganze Seite")
     ap.add_argument("--js", action="store_true", help="Seite mit Playwright rendern")
+    ap.add_argument("--feed", action="store_true", help="gefundenen RSS/Atom-Feed statt der Seite überwachen")
     ap.add_argument("-y", "--yes", action="store_true", help="Vorschläge ohne Rückfrage übernehmen")
     args = ap.parse_args(argv)
 
@@ -86,6 +107,28 @@ def main(argv=None):
         sys.exit(f"Abruf fehlgeschlagen: {ex}")
 
     feed = check.is_feed(body)
+    if not feed:
+        feeds = find_feeds(body, args.url)
+        if feeds:
+            print("Feeds gefunden:")
+            for i, f in enumerate(feeds, 1):
+                print(f"  {i}. {f}")
+            choice = "1" if args.feed else ("" if args.yes else input("Feed überwachen? Nummer (leer = Seite): ").strip())
+            if choice.isdigit() and 1 <= int(choice) <= len(feeds):
+                feed_url = feeds[int(choice) - 1]
+                if any(e["url"] == feed_url for e in entries):
+                    sys.exit(f"Schon vorhanden: {feed_url}")
+                if not check.robots_allowed(feed_url, {}):
+                    sys.exit("robots.txt verbietet den Abruf des Feeds.")
+                try:
+                    feed_body, _ = check.fetch_body(feed_url, False)
+                except Exception as ex:
+                    sys.exit(f"Feed-Abruf fehlgeschlagen: {ex}")
+                if not check.is_feed(feed_body):
+                    sys.exit(f"{feed_url} ist kein gültiger Feed.")
+                args.url, body, feed, args.js = feed_url, feed_body, True, False
+            elif args.yes and not args.feed:
+                print("Tipp: mit --feed wird der Feed statt der Seite überwacht.")
     selector = None
     if feed:
         title, text = check.parse_feed(body)

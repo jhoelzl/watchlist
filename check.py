@@ -5,6 +5,7 @@ import json
 import os
 import re
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,6 +29,8 @@ GUARD_MIN_CHARS = 500
 DEFAULT_MIN_RATIO = 0.3
 GUARD_ALERT_AFTER = 2
 FAIL_ALERT_AFTER = 3
+RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
+MAX_RETRY_AFTER = 30
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -114,6 +117,30 @@ def config_hash(opts):
     return hashlib.sha1(json.dumps(relevant, sort_keys=True).encode()).hexdigest()[:12]
 
 
+def get_with_retry(url, headers):
+    """GET mit Wiederholung bei Netzwerkfehlern, Timeouts, 429 und 5xx. Andere 4xx werden sofort zurückgegeben."""
+    last = None
+    delay = 0
+    for attempt in range(len(RETRY_DELAYS) + 1):
+        if attempt:
+            print(f"            Wiederholung {attempt}/{len(RETRY_DELAYS)} in {delay}s ({last})")
+            time.sleep(delay)
+        delay = RETRY_DELAYS[attempt] if attempt < len(RETRY_DELAYS) else 0
+        try:
+            resp = requests.get(url, headers=headers, timeout=30)
+        except (requests.ConnectionError, requests.Timeout) as ex:
+            last = type(ex).__name__
+            continue
+        if resp.status_code == 429 or resp.status_code >= 500:
+            last = f"HTTP {resp.status_code}"
+            retry_after = resp.headers.get("Retry-After", "")
+            if retry_after.isdigit():
+                delay = min(int(retry_after), MAX_RETRY_AFTER)
+            continue
+        return resp
+    raise RuntimeError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})")
+
+
 def fetch_body(url, js, cond=None):
     """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
     if js:
@@ -135,7 +162,7 @@ def fetch_body(url, js, cond=None):
         headers["If-None-Match"] = cond["etag"]
     if cond.get("last_modified"):
         headers["If-Modified-Since"] = cond["last_modified"]
-    resp = requests.get(url, headers=headers, timeout=30)
+    resp = get_with_retry(url, headers)
     if resp.status_code == 304:
         return None, cond
     resp.raise_for_status()
@@ -298,7 +325,7 @@ def run():
     old_status = read_json(STATE / "status.json", {})
     history = read_json(STATE / "history.json", [])
     meta = read_json(STATE / "meta.json", {})
-    status, changes, problems = {}, [], []
+    status, changes, problems, pending = {}, [], [], []
     http_cache = read_json(STATE / "http.json", {})
     new_cache = {}
     robots = {}
@@ -333,7 +360,9 @@ def run():
             entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"))
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == FAIL_ALERT_AFTER:
-                problems.append(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}")
+                problems.append(
+                    {"text": f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", "counter": fail, "value": n}
+                )
             continue
         fail.unlink(missing_ok=True)
 
@@ -356,7 +385,9 @@ def run():
             entry.update(status="warn", error=msg, checked=prev.get("checked", "-"))
             print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
             if n == GUARD_ALERT_AFTER:
-                problems.append(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}")
+                problems.append(
+                    {"text": f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "counter": short, "value": n}
+                )
             continue
         short.unlink(missing_ok=True)
 
@@ -370,28 +401,59 @@ def run():
             print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
             diff, extra = make_diff(old, text, opts.get("only_added", feed))
             if diff:
-                entry["changed"] = stamp
                 change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
                 changes.append(change)
-                history.append({**change, "time": stamp})
-            else:
-                print("            (nur entfernte Zeilen, keine Mail)")
+                # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
+                pending.append(
+                    {"change": change, "snap": snap, "text": text, "entry": entry,
+                     "cache": {**validators, "config": cfg} if validators else None}
+                )
+                if cached:
+                    new_cache[url] = cached
+                continue
+            print("            (nur entfernte Zeilen, keine Mail)")
         snap.write_text(text)
         if validators:
             new_cache[url] = {**validators, "config": cfg}
 
+    ok = True
+    sent_ok = True
     if changes:
         if len(changes) == 1:
             subject = f"Watchlist: {changes[0]['name']} geändert"
         else:
             subject = f"Watchlist: {len(changes)} Seiten geändert ({', '.join(group_changes(changes))})"
         print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
-        send_mail(subject, render_text(changes), render_html(changes))
+        try:
+            send_mail(subject, render_text(changes), render_html(changes))
+        except Exception as ex:
+            sent_ok = ok = False
+            print(f"[MAILFEHLER] {ex}\n  Snapshots der {len(pending)} geänderten Seite(n) bleiben unverändert, "
+                  "die Änderung wird beim nächsten Lauf erneut erkannt.")
+        for p in pending:
+            if sent_ok:
+                p["snap"].write_text(p["text"])
+                p["entry"]["changed"] = stamp
+                history.append({**p["change"], "time": stamp})
+                if p["cache"]:
+                    new_cache[p["change"]["url"]] = p["cache"]
+            else:
+                p["entry"].update(status="error", error="Änderung erkannt, Mailversand fehlgeschlagen (wird wiederholt)")
     if problems:
-        send_mail("Watchlist: Probleme beim Abruf", "\n\n".join(problems))
+        try:
+            send_mail("Watchlist: Probleme beim Abruf", "\n\n".join(p["text"] for p in problems))
+        except Exception as ex:
+            ok = False
+            print(f"[MAILFEHLER] Problemmeldung konnte nicht gesendet werden: {ex}")
+            for p in problems:  # Zähler zurücksetzen, damit die Warnung beim nächsten Lauf erneut ausgelöst wird
+                p["counter"].write_text(str(p["value"] - 1))
 
     history = history[-MAX_HISTORY:]
-    send_heartbeat(now, entries, status, history, meta)
+    try:
+        send_heartbeat(now, entries, status, history, meta)
+    except Exception as ex:
+        ok = False
+        print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
     write_json(STATE / "status.json", status)
     write_json(STATE / "history.json", history)
     write_json(STATE / "meta.json", meta)
@@ -399,14 +461,15 @@ def run():
     dashboard.build(list({**v, "url": k} for k, v in status.items()), history, stamp)
     bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
+    return ok
 
 
 def main(argv):
     if len(argv) >= 3 and argv[1] == "--alert":
         send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
-        return
-    run()
+        return 0
+    return 0 if run() else 1
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    sys.exit(main(sys.argv))

@@ -29,6 +29,7 @@ jobs:
           MAIL_TO: ${{ secrets.MAIL_TO }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
       - name: Snapshots und Dashboard committen
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "watchlist-bot"
           git config user.email "watchlist-bot@users.noreply.github.com"

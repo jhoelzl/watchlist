@@ -17,6 +17,7 @@ urls:
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text
     group: Azure
     selector: main
+    only_added: true
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live
     group: Azure
     selector: main
@@ -29,6 +30,7 @@ urls:
   - url: https://cloud.google.com/text-to-speech/docs/release-notes
     group: Google
     selector: main
+    only_added: true
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry
     group: Azure
     selector: main
@@ -40,12 +42,15 @@ urls:
   - url: https://learn.microsoft.com/en-us/azure/foundry-classic/openai/whats-new
     group: Azure
     selector: main
+    only_added: true
   - url: https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/realtime-audio?tabs=keyless%2Clinux&pivots=programming-language-python#quickstart
     group: Azure
     selector: main
   - url: https://learn.microsoft.com/en-us/azure/ai-services/language-service/whats-new?tabs=csharp
     group: Azure
     selector: main
+    only_added: true
   - url: https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli?view=azure-cli-latest
     group: Azure
     selector: main
+    only_added: true
