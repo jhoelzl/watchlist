@@ -25,7 +25,7 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 - ✅ **Erledigt:** **Regex aus `ignore:`:** Ein fehlerhaftes oder katastrophales Muster (ReDoS) in `urls.yml` kann den Lauf hängen lassen oder abbrechen. Beim Laden validieren und ungültige Muster als Konfigurationsfehler melden. (S)
 - 🟡 **Dashboard auf Pages ist öffentlich** und enthält URLs, Namen und Diff-Inhalte. Wenn Pages aktiv ist, optional nur Metadaten veröffentlichen oder Diffs weglassen. (S)
 - ⚪ **Redirect-/Schema-Kontrolle:** `requests` folgt Redirects automatisch. Nur `http`/`https` zulassen und Redirect-Ziele prüfen, falls `urls.yml` je aus fremden Beiträgen (PRs) kommt. (S)
-- ⚪ **Secret Scanning und Push Protection** im Repo aktivieren, `pip-audit` bzw. `uv audit` in `tests.yml`. (S)
+- ✅ **Teilweise erledigt:** `uv audit` läuft in `tests.yml` (Push, PR, wöchentlich). **Offen:** Secret Scanning und Push Protection sind für dieses private Repo nicht verfügbar (die API meldet "not available", nötig wäre GitHub Secret Protection oder ein öffentliches Repo). Alternative: `gitleaks` als Workflow-Schritt oder pre-commit-Hook. (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
 - ⚪ **HTML-Mail:** Inhalte werden mit `html.escape` maskiert. Per Test absichern, dass auch Feed-Inhalte mit `<script>` und Attributen sauber bleiben. (S)
 

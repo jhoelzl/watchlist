@@ -58,7 +58,7 @@ Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) u
 - **Branch `state`:** Snapshots (`state/`) und Dashboard (`site/`) liegen nicht auf `main`, sondern auf dem vom Workflow gepflegten Branch `state`. So bleibt `main` frei von Bot-Commits und funktioniert auch mit Branch-Protection. Der Workflow checkt ihn nach `data/` aus und setzt `WATCHLIST_STATE_DIR`/`WATCHLIST_SITE_DIR`. Lokal (`uv run check.py`) landen die Dateien in `state/` und `site/` (per `.gitignore` ignoriert).
 - **Dashboard:** `site/index.html` wird bei jedem Lauf erzeugt und auf `state` committet (Status pro URL, letzte Prüfung, Änderungsverlauf). Mit Suchfeld und Filtern nach Gruppe und Status. Lokal einfach im Browser öffnen.
 - **Dashboard auf GitHub Pages (optional):** Pages-Seiten sind öffentlich erreichbar, auch bei privatem Repo, und für private Repos braucht es einen bezahlten Plan. Aktivieren: Settings → Pages → Source „GitHub Actions" und Variable `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
-- **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt die Tests bei Push und Pull Request aus.
+- **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
 
 ## Lokal
 ```
@@ -69,6 +69,7 @@ uv run pytest                         # Tests
 uv run ruff check .                   # Lint
 uv run ruff format .                  # Formatieren (CI prüft mit --check)
 uv run mypy check.py add.py dashboard.py  # Typcheck
+uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten
 ```
 Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.
 Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...`.

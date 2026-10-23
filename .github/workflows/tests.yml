@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 5 * * 1" # wöchentlich, damit neue Schwachstellen auch ohne Push auffallen
 
 permissions:
   contents: read
@@ -20,3 +22,4 @@ jobs:
       - run: uv run --frozen ruff format --check .
       - run: uv run --frozen mypy check.py add.py dashboard.py
       - run: uv run --frozen pytest -q
+      - run: uv audit --frozen --preview-features audit-command
