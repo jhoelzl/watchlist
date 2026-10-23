@@ -1,39 +1,38 @@
 # Verbesserungsideen
 
-Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig. Grundlage: Analyse von `check.py`, `dashboard.py`, `add.py`, `urls.yml`, den Workflows und den Tests.
+Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-## Übersicht (Top 8)
+Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 74 Tests. `mypy --strict` meldet noch 127 Fehler (fehlende Annotationen).
+
+## Nächste Schritte (Top 8)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
-| 1 | ~~Seiten parallel abrufen~~ (erledigt, 44 URLs in ~20 s) | Performance | ✅ | M |
-| 2 | Tab-Varianten derselben Seite zusammenfassen (Mehrfach-Mails) | Features | 🔴 | M |
-| 3 | ~~`state/` aus der Git-Historie von `main` herausnehmen~~ (erledigt, Branch `state`) | Betrieb | ✅ | M |
-| 4 | `check.py` in Module aufteilen | Refactoring | 🟡 | M |
-| 5 | Dashboard: Dark Mode, Sortierung, Statistik | UX/UI | 🟡 | M |
-| 6 | Zusätzliche Benachrichtigungskanäle (Slack/Teams/ntfy/Webhook) | Features | 🟡 | M |
-| 7 | ~~Action-Versionen per Commit-SHA pinnen~~ (erledigt) | Security | ✅ | S |
-| 8 | Tests für Dashboard-Rendering und `add.py` erweitern | Qualität | 🟡 | M |
+| 1 | Tab-Varianten derselben Seite zusammenfassen (Mehrfach-Einträge in Mails) | Features | 🔴 | M |
+| 2 | `check.py` in Module aufteilen, `run()` entflechten | Refactoring | 🟡 | M |
+| 3 | Ein Playwright-Browser pro Lauf statt pro URL | Performance | 🟡 | S |
+| 4 | Dashboard: Dark Mode, Sortierung, Statistik, Filter in der URL | UX/UI | 🟡 | M |
+| 5 | Weitere Kanäle (Slack/Teams/ntfy) und Digest-Modus | Features | 🟡 | M |
+| 6 | Funktionen annotieren, dann mypy `strict = true` | Qualität | 🟡 | M |
+| 7 | Secret-Scan per `gitleaks` (GitHub Secret Scanning ist im privaten Repo nicht verfügbar) | Security | 🟡 | S |
+| 8 | Tests für `add.py`-Ablauf und Integrationstest mit lokalem HTTP-Server | Qualität | 🟡 | M |
 
 ---
 
 ## 1. Security
 
-- ✅ **Erledigt:** **GitHub Actions per Commit-SHA gepinnt** (`actions/checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages`). Verhindert Supply-Chain-Angriffe über verschobene Tags. Dependabot hält die SHAs aktuell. (S)
-- ✅ **Erledigt:** **Rechte im Workflow minimieren:** `check.yml` setzt auf Workflow-Ebene `permissions: {}`, `contents: write` gilt nur noch im Job `check` (der auf `state` pusht), der Pages-Job hat nur `pages: write` und `id-token: write`. (S)
-- ✅ **Erledigt:** **Bot-Commits und Branch-Schutz:** Der Push von `state/` und `site/` auf `main` funktioniert nur ohne Branch-Protection. Ein eigener Branch `state` löst das und hält `main` sauber (siehe Abschnitt 6). (M)
-- ✅ **Erledigt:** **Regex aus `ignore:`:** Ein fehlerhaftes oder katastrophales Muster (ReDoS) in `urls.yml` kann den Lauf hängen lassen oder abbrechen. Beim Laden validieren und ungültige Muster als Konfigurationsfehler melden. (S)
-- 🟡 **Dashboard auf Pages ist öffentlich** und enthält URLs, Namen und Diff-Inhalte. Wenn Pages aktiv ist, optional nur Metadaten veröffentlichen oder Diffs weglassen. (S)
+- 🟡 **Secret-Scan:** GitHub Secret Scanning und Push Protection sind für dieses private Repo nicht verfügbar (API: „not available", nötig wäre GitHub Secret Protection oder ein öffentliches Repo). Alternative: `gitleaks` als Schritt in `tests.yml` oder als pre-commit-Hook. (S)
+- 🟡 **Dashboard auf Pages ist öffentlich** und enthält URLs, Namen und Diff-Inhalte. Wenn `ENABLE_PAGES` aktiv ist, optional nur Metadaten veröffentlichen oder Diffs weglassen. (S)
+- 🟡 **ReDoS nur heuristisch abgefangen:** `config_errors` erkennt verschachtelte Quantifizierer und zu lange Muster, einen echten Timeout gibt es mit `re` nicht (lehnt auch harmlose Muster wie `(\d+,)+` ab). Option: Bibliothek `regex` mit `timeout=`. (M)
 - ⚪ **Redirect-/Schema-Kontrolle:** `requests` folgt Redirects automatisch. Nur `http`/`https` zulassen und Redirect-Ziele prüfen, falls `urls.yml` je aus fremden Beiträgen (PRs) kommt. (S)
-- ✅ **Teilweise erledigt:** `uv audit` läuft in `tests.yml` (Push, PR, wöchentlich). **Offen:** Secret Scanning und Push Protection sind für dieses private Repo nicht verfügbar (die API meldet "not available", nötig wäre GitHub Secret Protection oder ein öffentliches Repo). Alternative: `gitleaks` als Workflow-Schritt oder pre-commit-Hook. (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
 - ⚪ **HTML-Mail:** Inhalte werden mit `html.escape` maskiert. Per Test absichern, dass auch Feed-Inhalte mit `<script>` und Attributen sauber bleiben. (S)
+- ⚪ **Branch Protection für `main`** aktivieren (Pull Requests, Status-Check `tests`). Mit dem Branch `state` für Bot-Commits ist das jetzt möglich. Achtung: Es kollidiert mit der Regel „direkt auf `main` pushen" in `.github/copilot-instructions.md`. (S)
 
 ## 2. Features
 
-- 🔴 **Tab-/Parameter-Varianten zusammenfassen:** Seiten wie `language-support?tabs=stt|tts|...` oder `voice-live-language-support?tabs=speechinput|speechoutput` liefern vermutlich denselben HTML-Inhalt. Eine Änderung erzeugt dann mehrere Einträge in der Mail. Idee: Inhalts-Hash über Einträge hinweg erkennen und gemeinsam melden oder eine Option `variants:` einführen. (M)
-- ✅ **Erledigt:** **Parallele Abrufe** mit `ThreadPoolExecutor` (z. B. 6 Worker, höchstens 1-2 pro Host, damit die Rücksicht auf Server erhalten bleibt). Verkürzt den Lauf deutlich. (M)
-- 🟡 **Ein Playwright-Browser pro Lauf** statt pro URL (aktuell `launch()` je Aufruf). (S)
+- 🔴 **Tab-/Parameter-Varianten zusammenfassen:** Seiten wie `language-support?tabs=stt|tts|...` oder `voice-live-language-support?tabs=speechinput|speechoutput` liefern vermutlich denselben HTML-Inhalt (noch nicht geprüft). Eine Änderung erzeugt dann mehrere Einträge in der Mail. Idee: gleiche Inhalts-Hashes über Einträge hinweg erkennen und gemeinsam melden, oder Option `variants:`. (M)
+- 🟡 **Ein Playwright-Browser pro Lauf** statt `launch()` je URL. Spart Sekunden pro `js: true`-Seite. Passt zur bestehenden Sperre, die JS-Seiten nacheinander laufen lässt. (S)
 - 🟡 **Weitere Kanäle:** Slack/Teams/Discord-Webhook, ntfy.sh, Telegram. Konfigurierbar über Secrets und `notify:` in `urls.yml`, auch pro Gruppe. (M)
 - 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
 - 🟡 **Keyword-/Regex-Trigger:** `notify_if: 'Salzburg|Python'` löst die Mail nur aus, wenn neue Zeilen passen (Jobs, Events). (S)
@@ -43,15 +42,13 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 - ⚪ **JSON- und PDF-Quellen** unterstützen (JSON-Pfad, PDF-Text). (L)
 - ⚪ **Screenshots bei JS-Seiten** als Artefakt, hilft bei Layout-Problemen. (M)
 - ⚪ **Auth-Support** (Header/Cookies über Secrets) für geschützte Seiten. (M)
-- ⚪ **`add.py` verbessern:** mehrere URLs auf einmal (`-f liste.txt`), Duplikatserkennung über normalisierte URL, `--only-added`, Vorschlag für `ignore`. Heute wird jede URL einzeln aufgerufen. (S)
-- ⚪ **`remove.py` / `move.py`** zum Löschen oder Umgruppieren von Einträgen, inklusive Aufräumen verwaister Snapshots in `state/`. (S)
+- ⚪ **`add.py` verbessern:** mehrere URLs auf einmal (`-f liste.txt`, heute wird jede URL einzeln aufgerufen), Duplikatserkennung über normalisierte URL, `--only-added`, Vorschlag für `ignore`. (S)
+- ⚪ **`remove.py` / `move.py`** zum Löschen oder Umgruppieren von Einträgen, inklusive Aufräumen verwaister Snapshots auf dem Branch `state`. Die drei Voice-Live-Seiten mussten z. B. von Hand umgruppiert werden. (S)
 
 ## 3. UX / UI (Mails und CLI)
 
 - 🟡 **Mail:** Link zum Dashboard, farbige Diff-Zeilen (add/del) auch in der HTML-Mail, lange Zeilen kürzen. (S)
-- ✅ **Erledigt:** **Warnmails verständlicher:** Bei wiederholten Fehlern Hinweis auf mögliche Ursache (robots.txt, 403, Timeout) und Abhilfe (`js: true`, `ignore_robots`). (S)
-- ✅ **Erledigt:** **Lebenszeichen-Mail** mit Statistik pro Gruppe und Liste dauerhaft kaputter URLs. (S)
-- ✅ **Erledigt (Entscheidung):** **Einheitliche Sprache** in Meldungen, Kommentaren und Namen (derzeit Deutsch und Englisch gemischt). Entscheidung: Deutsch für Meldungen, Mails, Kommentare und Doku, Englisch für Code-Bezeichner und Commit-Nachrichten (siehe README und `.github/copilot-instructions.md`). (S)
+- ⚪ **Hinweistexte (`HINTS`) pflegen:** Die Tipps greifen über Textmuster im Fehlertext. Ändert sich eine Meldung (z. B. durch ein `requests`-Update), fällt der Tipp weg. Fehler künftig als eigene Exception-Klassen mit Code statt Textsuche modellieren. (M)
 
 ## 4. Dashboard
 
@@ -59,6 +56,7 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 - 🟡 **Sortierung und einklappbare Gruppen:** Spalten sortierbar (zuletzt geändert, Status), Gruppen als `<details>`. (S)
 - 🟡 **Filterzustand in der URL** (`#g=Azure&s=problem`), damit Ansichten teilbar sind. (S)
 - 🟡 **Statistik-Kopf:** Gesamtzahl, Änderungen der letzten 7/30 Tage, Fehleranzahl, letzter erfolgreicher Lauf. (S)
+- 🟡 **Fehlerserie anzeigen:** `status.json` speichert jetzt `streak` (Läufe in Folge mit Problem), das Dashboard zeigt es noch nicht. Dauerhaft kaputte Seiten hervorheben. (S)
 - 🟡 **Verlauf pro Seite:** Klick auf eine Seite zeigt nur deren Änderungen. Derzeit nur die letzten 50 global. (M)
 - 🟡 **Lazy-Load/Pagination** des Verlaufs, falls `MAX_HISTORY` wächst. (M)
 - ⚪ **Responsive Tabelle** für schmale Displays (Karten statt Tabelle). (S)
@@ -70,43 +68,43 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 
 ## 5. Refactoring
 
-- 🟡 **`check.py` aufteilen** (472 Zeilen, `run()` ist ~190 Zeilen lang):
-  - `config.py`: Laden und Validieren von `urls.yml`
-  - `fetch.py`: HTTP, Retry, robots, Playwright
+- 🟡 **`check.py` aufteilen** (626 Zeilen, `run()` ist weiterhin sehr lang, trotz ausgelagertem `fetch_all`):
+  - `config.py`: Laden und Validieren von `urls.yml` (`load_config`, `config_errors`)
+  - `fetch.py`: HTTP, Retry, robots, Playwright, `fetch_all`
   - `parse.py`: Feed/HTML, `clean`, `ignore`
-  - `notify.py`: Resend, Mail-Rendering
+  - `notify.py`: Resend, Mail-Rendering, `HINTS`, Heartbeat
   - `state.py`: Snapshots, `status.json`, `history.json`, Zähler
   - `check.py`: nur Orchestrierung (M)
-- 🟡 **`run()` entflechten:** Pro URL eine Funktion `check_url(opts, state) -> Result` (Dataclass) und getrennte Phasen „sammeln → senden → speichern". Erleichtert Tests und Parallelisierung. (M)
-- 🟡 **Typisierung:** Dicts (`entry`, `change`, `opts`) durch `TypedDict` oder `dataclass` ersetzen, mypy strenger konfigurieren (`disallow_untyped_defs`). (M)
-- 🟡 **Zähler-Dateien** (`<key>.fail`, `<key>.short`) in `state/counters.json` zusammenführen. (S)
+- 🟡 **`run()` entflechten:** Pro URL eine Funktion `check_url(opts, state) -> Result` (Dataclass) und getrennte Phasen „sammeln → senden → speichern". (M)
+- 🟡 **Typisierung abschließen:** Dicts (`entry`, `change`, `opts`) durch `TypedDict` oder `dataclass` ersetzen und rund 40 Funktionen annotieren (127 Fehler unter `mypy --strict`). Danach `strict = true` in `pyproject.toml` und die einzeln aufgelisteten Flags entfernen. (M)
+- 🟡 **Zähler-Dateien** (`<key>.fail`, `<key>.short`) in `counters.json` oder direkt in `status.json` zusammenführen (dort liegt `streak` bereits). (S)
 - ⚪ **Konfigurationsschema** mit klaren Fehlern bei Tippfehlern (`selektor:`), unbekannten Optionen und falschen Typen. (M)
-- ⚪ **Konstanten** in einem `Settings`-Objekt bündeln, optional per Umgebung überschreibbar (`MAX_HISTORY`, Retry, Guard). (S)
+- ⚪ **Konstanten** in einem `Settings`-Objekt bündeln, optional per Umgebung überschreibbar (`MAX_HISTORY`, `MAX_WORKERS`, `MAX_PER_HOST`, `STUCK_AFTER`, Retry, Guard). (S)
 - ⚪ **Logging** statt `print` (Modul `logging`, GitHub-Actions-Gruppen `::group::` und `::warning::`-Annotationen). (S)
 - ⚪ **Paketstruktur** (`src/watchlist/`, Entry-Points `watchlist check|add`). (M)
 
 ## 6. Zuverlässigkeit und Betrieb
 
-- 🟡 **`state/` wächst mit der Git-Historie:** Läuft jetzt auf dem Branch `state` (`main` bleibt sauber). Der Branch wächst weiter; optional regelmäßig squashen (Orphan-Commit + Force-Push). (S)
-- 🟡 **Push-Konflikte im Workflow:** Wenn zwischen Checkout und Push ein Commit eintrifft, schlägt `git push` fehl und der Lauf verliert Snapshots. Vor dem Push `git pull --rebase` mit Retry. (S)
+- 🟡 **Branch `state` wächst weiter** (`main` ist sauber). Optional regelmäßig squashen (Orphan-Commit und Force-Push) oder Snapshots in Cache/Artefakt ablegen. (S)
+- 🟡 **Erster Workflow-Lauf nach der Umstellung beobachten:** Checkout von `state` nach `data/`, Push mit Rebase-Retry und `permissions` pro Job wurden nur lokal geprüft, nicht auf GitHub. (S)
 - 🟡 **`timeout-minutes`** für den Job setzen, damit ein hängender Playwright-Lauf nicht Stunden blockiert. (S)
 - 🟡 **Cron in UTC** (`0 6,18 * * *`): in der README dokumentieren oder auf lokale Zeiten abstimmen. (S)
-- 🟡 **Rate-Limits pro Host:** Verzögerung zwischen Abrufen desselben Hosts, damit ein Host andere nicht ausbremst (relevant mit Parallelisierung und vielen `learn.microsoft.com`-URLs). (M)
+- 🟡 **Host-Limit prüfen:** Die meisten URLs liegen auf `learn.microsoft.com`. Mit `MAX_PER_HOST = 2` ist der Speed-up auf dem Runner kleiner als lokal (44 URLs in ~20 s). Nach dem ersten Lauf Dauer vergleichen und ggf. Limit oder eine kleine Pause pro Host justieren. (S)
 - ⚪ **Retry mit Jitter** und Unterscheidung dauerhafter Fehler (404/410) von vorübergehenden. Bei 404/410 früher warnen. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
 - ⚪ **`site/status.json`** für externe Monitore (Uptime Kuma etc.). (S)
 - ⚪ **Dependabot gruppieren** (ein PR pro Woche) und Auto-Merge für Patch-Updates bei grünen Tests. (S)
+- ⚪ **Wöchentlicher `tests.yml`-Lauf** führt auch Lint und Tests aus, obwohl nur `uv audit` neue Erkenntnisse liefert. Audit in einen eigenen Job auslagern. (S)
 
 ## 7. Tests und Qualität
 
-- 🟡 **Tests für `dashboard.build`:** Escaping, Gruppen, leere Historie, XSS-Fälle in Name und Diff. Es gibt noch keine eigene Testdatei. (S)
+- 🟡 **Tests für `dashboard.build`:** Escaping, Gruppen, leere Historie, XSS-Fälle in Name und Diff. Es gibt nur einen einfachen Test in `test_check.py`. (S)
 - 🟡 **Tests für den `add.py`-Ablauf:** `main` mit gemocktem `fetch_body`, `--feed`, `-y`, Duplikate, robots-Sperre. (M)
 - 🟡 **Integrationstest** mit lokalem HTTP-Server für 304, 429/5xx-Retry, Redirects und Zeichensatz. (M)
 - 🟡 **Coverage** messen (`pytest --cov`) und Mindestwert in CI festlegen. (S)
 - ⚪ **Property-Tests** (Hypothesis) für `make_diff`, `clean` und Regex-Ignore. (M)
-- ✅ **Teilweise erledigt:** `ruff` mit `SIM`, `C4`, `PTH` erweitert. `mypy` aktiviert alle strict-Flags außer `disallow_untyped_defs` und `disallow_untyped_calls`. **Offen:** rund 40 Funktionen annotieren, danach in `pyproject.toml` `strict = true` setzen. (S)
-- ✅ **Erledigt:** **pre-commit** (ruff, ruff-format, mypy) in `.pre-commit-config.yaml`, aktivieren mit `uv run pre-commit install`. (S)
-- ⚪ **Konfigurationsprüfung in CI:** `urls.yml` auf Duplikate, ungültige Regex, unbekannte Optionen prüfen (`check.py --validate`). (S)
+- ⚪ **Konfigurationsprüfung in CI:** `check.py --validate` für `urls.yml` (Duplikate, ungültige Regex, unbekannte Optionen), ohne Netzwerkzugriff. `config_errors` ist dafür bereits vorhanden. (S)
+- ⚪ **pre-commit** ist eingerichtet, aber nicht automatisch aktiv. Jeder Klon braucht einmal `uv run pre-commit install`. (S)
 
 ## 8. Dokumentation
 
@@ -115,10 +113,30 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 - ⚪ **CHANGELOG** und Versionspflege (aktuell `0.1.0`). (S)
 - ⚪ **CONTRIBUTING.md** mit Setup, Tests und Stil. (S)
 
+---
+
+## Erledigt
+
+| Thema | Umsetzung |
+|-------|-----------|
+| Actions per Commit-SHA gepinnt | `checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages` mit SHA und Versionskommentar (Dependabot aktualisiert) |
+| Rechte im Workflow minimiert | `permissions: {}` global, `contents: write` nur im Job `check`, `pages: write` und `id-token: write` nur im Job `pages` |
+| Bot-Commits getrennt von `main` | Snapshots und Dashboard liegen auf dem Branch `state`, Workflow checkt ihn nach `data/` aus (`WATCHLIST_STATE_DIR`, `WATCHLIST_SITE_DIR`), Push mit bis zu 3 Rebase-Versuchen |
+| `ignore`-Regex validiert | `config_errors`: ungültig, über 300 Zeichen, verschachtelte Quantifizierer. Betroffene URL steht auf „Fehler", Lauf endet mit Fehler. Einzelner Text als `ignore` wird nicht mehr in Zeichen zerlegt |
+| `uv audit` in CI | In `tests.yml` bei Push, Pull Request und wöchentlich |
+| Parallele Abrufe | `fetch_all` mit 6 Threads, 2 pro Host, JS-Seiten nacheinander. 44 URLs in ~20 s |
+| Warnmails mit Tipp | `hint_for`/`with_hint` nennen Ursache und Abhilfe (robots.txt, 403, 404, Timeout, Selector, zu wenig Text, …) |
+| Lebenszeichen-Mail | Statistik pro Gruppe, letzte Änderungen, Problemseiten und „Dauerhaft kaputt" (ab `STUCK_AFTER` = 6 Läufen in Folge, mit Tipp) |
+| Einheitliche Sprache | Deutsch für Meldungen, Mails, Kommentare, Doku. Englisch für Code-Bezeichner und Commit-Nachrichten (README, `copilot-instructions.md`) |
+| Ruff erweitert | `SIM`, `C4`, `PTH` zusätzlich zu `E`, `F`, `I`, `UP`, `B` |
+| mypy verschärft | Alle strict-Flags, die ohne Annotationen erfüllbar sind, inkl. `check_untyped_defs`. Offen: `disallow_untyped_defs`, `disallow_untyped_calls` |
+| pre-commit | `.pre-commit-config.yaml` mit ruff, ruff format und mypy über `uv run --frozen` |
+| Copilot-Anweisungen | `.github/copilot-instructions.md`: direkt auf `main` committen und pushen, Sprache, `add.py` nutzen, Prüfungen vor dem Commit |
+
 ## Vorgeschlagene Reihenfolge
 
-1. Schnell und wirksam (alle S): Push-Retry im Workflow, `timeout-minutes`, Action-SHA-Pinning, Dashboard-Tests, Regex-Validierung.
-2. Mehrfach-Mails durch Tab-Varianten vermeiden, Browser-Wiederverwendung, parallele Abrufe mit Host-Limit.
-3. `check.py` zerlegen (Module, `check_url`, TypedDict), danach neue Kanäle und Digest.
-4. Dashboard-Politur (Dark Mode, Sortierung, Statistik, Template-Auslagerung).
-5. Langfristig: `state`-Branch, Paketstruktur, Konfigurationsschema.
+1. Ersten Workflow-Lauf nach der Umstellung auf `state` und Parallelisierung prüfen, `timeout-minutes` setzen.
+2. Tab-Varianten zusammenfassen und Browser pro Lauf wiederverwenden.
+3. `check.py` zerlegen (Module, `check_url`, TypedDict, Annotationen), danach `strict = true`.
+4. Dashboard-Politur (Dark Mode, Sortierung, Statistik, Fehlerserie), dann neue Kanäle und Digest.
+5. Tests für `add.py`, Dashboard und HTTP-Integration, Coverage und `gitleaks` in CI.
