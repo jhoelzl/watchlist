@@ -2,20 +2,19 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 74 Tests. `mypy --strict` meldet noch 127 Fehler (fehlende Annotationen).
+Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 79 Tests. `mypy --strict` meldet noch 127 Fehler (fehlende Annotationen).
 
-## Nächste Schritte (Top 8)
+## Nächste Schritte (Top 7)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
 | 1 | Tab-Varianten derselben Seite zusammenfassen (Mehrfach-Einträge in Mails) | Features | 🔴 | M |
 | 2 | `check.py` in Module aufteilen, `run()` entflechten | Refactoring | 🟡 | M |
-| 3 | Ein Playwright-Browser pro Lauf statt pro URL | Performance | 🟡 | S |
-| 4 | Dashboard: Dark Mode, Sortierung, Statistik, Filter in der URL | UX/UI | 🟡 | M |
-| 5 | Weitere Kanäle (Slack/Teams/ntfy) und Digest-Modus | Features | 🟡 | M |
-| 6 | Funktionen annotieren, dann mypy `strict = true` | Qualität | 🟡 | M |
-| 7 | Secret-Scan per `gitleaks` (GitHub Secret Scanning ist im privaten Repo nicht verfügbar) | Security | 🟡 | S |
-| 8 | Tests für `add.py`-Ablauf und Integrationstest mit lokalem HTTP-Server | Qualität | 🟡 | M |
+| 3 | Dashboard: Dark Mode, Sortierung, Statistik, Filter in der URL | UX/UI | 🟡 | M |
+| 4 | Weitere Kanäle (Slack/Teams/ntfy) und Digest-Modus | Features | 🟡 | M |
+| 5 | Funktionen annotieren, dann mypy `strict = true` | Qualität | 🟡 | M |
+| 6 | Secret-Scan per `gitleaks` (GitHub Secret Scanning ist im privaten Repo nicht verfügbar) | Security | 🟡 | S |
+| 7 | Tests für `add.py`-Ablauf und Integrationstest mit lokalem HTTP-Server | Qualität | 🟡 | M |
 
 ---
 
@@ -32,7 +31,6 @@ Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 
 ## 2. Features
 
 - 🔴 **Tab-/Parameter-Varianten zusammenfassen:** Seiten wie `language-support?tabs=stt|tts|...` oder `voice-live-language-support?tabs=speechinput|speechoutput` liefern vermutlich denselben HTML-Inhalt (noch nicht geprüft). Eine Änderung erzeugt dann mehrere Einträge in der Mail. Idee: gleiche Inhalts-Hashes über Einträge hinweg erkennen und gemeinsam melden, oder Option `variants:`. (M)
-- 🟡 **Ein Playwright-Browser pro Lauf** statt `launch()` je URL. Spart Sekunden pro `js: true`-Seite. Passt zur bestehenden Sperre, die JS-Seiten nacheinander laufen lässt. (S)
 - 🟡 **Weitere Kanäle:** Slack/Teams/Discord-Webhook, ntfy.sh, Telegram. Konfigurierbar über Secrets und `notify:` in `urls.yml`, auch pro Gruppe. (M)
 - 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
 - 🟡 **Keyword-/Regex-Trigger:** `notify_if: 'Salzburg|Python'` löst die Mail nur aus, wenn neue Zeilen passen (Jobs, Events). (S)
@@ -119,6 +117,7 @@ Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 
 
 | Thema | Umsetzung |
 |-------|-----------|
+| Ein Playwright-Browser pro Lauf | `BrowserPool` startet Chromium lazy beim ersten `js: true`-Aufruf, nutzt eine Seite pro URL in einem eigenen Thread (Sync-API ist thread-gebunden) und schließt am Laufende; Neustart nach Absturz |
 | Actions per Commit-SHA gepinnt | `checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages` mit SHA und Versionskommentar (Dependabot aktualisiert) |
 | Rechte im Workflow minimiert | `permissions: {}` global, `contents: write` nur im Job `check`, `pages: write` und `id-token: write` nur im Job `pages` |
 | Bot-Commits getrennt von `main` | Snapshots und Dashboard liegen auf dem Branch `state`, Workflow checkt ihn nach `data/` aus (`WATCHLIST_STATE_DIR`, `WATCHLIST_SITE_DIR`), Push mit bis zu 3 Rebase-Versuchen |
@@ -136,7 +135,7 @@ Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 
 ## Vorgeschlagene Reihenfolge
 
 1. Ersten Workflow-Lauf nach der Umstellung auf `state` und Parallelisierung prüfen, `timeout-minutes` setzen.
-2. Tab-Varianten zusammenfassen und Browser pro Lauf wiederverwenden.
+2. Tab-Varianten zusammenfassen.
 3. `check.py` zerlegen (Module, `check_url`, TypedDict, Annotationen), danach `strict = true`.
 4. Dashboard-Politur (Dark Mode, Sortierung, Statistik, Fehlerserie), dann neue Kanäle und Digest.
 5. Tests für `add.py`, Dashboard und HTTP-Integration, Coverage und `gitleaks` in CI.

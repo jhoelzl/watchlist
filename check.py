@@ -147,21 +147,70 @@ def get_with_retry(url, headers):
     raise RuntimeError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})")
 
 
-def fetch_body(url, js, cond=None):
-    """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
-    if js:
+class BrowserPool:
+    """Ein Chromium für alle js-Seiten eines Laufs. Starten erst beim ersten Bedarf.
+
+    Playwrights Sync-API ist an den Thread gebunden, der sie startet. Deshalb laufen alle Aufrufe
+    über einen eigenen Ein-Thread-Executor, egal aus welchem Worker sie kommen (das serialisiert sie auch).
+    """
+
+    def __init__(self) -> None:
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="browser")
+        self._playwright: Any = None
+        self._browser: Any = None
+
+    def content(self, url: str) -> str:
+        return self._executor.submit(self._content, url).result()
+
+    def close(self) -> None:
+        try:
+            self._executor.submit(self._stop).result()
+        finally:
+            self._executor.shutdown()
+
+    def _start(self) -> None:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
             raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)") from None
-        with sync_playwright() as p:
-            browser = p.chromium.launch()
-            try:
-                page = browser.new_page(user_agent=USER_AGENT)
-                page.goto(url, wait_until="networkidle", timeout=60000)
-                return page.content(), {}
-            finally:
-                browser.close()
+        self._playwright = sync_playwright().start()
+        self._browser = self._playwright.chromium.launch()
+
+    def _stop(self) -> None:
+        try:
+            if self._browser is not None:
+                self._browser.close()
+        finally:
+            if self._playwright is not None:
+                self._playwright.stop()
+            self._browser = self._playwright = None
+
+    def _content(self, url: str) -> str:
+        if self._browser is not None and not self._browser.is_connected():
+            self._stop()  # Browser abgestürzt: beim nächsten Aufruf neu starten
+        if self._browser is None:
+            self._start()
+        page = self._browser.new_page(user_agent=USER_AGENT)
+        try:
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            return str(page.content())
+        finally:
+            page.close()
+
+
+_browser_pool: BrowserPool | None = None  # wird von fetch_all pro Lauf gesetzt
+
+
+def fetch_body(url, js, cond=None):
+    """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
+    if js:
+        if _browser_pool is not None:
+            return _browser_pool.content(url), {}
+        pool = BrowserPool()  # Einzelaufruf (z. B. add.py): eigener Browser, danach wieder schließen
+        try:
+            return pool.content(url), {}
+        finally:
+            pool.close()
     headers = dict(HEADERS)
     cond = cond or {}
     if cond.get("etag"):
@@ -412,7 +461,7 @@ def fetch_all(jobs):
     """Ruft alle Seiten parallel ab. jobs: [(opts, cond)]. Liefert {url: Ergebnis-Tupel oder Exception}.
 
     Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
-    (ein Playwright-Browser gleichzeitig). Die Auswertung bleibt seriell und deterministisch in run().
+    (ein gemeinsamer Playwright-Browser pro Lauf, siehe BrowserPool). Die Auswertung bleibt seriell und deterministisch in run().
     """
     robots: dict[str, RobotFileParser] = {}
     robots_lock, js_lock = threading.Lock(), threading.Lock()
@@ -434,10 +483,17 @@ def fetch_all(jobs):
             except Exception as ex:
                 return url, ex
 
+    global _browser_pool
     if not jobs:
         return {}
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        return dict(pool.map(lambda job: work(*job), jobs))
+    _browser_pool = BrowserPool() if any(o.get("js") for o, _ in jobs) else None
+    try:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+            return dict(pool.map(lambda job: work(*job), jobs))
+    finally:
+        if _browser_pool is not None:
+            _browser_pool.close()
+        _browser_pool = None
 
 
 def run():

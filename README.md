@@ -68,7 +68,7 @@ Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktio
 ## Lokal
 ```
 uv run check.py                       # Mails werden nur ausgegeben, wenn RESEND_API_KEY fehlt
-uv run --extra js playwright install chromium   # einmalig, nur für js: true
+uv run --extra js playwright install chromium   # einmalig, nur für js: true (ein Browser pro Lauf, eine Seite je URL)
 uv run --extra js check.py            # mit js: true
 uv run pytest                         # Tests
 uv run ruff check .                   # Lint

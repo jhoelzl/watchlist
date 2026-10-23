@@ -1,4 +1,7 @@
 import json
+import sys
+import threading
+import types
 
 import pytest
 
@@ -410,3 +413,107 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
     assert "- Allgemein: 1 / 0 / 1" in body
     assert "Dauerhaft kaputt" in body and "B (https://b)" in body and "Tipp:" in body
     assert "C (https://c)" not in body.split("Dauerhaft kaputt")[1]
+
+
+class FakePage:
+    def __init__(self, url):
+        self.url = url
+
+    def goto(self, url, **kwargs):
+        self.url = url
+
+    def content(self):
+        return f"<main>{self.url}</main>"
+
+    def close(self):
+        pass
+
+
+class FakeBrowser:
+    def __init__(self, log):
+        self.log = log
+        self.connected = True
+
+    def new_page(self, **kwargs):
+        self.log["threads"].add(threading.get_ident())
+        return FakePage("")
+
+    def is_connected(self):
+        return self.connected
+
+    def close(self):
+        self.log["closed"] += 1
+
+
+def install_fake_playwright(monkeypatch):
+    log = {"launched": 0, "closed": 0, "stopped": 0, "threads": set(), "browsers": []}
+
+    class FakePlaywright:
+        class chromium:  # noqa: N801
+            @staticmethod
+            def launch():
+                log["launched"] += 1
+                browser = FakeBrowser(log)
+                log["browsers"].append(browser)
+                return browser
+
+        def stop(self):
+            log["stopped"] += 1
+
+    class Ctx:
+        def start(self):
+            return FakePlaywright()
+
+    module = types.ModuleType("playwright.sync_api")
+    module.sync_playwright = lambda: Ctx()
+    monkeypatch.setitem(sys.modules, "playwright", types.ModuleType("playwright"))
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", module)
+    return log
+
+
+def test_browser_started_once_per_run_and_closed(monkeypatch):
+    log = install_fake_playwright(monkeypatch)
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    jobs = [({"url": f"https://h{i}.example/", "js": True}, {}) for i in range(4)]
+    result = check.fetch_all(jobs)
+    assert [result[o["url"]][1] for o, _ in jobs] == [f"https://h{i}.example/" for i in range(4)]
+    assert log["launched"] == 1 and log["closed"] == 1 and log["stopped"] == 1
+    assert len(log["threads"]) == 1  # alle Seiten im selben Thread (Playwright ist thread-gebunden)
+    assert check._browser_pool is None
+
+
+def test_no_browser_without_js_pages(monkeypatch):
+    log = install_fake_playwright(monkeypatch)
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", "x", False, {}))
+    check.fetch_all([({"url": "https://a/"}, {})])
+    assert log["launched"] == 0 and check._browser_pool is None
+
+
+def test_browser_restarts_after_crash(monkeypatch):
+    log = install_fake_playwright(monkeypatch)
+    pool = check.BrowserPool()
+    try:
+        pool.content("https://a/")
+        log["browsers"][0].connected = False
+        assert pool.content("https://b/") == "<main>https://b/</main>"
+    finally:
+        pool.close()
+    assert log["launched"] == 2 and log["stopped"] == 2
+
+
+def test_single_js_fetch_outside_run_uses_own_browser(monkeypatch):
+    log = install_fake_playwright(monkeypatch)
+    body, validators = check.fetch_body("https://a/", True)
+    assert "<main>" in body and validators == {}
+    assert log["launched"] == 1 and log["closed"] == 1
+
+
+def test_browser_pool_without_playwright_gives_clear_error(monkeypatch):
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
+    pool = check.BrowserPool()
+    try:
+        with pytest.raises(RuntimeError, match="Playwright"):
+            pool.content("https://a/")
+    finally:
+        pool.close()
