@@ -5,8 +5,10 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
@@ -33,6 +35,8 @@ GUARD_ALERT_AFTER = 2
 FAIL_ALERT_AFTER = 3
 RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
 MAX_RETRY_AFTER = 30
+MAX_WORKERS = 6  # parallele Abrufe insgesamt
+MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
 
@@ -344,8 +348,39 @@ def send_heartbeat(now, entries, status, history, meta):
     meta["heartbeat"] = month
 
 
+def fetch_all(jobs):
+    """Ruft alle Seiten parallel ab. jobs: [(opts, cond)]. Liefert {url: Ergebnis-Tupel oder Exception}.
+
+    Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
+    (ein Playwright-Browser gleichzeitig). Die Auswertung bleibt seriell und deterministisch in run().
+    """
+    robots, robots_lock, js_lock = {}, threading.Lock(), threading.Lock()
+    host_limits = {urlparse(o["url"]).netloc: threading.Semaphore(MAX_PER_HOST) for o, _ in jobs}
+
+    def work(opts, cond):
+        url = opts["url"]
+        with host_limits[urlparse(url).netloc]:
+            try:
+                if not opts.get("ignore_robots"):
+                    with robots_lock:
+                        allowed = robots_allowed(url, robots)
+                    if not allowed:
+                        raise RuntimeError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)")
+                if opts.get("js"):
+                    with js_lock:
+                        return url, fetch(url, opts, cond)
+                return url, fetch(url, opts, cond)
+            except Exception as ex:
+                return url, ex
+
+    if not jobs:
+        return {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        return dict(pool.map(lambda job: work(*job), jobs))
+
+
 def run():
-    STATE.mkdir(exist_ok=True)
+    STATE.mkdir(parents=True, exist_ok=True)
     now = datetime.now(UTC)
     stamp = now.strftime("%Y-%m-%d %H:%M UTC")
     entries = load_config(ROOT / "urls.yml")
@@ -356,9 +391,18 @@ def run():
     config_bad = []
     http_cache = read_json(STATE / "http.json", {})
     new_cache = {}
-    robots = {}
 
     print(f"Prüfe {len(entries)} URL(s)...")
+    jobs = []
+    for opts in entries:
+        if config_errors(opts):
+            continue
+        url = opts["url"]
+        cached = http_cache.get(url, {})
+        snap_exists = (STATE / f"{hashlib.sha1(url.encode()).hexdigest()[:16]}.txt").exists()
+        jobs.append((opts, cached if snap_exists and cached.get("config") == config_hash(opts) else {}))
+    fetched = fetch_all(jobs)
+
     for opts in entries:
         url = opts["url"]
         key = hashlib.sha1(url.encode()).hexdigest()[:16]
@@ -384,11 +428,11 @@ def run():
             continue
         cfg = config_hash(opts)
         cached = http_cache.get(url, {})
-        cond = cached if snap.exists() and cached.get("config") == cfg else {}
         try:
-            if not opts.get("ignore_robots") and not robots_allowed(url, robots):
-                raise RuntimeError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)")
-            title, text, feed, validators = fetch(url, opts, cond)
+            result = fetched[url]
+            if isinstance(result, Exception):
+                raise result
+            title, text, feed, validators = result
         except Exception as ex:
             n = int(fail.read_text()) + 1 if fail.exists() else 1
             fail.write_text(str(n))

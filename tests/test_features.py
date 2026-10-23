@@ -275,3 +275,78 @@ def test_invalid_ignore_marks_url_and_fails_run(env, monkeypatch):
     assert status["https://a"]["status"] == "error"
     assert "Konfigurationsfehler" in status["https://a"]["error"]
     assert status["https://b"]["status"] == "new"
+
+
+def test_fetch_all_runs_in_parallel_and_respects_host_limit(monkeypatch):
+    import threading
+    import time
+
+    lock = threading.Lock()
+    running = {"now": 0, "max": 0, "a": 0, "a_max": 0}
+
+    def slow_fetch(url, opts, cond=None):
+        host_a = "//a.example" in url
+        with lock:
+            running["now"] += 1
+            running["max"] = max(running["max"], running["now"])
+            if host_a:
+                running["a"] += 1
+                running["a_max"] = max(running["a_max"], running["a"])
+        time.sleep(0.05)
+        with lock:
+            running["now"] -= 1
+            if host_a:
+                running["a"] -= 1
+        return "T", url, False, {}
+
+    monkeypatch.setattr(check, "fetch", slow_fetch)
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    jobs = [({"url": f"https://a.example/{i}"}, {}) for i in range(6)] + [
+        ({"url": f"https://b{i}.example/"}, {}) for i in range(4)
+    ]
+    result = check.fetch_all(jobs)
+    assert set(result) == {o["url"] for o, _ in jobs}
+    assert result["https://a.example/3"][1] == "https://a.example/3"
+    assert running["a_max"] <= check.MAX_PER_HOST
+    assert 1 < running["max"] <= check.MAX_WORKERS
+
+
+def test_fetch_all_returns_exceptions_per_url(monkeypatch):
+    def fake_fetch(url, opts, cond=None):
+        if url.endswith("bad"):
+            raise RuntimeError("kaputt")
+        return "T", "ok", False, {}
+
+    monkeypatch.setattr(check, "fetch", fake_fetch)
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: url != "https://r/blocked")
+    jobs = [({"url": u}, {}) for u in ("https://a/good", "https://a/bad", "https://r/blocked")]
+    result = check.fetch_all(jobs)
+    assert result["https://a/good"][1] == "ok"
+    assert str(result["https://a/bad"]) == "kaputt"
+    assert "robots.txt" in str(result["https://r/blocked"])
+
+
+def test_fetch_all_js_pages_run_one_at_a_time(monkeypatch):
+    import threading
+    import time
+
+    state = {"now": 0, "max": 0}
+    lock = threading.Lock()
+
+    def fake_fetch(url, opts, cond=None):
+        with lock:
+            state["now"] += 1
+            state["max"] = max(state["max"], state["now"])
+        time.sleep(0.03)
+        with lock:
+            state["now"] -= 1
+        return "T", "x", False, {}
+
+    monkeypatch.setattr(check, "fetch", fake_fetch)
+    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    check.fetch_all([({"url": f"https://h{i}/", "js": True}, {}) for i in range(4)])
+    assert state["max"] == 1
+
+
+def test_fetch_all_empty():
+    assert check.fetch_all([]) == {}

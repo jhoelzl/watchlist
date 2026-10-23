@@ -111,5 +111,5 @@ def build(entries, history, generated):
         )
     parts.append(f"<script>{JS}</script></body></html>")
 
-    SITE.mkdir(exist_ok=True)
+    SITE.mkdir(parents=True, exist_ok=True)
     (SITE / "index.html").write_text("".join(parts), encoding="utf-8")

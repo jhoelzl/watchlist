@@ -6,7 +6,7 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
-| 1 | Seiten parallel abrufen (derzeit seriell, ~45 URLs) | Performance | 🔴 | M |
+| 1 | ~~Seiten parallel abrufen~~ (erledigt, 44 URLs in ~20 s) | Performance | ✅ | M |
 | 2 | Tab-Varianten derselben Seite zusammenfassen (Mehrfach-Mails) | Features | 🔴 | M |
 | 3 | ~~`state/` aus der Git-Historie von `main` herausnehmen~~ (erledigt, Branch `state`) | Betrieb | ✅ | M |
 | 4 | `check.py` in Module aufteilen | Refactoring | 🟡 | M |
@@ -32,7 +32,7 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 ## 2. Features
 
 - 🔴 **Tab-/Parameter-Varianten zusammenfassen:** Seiten wie `language-support?tabs=stt|tts|...` oder `voice-live-language-support?tabs=speechinput|speechoutput` liefern vermutlich denselben HTML-Inhalt. Eine Änderung erzeugt dann mehrere Einträge in der Mail. Idee: Inhalts-Hash über Einträge hinweg erkennen und gemeinsam melden oder eine Option `variants:` einführen. (M)
-- 🔴 **Parallele Abrufe** mit `ThreadPoolExecutor` (z. B. 6 Worker, höchstens 1-2 pro Host, damit die Rücksicht auf Server erhalten bleibt). Verkürzt den Lauf deutlich. (M)
+- ✅ **Erledigt:** **Parallele Abrufe** mit `ThreadPoolExecutor` (z. B. 6 Worker, höchstens 1-2 pro Host, damit die Rücksicht auf Server erhalten bleibt). Verkürzt den Lauf deutlich. (M)
 - 🟡 **Ein Playwright-Browser pro Lauf** statt pro URL (aktuell `launch()` je Aufruf). (S)
 - 🟡 **Weitere Kanäle:** Slack/Teams/Discord-Webhook, ntfy.sh, Telegram. Konfigurierbar über Secrets und `notify:` in `urls.yml`, auch pro Gruppe. (M)
 - 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
