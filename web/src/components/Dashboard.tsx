@@ -81,6 +81,7 @@ export function Dashboard() {
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState('')
   const [status, setStatus] = useState<StatusFilter>('')
+  const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
   const [tab, setTab] = useState<'urls' | 'changes'>('urls')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
@@ -95,6 +96,16 @@ export function Dashboard() {
     () => (data?.changes ?? []).filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '')),
     [data, query, group],
   )
+
+  const checkNow = async () => {
+    setCheck({ state: 'busy' })
+    const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check')
+    if (error || res?.error) {
+      return setCheck({ state: 'error', message: res?.error ?? error?.message ?? 'Unbekannter Fehler' })
+    }
+    setCheck({ state: res?.status === 'running' ? 'running' : 'started' })
+    setTimeout(() => void load().then(setResult), 90_000)
+  }
 
   const remove = async (e: Entry) => {
     if (!window.confirm(`„${e.name}“ wirklich löschen?\n${e.url}`)) return
@@ -122,9 +133,15 @@ export function Dashboard() {
           <p>{data?.updated ? `Zuletzt aktualisiert: ${new Date(data.updated).toLocaleString('de-AT')}` : 'Noch kein Lauf'}</p>
         </div>
         <div className="intro-actions">
+          <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy'}>
+            {check.state === 'busy' ? 'Starte …' : 'Jetzt prüfen'}
+          </button>
           <button className="btn" onClick={() => void load().then(setResult)}>Aktualisieren</button>
         </div>
       </div>
+      {check.state === 'started' && <p className="muted">Prüfung gestartet. Sie dauert etwa eine Minute, die Ansicht aktualisiert sich nach 90 Sekunden (oder „Aktualisieren“).</p>}
+      {check.state === 'running' && <p className="muted">Es läuft bereits eine Prüfung.</p>}
+      {check.state === 'error' && <p className="error">Prüfung konnte nicht gestartet werden: {check.message}</p>}
       <div className="summary">
         <div className="stat"><b>{sum.total}</b><span>URLs</span></div>
         <div className="stat"><b>{sum.ok}</b><span>OK</span></div>
