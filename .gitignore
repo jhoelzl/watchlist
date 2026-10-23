@@ -1,3 +1,6 @@
 __pycache__/
 .venv/
 .env
+state/
+site/
+data/

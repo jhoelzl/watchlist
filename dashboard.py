@@ -1,7 +1,8 @@
 import html
+import os
 from pathlib import Path
 
-SITE = Path(__file__).parent / "site"
+SITE = Path(os.environ.get("WATCHLIST_SITE_DIR") or Path(__file__).parent / "site")
 
 CSS = """
 body{font-family:-apple-system,Segoe UI,sans-serif;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1f2328}

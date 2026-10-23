@@ -19,7 +19,8 @@ from bs4 import BeautifulSoup
 import dashboard
 
 ROOT = Path(__file__).parent
-STATE = ROOT / "state"
+# Im Workflow liegen state/ und site/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
+STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
 MAX_DIFF_LINES = 60
 MAX_HISTORY = 100
 DEFAULT_GROUP = "Allgemein"
