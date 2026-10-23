@@ -104,8 +104,8 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 - 🟡 **Integrationstest** mit lokalem HTTP-Server für 304, 429/5xx-Retry, Redirects und Zeichensatz. (M)
 - 🟡 **Coverage** messen (`pytest --cov`) und Mindestwert in CI festlegen. (S)
 - ⚪ **Property-Tests** (Hypothesis) für `make_diff`, `clean` und Regex-Ignore. (M)
-- ⚪ **`ruff` erweitern** (`SIM`, `C4`, `PTH`), `mypy --strict` schrittweise. (S)
-- ⚪ **pre-commit** (ruff, ruff-format, mypy). (S)
+- ✅ **Teilweise erledigt:** `ruff` mit `SIM`, `C4`, `PTH` erweitert. `mypy` aktiviert alle strict-Flags außer `disallow_untyped_defs` und `disallow_untyped_calls`. **Offen:** rund 40 Funktionen annotieren, danach in `pyproject.toml` `strict = true` setzen. (S)
+- ✅ **Erledigt:** **pre-commit** (ruff, ruff-format, mypy) in `.pre-commit-config.yaml`, aktivieren mit `uv run pre-commit install`. (S)
 - ⚪ **Konfigurationsprüfung in CI:** `urls.yml` auf Duplikate, ungültige Regex, unbekannte Optionen prüfen (`check.py --validate`). (S)
 
 ## 8. Dokumentation

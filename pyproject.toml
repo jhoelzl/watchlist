@@ -16,6 +16,7 @@ js = [
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
+    "pre-commit>=4.7.0",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
     "types-pyyaml>=6.0.12.20260906",
@@ -31,7 +32,7 @@ line-length = 130
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PTH"]
 ignore = ["E741"]  # `l` für Zeilen ist hier gewollt
 
 [tool.ruff.lint.per-file-ignores]
@@ -41,3 +42,18 @@ ignore = ["E741"]  # `l` für Zeilen ist hier gewollt
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true
+# Schrittweise Richtung --strict: alle strict-Flags, die ohne Annotationen schon erfüllt sind.
+# Offen: disallow_untyped_defs und disallow_untyped_calls (noch ~40 Funktionen ohne Annotationen).
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+no_implicit_reexport = true
+strict_equality = true
+extra_checks = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true

@@ -74,9 +74,11 @@ uv run pytest                         # Tests
 uv run ruff check .                   # Lint
 uv run ruff format .                  # Formatieren (CI prüft mit --check)
 uv run mypy check.py add.py dashboard.py  # Typcheck
+uv run pre-commit install             # einmalig: ruff, ruff format und mypy vor jedem Commit
+uv run pre-commit run --all-files     # alle Hooks von Hand
 uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten
 ```
 Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.
-Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...`.
+Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...` (nötig z. B. bei `uv add`, damit `uv.lock` nur öffentliche PyPI-URLs enthält).
 
 Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).

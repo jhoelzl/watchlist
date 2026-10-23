@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import yaml
@@ -36,11 +37,12 @@ def find_feeds(body, base_url):
     soup = BeautifulSoup(body, "html.parser")
     feeds = []
     for link in soup.find_all("link"):
-        rel = link.get("rel") or []
-        rel = rel.split() if isinstance(rel, str) else rel
+        raw_rel: Any = link.get("rel") or []
+        rel = raw_rel.split() if isinstance(raw_rel, str) else list(raw_rel)
         if "alternate" not in [r.lower() for r in rel]:
             continue
-        if (link.get("type") or "").lower() not in FEED_TYPES or not link.get("href"):
+        link_type = link.get("type") or ""
+        if str(link_type).lower() not in FEED_TYPES or not link.get("href"):
             continue
         href = urljoin(base_url, link["href"])
         if href not in feeds:

@@ -11,12 +11,13 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
 import requests
 import yaml
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 import dashboard
 
@@ -90,11 +91,12 @@ def parse_html(body, selector):
     title = clean(soup.title.get_text()) if soup.title else ""
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
-    root = soup
+    root: BeautifulSoup | Tag = soup
     if selector:
-        root = soup.select_one(selector)
-        if root is None:
+        found = soup.select_one(selector)
+        if found is None:
             raise ValueError(f"Selector nicht gefunden: {selector}")
+        root = found
     return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
 
 
@@ -109,9 +111,9 @@ def robots_allowed(url, cache):
             if r.status_code == 200:
                 rp.parse(r.text.splitlines())
             else:
-                rp.allow_all = True
+                rp.parse([])  # leere Regeln: alles erlaubt
         except requests.RequestException:
-            rp.allow_all = True
+            rp.parse([])
         cache[base] = rp
     return cache[base].can_fetch(ROBOTS_AGENT, url)
 
@@ -203,7 +205,7 @@ def make_diff(old, new, only_added):
 
 
 def group_changes(changes):
-    groups = {}
+    groups: dict[str, list[dict[str, Any]]] = {}
     for c in changes:
         groups.setdefault(c.get("group") or DEFAULT_GROUP, []).append(c)
     return groups
@@ -384,7 +386,7 @@ def send_heartbeat(now, entries, status, history, meta):
         "",
         "Pro Gruppe (Seiten / Änderungen / Probleme):",
     ]
-    groups = {}
+    groups: dict[str, list[int]] = {}
     for s in status.values():
         groups.setdefault(s.get("group") or DEFAULT_GROUP, [0, 0, 0])[0] += 1
     for h in recent:
@@ -412,7 +414,8 @@ def fetch_all(jobs):
     Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
     (ein Playwright-Browser gleichzeitig). Die Auswertung bleibt seriell und deterministisch in run().
     """
-    robots, robots_lock, js_lock = {}, threading.Lock(), threading.Lock()
+    robots: dict[str, RobotFileParser] = {}
+    robots_lock, js_lock = threading.Lock(), threading.Lock()
     host_limits = {urlparse(o["url"]).netloc: threading.Semaphore(MAX_PER_HOST) for o, _ in jobs}
 
     def work(opts, cond):
@@ -606,7 +609,7 @@ def run():
     write_json(STATE / "history.json", history)
     write_json(STATE / "meta.json", meta)
     write_json(STATE / "http.json", new_cache)
-    dashboard.build(list({**v, "url": k} for k, v in status.items()), history, stamp)
+    dashboard.build([{**v, "url": k} for k, v in status.items()], history, stamp)
     bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
     return ok

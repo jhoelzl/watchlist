@@ -1,6 +1,7 @@
 import html
 import os
 from pathlib import Path
+from typing import Any
 
 SITE = Path(os.environ.get("WATCHLIST_SITE_DIR") or Path(__file__).parent / "site")
 
@@ -62,7 +63,7 @@ def group_of(item):
 
 
 def build(entries, history, generated):
-    groups = {}
+    groups: dict[str, list[dict[str, Any]]] = {}
     for e in entries:
         groups.setdefault(group_of(e), []).append(e)
 
