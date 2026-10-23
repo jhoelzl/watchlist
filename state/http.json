@@ -1,7 +1,7 @@
 {
  "https://cloud.google.com/text-to-speech/docs/release-notes": {
   "config": "35e48f63b62e",
-  "last_modified": "Tue, 20 Oct 2026 21:00:59 GMT"
+  "last_modified": "Thu, 22 Oct 2026 17:06:11 GMT"
  },
  "https://ksdbmerge.tools/mysql-diff-merge-watsnew.html": {
   "config": "79f2c6dbd1b1",
@@ -60,10 +60,10 @@
  },
  "https://www.commend.com/en/products/cloud-services/ivy-live-translation/": {
   "config": "79f2c6dbd1b1",
-  "last_modified": "Thu, 22 Oct 2026 19:14:37 GMT"
+  "last_modified": "Fri, 23 Oct 2026 11:10:59 GMT"
  },
  "https://www.commend.com/en/products/cloud-services/virtual-assistant-ivy/": {
   "config": "35e48f63b62e",
-  "last_modified": "Thu, 22 Oct 2026 17:53:00 GMT"
+  "last_modified": "Fri, 23 Oct 2026 11:11:05 GMT"
  }
 }

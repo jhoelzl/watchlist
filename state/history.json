@@ -697,5 +697,15 @@
   "name": "The Lindy Cats",
   "time": "2026-10-23 07:34 UTC",
   "url": "https://www.thelindycats.at/de/workshops"
+ },
+ {
+  "diff": [
+   "+Last updated 2026-10-22 UTC."
+  ],
+  "extra": 0,
+  "group": "Google",
+  "name": "Cloud TTS release notes | Cloud Text-to-Speech | Google Cloud Documentation",
+  "time": "2026-10-23 11:55 UTC",
+  "url": "https://cloud.google.com/text-to-speech/docs/release-notes"
  }
 ]
