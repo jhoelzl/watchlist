@@ -5,14 +5,15 @@ on:
     - cron: "0 6,18 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 concurrency: watchlist
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Push auf den Branch state
     env:
       WATCHLIST_STATE_DIR: ${{ github.workspace }}/data/state
       WATCHLIST_SITE_DIR: ${{ github.workspace }}/data/site

@@ -20,7 +20,7 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 ## 1. Security
 
 - ✅ **Erledigt:** **GitHub Actions per Commit-SHA gepinnt** (`actions/checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages`). Verhindert Supply-Chain-Angriffe über verschobene Tags. Dependabot hält die SHAs aktuell. (S)
-- 🟡 **Rechte im Workflow minimieren:** `check.yml` hat `contents: write` auf Workflow-Ebene. Besser auf den Job begrenzen, der pusht. (S)
+- ✅ **Erledigt:** **Rechte im Workflow minimieren:** `check.yml` setzt auf Workflow-Ebene `permissions: {}`, `contents: write` gilt nur noch im Job `check` (der auf `state` pusht), der Pages-Job hat nur `pages: write` und `id-token: write`. (S)
 - ✅ **Erledigt:** **Bot-Commits und Branch-Schutz:** Der Push von `state/` und `site/` auf `main` funktioniert nur ohne Branch-Protection. Ein eigener Branch `state` löst das und hält `main` sauber (siehe Abschnitt 6). (M)
 - ✅ **Erledigt:** **Regex aus `ignore:`:** Ein fehlerhaftes oder katastrophales Muster (ReDoS) in `urls.yml` kann den Lauf hängen lassen oder abbrechen. Beim Laden validieren und ungültige Muster als Konfigurationsfehler melden. (S)
 - 🟡 **Dashboard auf Pages ist öffentlich** und enthält URLs, Namen und Diff-Inhalte. Wenn Pages aktiv ist, optional nur Metadaten veröffentlichen oder Diffs weglassen. (S)
