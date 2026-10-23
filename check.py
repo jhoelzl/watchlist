@@ -33,6 +33,7 @@ GUARD_MIN_CHARS = 500
 DEFAULT_MIN_RATIO = 0.3
 GUARD_ALERT_AFTER = 2
 FAIL_ALERT_AFTER = 3
+STUCK_AFTER = 6  # Läufe in Folge (bei 2 Läufen pro Tag = 3 Tage), ab denen eine Seite als dauerhaft kaputt gilt
 RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
 MAX_RETRY_AFTER = 30
 MAX_WORKERS = 6  # parallele Abrufe insgesamt
@@ -327,6 +328,46 @@ def write_json(path, data):
     path.write_text(json.dumps(data, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+HINT_CONTENT = (
+    "Vermutlich Cookie-Wand, Bot-Block oder per JavaScript geladene Inhalte: 'js: true' probieren oder Selector prüfen."
+)
+HINT_SELECTOR = (
+    "Der Selector passt nicht mehr (Seite umgebaut?) oder die Inhalte kommen per JavaScript: Selector prüfen oder 'js: true'."
+)
+# (Muster im Fehlertext in Kleinbuchstaben, Hinweis mit möglicher Ursache und Abhilfe). Erster Treffer gewinnt.
+HINTS = (
+    (("robots.txt",), "Die Seite verbietet automatische Abrufe. Nur wenn das erlaubt ist: 'ignore_robots: true' setzen."),
+    (("selector nicht gefunden",), HINT_SELECTOR),
+    (("bot-block", "kaum text"), HINT_CONTENT + " Mit 'min_ratio' lässt sich der Textwächter anpassen."),
+    (("403 client", "http 403"), "Der Server blockt den Abruf (Bot-Schutz?): 'js: true' probieren."),
+    (("401 client", "http 401"), "Die Seite verlangt eine Anmeldung und ist so nicht überwachbar."),
+    (("404 client", "http 404"), "Die Seite gibt es nicht mehr oder die URL hat sich geändert: URL in urls.yml prüfen."),
+    (("410 client", "http 410"), "Die Seite wurde entfernt: URL in urls.yml prüfen oder Eintrag löschen."),
+    (("429 client", "http 429"), "Rate-Limit: Der Server drosselt die Abrufe, meist hilft Abwarten."),
+    (
+        ("timeout",),
+        "Der Server antwortet zu langsam oder gar nicht: Abwarten, bei Dauerproblem URL prüfen oder 'js: true' probieren.",
+    ),
+    (("connectionerror",), "Keine Verbindung zum Server (DNS, Netzwerk, Zertifikat): Host und URL prüfen."),
+    (("server error", "http 5"), "Serverfehler auf der Gegenseite: meist vorübergehend, Abwarten."),
+    (("konfigurationsfehler",), "Eintrag in urls.yml korrigieren (siehe Meldung)."),
+)
+
+
+def hint_for(error):
+    """Kurzer Hinweis zu Ursache und Abhilfe passend zum Fehlertext, sonst leer."""
+    low = (error or "").lower()
+    for patterns, hint in HINTS:
+        if any(p in low for p in patterns):
+            return hint
+    return ""
+
+
+def with_hint(text, error):
+    hint = hint_for(error)
+    return f"{text}\n  Tipp: {hint}" if hint else text
+
+
 def send_heartbeat(now, entries, status, history, meta):
     month = now.strftime("%Y-%m")
     if "heartbeat" not in meta:
@@ -336,14 +377,31 @@ def send_heartbeat(now, entries, status, history, meta):
         return
     since = (now - timedelta(days=31)).strftime("%Y-%m-%d")
     recent = [h for h in history if h["time"][:10] >= since]
-    failing = [f"{s['name']}: {s['error']}" for s in status.values() if s["status"] in ("error", "warn")]
+    failing = [(u, s) for u, s in status.items() if s["status"] in ("error", "warn")]
     lines = [
         f"Watchlist läuft. {len(entries)} Seite(n) werden geprüft.",
         f"Änderungen in den letzten 31 Tagen: {len(recent)}",
+        "",
+        "Pro Gruppe (Seiten / Änderungen / Probleme):",
     ]
-    lines += [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
-    lines.append(f"Seiten mit Problemen (Fehler/zu wenig Text): {len(failing)}")
-    lines += [f"- {f}" for f in failing]
+    groups = {}
+    for s in status.values():
+        groups.setdefault(s.get("group") or DEFAULT_GROUP, [0, 0, 0])[0] += 1
+    for h in recent:
+        groups.setdefault(h.get("group") or DEFAULT_GROUP, [0, 0, 0])[1] += 1
+    for _, s in failing:
+        groups[s.get("group") or DEFAULT_GROUP][2] += 1
+    lines += [f"- {g}: {n} / {c} / {p}" for g, (n, c, p) in sorted(groups.items())]
+    lines += ["", "Letzte Änderungen:"] + [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
+    if not recent:
+        lines.append("- keine")
+    stuck = [(u, s) for u, s in failing if s.get("streak", 0) >= STUCK_AFTER]
+    lines += ["", f"Seiten mit Problemen (Fehler/zu wenig Text): {len(failing)}"]
+    lines += [f"- {s['name']}: {s['error']}" for _, s in failing]
+    if stuck:
+        lines += ["", f"Dauerhaft kaputt (seit mindestens {STUCK_AFTER} Läufen in Folge):"]
+        for u, s in stuck:
+            lines.append(with_hint(f"- {s['name']} ({u}): {s['error']} [{s['streak']} Läufe]", s["error"]))
     send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))
     meta["heartbeat"] = month
 
@@ -436,10 +494,12 @@ def run():
         except Exception as ex:
             n = int(fail.read_text()) + 1 if fail.exists() else 1
             fail.write_text(str(n))
-            entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"))
+            entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"), streak=n)
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == FAIL_ALERT_AFTER:
-                problems.append({"text": f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", "counter": fail, "value": n})
+                problems.append(
+                    {"text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", str(ex)), "counter": fail, "value": n}
+                )
             continue
         fail.unlink(missing_ok=True)
 
@@ -459,11 +519,15 @@ def run():
             n = int(short.read_text()) + 1 if short.exists() else 1
             short.write_text(str(n))
             msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
-            entry.update(status="warn", error=msg, checked=prev.get("checked", "-"))
+            entry.update(status="warn", error=msg, checked=prev.get("checked", "-"), streak=n)
             print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
             if n == GUARD_ALERT_AFTER:
                 problems.append(
-                    {"text": f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "counter": short, "value": n}
+                    {
+                        "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "kaum text"),
+                        "counter": short,
+                        "value": n,
+                    }
                 )
             continue
         short.unlink(missing_ok=True)

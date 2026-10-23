@@ -49,9 +49,9 @@ Sammlung möglicher Verbesserungen, nach Bereich sortiert. Aufwand: **S** (< 1 h
 ## 3. UX / UI (Mails und CLI)
 
 - 🟡 **Mail:** Link zum Dashboard, farbige Diff-Zeilen (add/del) auch in der HTML-Mail, lange Zeilen kürzen. (S)
-- 🟡 **Warnmails verständlicher:** Bei wiederholten Fehlern Hinweis auf mögliche Ursache (robots.txt, 403, Timeout) und Abhilfe (`js: true`, `ignore_robots`). (S)
-- ⚪ **Lebenszeichen-Mail** mit Statistik pro Gruppe und Liste dauerhaft kaputter URLs. (S)
-- ⚪ **Einheitliche Sprache** in Meldungen, Kommentaren und Namen (derzeit Deutsch und Englisch gemischt). Entscheidung treffen und dokumentieren. (S)
+- ✅ **Erledigt:** **Warnmails verständlicher:** Bei wiederholten Fehlern Hinweis auf mögliche Ursache (robots.txt, 403, Timeout) und Abhilfe (`js: true`, `ignore_robots`). (S)
+- ✅ **Erledigt:** **Lebenszeichen-Mail** mit Statistik pro Gruppe und Liste dauerhaft kaputter URLs. (S)
+- ✅ **Erledigt (Entscheidung):** **Einheitliche Sprache** in Meldungen, Kommentaren und Namen (derzeit Deutsch und Englisch gemischt). Entscheidung: Deutsch für Meldungen, Mails, Kommentare und Doku, Englisch für Code-Bezeichner und Commit-Nachrichten (siehe README und `.github/copilot-instructions.md`). (S)
 
 ## 4. Dashboard
 

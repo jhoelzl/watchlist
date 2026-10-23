@@ -350,3 +350,63 @@ def test_fetch_all_js_pages_run_one_at_a_time(monkeypatch):
 
 def test_fetch_all_empty():
     assert check.fetch_all([]) == {}
+
+
+@pytest.mark.parametrize(
+    "error, expected",
+    [
+        ("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)", "ignore_robots"),
+        ("403 Client Error: Forbidden for url: https://x", "js: true"),
+        ("404 Client Error: Not Found for url: https://x", "URL"),
+        ("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "zu langsam"),
+        ("Abruf nach 3 Versuchen fehlgeschlagen (HTTP 429)", "Rate-Limit"),
+        ("Abruf nach 3 Versuchen fehlgeschlagen (HTTP 503)", "Serverfehler"),
+        ("Abruf nach 3 Versuchen fehlgeschlagen (ConnectionError)", "Verbindung"),
+        ("Selector nicht gefunden: main", "Selector"),
+        ("nur 10 statt 900 Zeichen (Cookie-Wand oder Bot-Block?)", "min_ratio"),
+        ("Konfigurationsfehler: ungültige ignore-Regex", "urls.yml"),
+    ],
+)
+def test_hint_for_known_errors(error, expected):
+    assert expected in check.hint_for(error)
+
+
+def test_hint_for_unknown_error_is_empty():
+    assert check.hint_for("irgendwas Unbekanntes") == ""
+    assert check.with_hint("Text", "irgendwas Unbekanntes") == "Text"
+    assert check.with_hint("Text", "Timeout").startswith("Text\n  Tipp: ")
+
+
+def test_repeated_failure_mail_contains_hint(env, monkeypatch):
+    tmp, sent = env
+
+    def boom(url, opts, cond=None):
+        raise RuntimeError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)")
+
+    monkeypatch.setattr(check, "fetch", boom)
+    for _ in range(check.FAIL_ALERT_AFTER):
+        check.run()
+    subject, body = sent[-1]
+    assert subject == "Watchlist: Probleme beim Abruf"
+    assert "Tipp:" in body and "zu langsam" in body
+    status = json.loads((tmp / "state" / "status.json").read_text())
+    assert status["https://a"]["streak"] == check.FAIL_ALERT_AFTER
+
+
+def test_heartbeat_groups_and_stuck_pages(monkeypatch):
+    from datetime import UTC, datetime
+
+    sent = []
+    monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append(t))
+    status = {
+        "https://a": {"name": "A", "group": "Azure", "status": "ok"},
+        "https://b": {"name": "B", "group": "Azure", "status": "error", "error": "Timeout", "streak": check.STUCK_AFTER},
+        "https://c": {"name": "C", "group": "", "status": "error", "error": "404 Client Error", "streak": 1},
+    }
+    hist = [{"time": "2026-11-02 06:00 UTC", "name": "A", "group": "Azure"}]
+    check.send_heartbeat(datetime(2026, 11, 3, tzinfo=UTC), [1, 2, 3], status, hist, {"heartbeat": "2026-10"})
+    body = sent[0]
+    assert "- Azure: 2 / 1 / 1" in body
+    assert "- Allgemein: 1 / 0 / 1" in body
+    assert "Dauerhaft kaputt" in body and "B (https://b)" in body and "Tipp:" in body
+    assert "C (https://c)" not in body.split("Dauerhaft kaputt")[1]

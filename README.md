@@ -43,6 +43,9 @@ uv run add.py <url> --group Azure --selector main --js
 ```
 Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) und die Gruppe vorhandener URLs desselben Hosts vor und hängt den Eintrag an `urls.yml` an (Kommentare bleiben erhalten). Findet es im HTML `<link rel="alternate" type="application/rss+xml">` (oder Atom), werden die Feeds aufgelistet und du wählst einen (`--feed` nimmt den ersten, mit `-y` nur ein Hinweis). Die Baseline entsteht beim nächsten Lauf (`uv run check.py`).
 
+## Sprache
+Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktionen, Variablen, Konstanten, Optionsnamen in `urls.yml`) und Commit-Nachrichten sind auf Englisch.
+
 ## Rücksicht auf Server und Fehlabrufe
 - **Parallele Abrufe:** Die Seiten werden mit bis zu 6 Threads geladen, pro Host höchstens 2 gleichzeitig (`MAX_WORKERS`, `MAX_PER_HOST` in `check.py`). Seiten mit `js: true` laufen nacheinander. Die Auswertung, Mails und Snapshots bleiben seriell und in der Reihenfolge von `urls.yml`.
 - **robots.txt** wird pro Host einmal je Lauf geprüft. Verbietet sie eine URL, zählt das als Abruffehler (Override: `ignore_robots: true`). Fehlt die Datei oder ist sie nicht erreichbar, ist alles erlaubt.
@@ -54,7 +57,8 @@ Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) u
 
 ## Betrieb
 - **Badge:** Die Badges oben zeigen den Status des letzten Laufs. Bei einem privaten Repo siehst du sie nur, wenn du bei GitHub eingeloggt bist.
-- **Lebenszeichen:** Im ersten Lauf eines neuen Monats kommt eine Mail mit Anzahl der Seiten, Änderungen und Fehlern. Bleibt sie aus, läuft der Zeitplan nicht mehr (GitHub deaktiviert ihn nach 60 Tagen ohne Repo-Aktivität).
+- **Lebenszeichen:** Im ersten Lauf eines neuen Monats kommt eine Mail mit Anzahl der Seiten, Änderungen und Problemen pro Gruppe, den letzten Änderungen und den dauerhaft kaputten Seiten (6 Läufe in Folge, `STUCK_AFTER`) mit Hinweis zur Abhilfe. Bleibt sie aus, läuft der Zeitplan nicht mehr (GitHub deaktiviert ihn nach 60 Tagen ohne Repo-Aktivität).
+- **Warnmails mit Tipp:** Die Mails „Probleme beim Abruf" nennen zur Fehlerart eine mögliche Ursache und Abhilfe (robots.txt → `ignore_robots`, 403/Bot-Block/Timeout → `js: true`, 404 → URL prüfen, Selector nicht gefunden usw.).
 - **Alarm:** Schlägt der Workflow fehl (z. B. Resend-Fehler), versucht ein letzter Schritt eine Alarmmail mit Link zum Lauf zu senden. Zusätzlich meldet GitHub fehlgeschlagene Läufe selbst per Mail.
 - **Branch `state`:** Snapshots (`state/`) und Dashboard (`site/`) liegen nicht auf `main`, sondern auf dem vom Workflow gepflegten Branch `state`. So bleibt `main` frei von Bot-Commits und funktioniert auch mit Branch-Protection. Der Workflow checkt ihn nach `data/` aus und setzt `WATCHLIST_STATE_DIR`/`WATCHLIST_SITE_DIR`. Lokal (`uv run check.py`) landen die Dateien in `state/` und `site/` (per `.gitignore` ignoriert).
 - **Dashboard:** `site/index.html` wird bei jedem Lauf erzeugt und auf `state` committet (Status pro URL, letzte Prüfung, Änderungsverlauf). Mit Suchfeld und Filtern nach Gruppe und Status. Lokal einfach im Browser öffnen.
