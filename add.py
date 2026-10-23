@@ -9,6 +9,7 @@ import yaml
 from bs4 import BeautifulSoup
 
 import check
+from store import PgStore, open_store
 
 CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
 SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
@@ -84,22 +85,8 @@ def ask(prompt, default, assume_yes):
     return answer if answer else default
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="URL zu urls.yml hinzufügen")
-    ap.add_argument("url")
-    ap.add_argument("--name")
-    ap.add_argument("--group")
-    ap.add_argument("--selector", help="'none' für die ganze Seite")
-    ap.add_argument("--js", action="store_true", help="Seite mit Playwright rendern")
-    ap.add_argument("--feed", action="store_true", help="gefundenen RSS/Atom-Feed statt der Seite überwachen")
-    ap.add_argument("-y", "--yes", action="store_true", help="Vorschläge ohne Rückfrage übernehmen")
-    args = ap.parse_args(argv)
-
-    path = check.ROOT / "urls.yml"
-    entries = check.load_config(path)
-    if any(e["url"] == args.url for e in entries):
-        sys.exit(f"Schon vorhanden: {args.url}")
-
+def prepare(args, entries):
+    """Seite abrufen, Feed/Selector/Name/Gruppe bestimmen. Beendet das Programm bei Fehlern."""
     print(f"Rufe {args.url} ab...")
     if not args.js and not check.robots_allowed(args.url, {}):
         sys.exit("robots.txt verbietet den Abruf. Trage die URL manuell mit 'ignore_robots: true' ein.")
@@ -152,9 +139,53 @@ def main(argv=None):
     if not feed and args.selector is None:
         selector = ask("Selector ('none' = ganze Seite)", selector or "none", args.yes)
         selector = None if selector == "none" else selector
+    return {"url": args.url, "name": name, "group": group, "selector": selector, "js": args.js}
+
+
+def add_to_database(args, store):
+    """Gleicher Ablauf wie bei urls.yml, nur das Speichern geht in die Datenbank."""
+    entries = check.merge_config(store.raw_config())
+    if any(e["url"] == args.url for e in entries):
+        sys.exit(f"Schon vorhanden: {args.url}")
+    prepared = prepare(args, entries)
+    entry = {"url": prepared["url"]}
+    for key in ("name", "group", "selector"):
+        if prepared[key]:
+            entry[key] = prepared[key]
+    if prepared["js"]:
+        entry["js"] = True
+    store.add_url(entry)
+    print("\nIn Supabase hinzugefügt: " + prepared["url"])
+    print("Baseline erzeugen: uv run check.py (oder beim nächsten geplanten Lauf).")
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="URL zu urls.yml hinzufügen")
+    ap.add_argument("url")
+    ap.add_argument("--name")
+    ap.add_argument("--group")
+    ap.add_argument("--selector", help="'none' für die ganze Seite")
+    ap.add_argument("--js", action="store_true", help="Seite mit Playwright rendern")
+    ap.add_argument("--feed", action="store_true", help="gefundenen RSS/Atom-Feed statt der Seite überwachen")
+    ap.add_argument("-y", "--yes", action="store_true", help="Vorschläge ohne Rückfrage übernehmen")
+    args = ap.parse_args(argv)
+
+    path = check.ROOT / "urls.yml"
+    store = open_store(check.STATE, path)
+    if isinstance(store, PgStore):
+        try:
+            return add_to_database(args, store)
+        finally:
+            store.close()
+    entries = check.load_config(path)
+    if any(e["url"] == args.url for e in entries):
+        sys.exit(f"Schon vorhanden: {args.url}")
+
+    prepared = prepare(args, entries)
+    args.url, name, group, selector, js = (prepared[k] for k in ("url", "name", "group", "selector", "js"))
 
     raw = yaml.safe_load(path.read_text()) or []
-    block = render_entry(args.url, name, group, selector, args.js, nested=isinstance(raw, dict))
+    block = render_entry(args.url, name, group, selector, js, nested=isinstance(raw, dict))
     original = path.read_text()
     append_entry(path, block)
     try:

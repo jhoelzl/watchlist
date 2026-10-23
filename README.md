@@ -13,6 +13,18 @@ Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Ä
    - `MAIL_FROM` (optional, Standard `onboarding@resend.dev`, sonst z. B. `watchlist@deine-domain.at`)
 3. `urls.yml` pflegen, dann Actions → check → Run workflow (erzeugt die Baselines, keine Mail).
 
+## Supabase statt Dateien (URLs, Snapshots, Diffs, Status)
+
+Mit der Umgebungsvariable bzw. dem Secret `SUPABASE_DB_URL` liegen URLs, Snapshots, Fehlerzähler, Status, HTTP-Cache und der Änderungsverlauf (inkl. Diffs) in Supabase-Tabellen mit dem Präfix `watchlist_`. Ohne die Variable bleibt alles wie bisher (`urls.yml`, `state/`, Branch `state`).
+
+1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (legt `watchlist_urls`, `watchlist_snapshots`, `watchlist_counters`, `watchlist_history`, `watchlist_state`, `watchlist_settings` an, RLS aktiv, keine öffentlichen Policies).
+2. Project Settings → Database → Connection string → **Session pooler** (IPv4, die direkte Verbindung ist nur IPv6 und geht aus GitHub Actions nicht) kopieren, Passwort einsetzen.
+3. Lokal migrieren (einmalig, wiederholbar): `git worktree add /tmp/wl-state state`, dann `SUPABASE_DB_URL='postgresql://...' uv run migrate.py --state-dir /tmp/wl-state/state`.
+4. Als Repo-Secret `SUPABASE_DB_URL` eintragen. Der Workflow nutzt dann Supabase (Branch `state` wird nicht mehr gebraucht, das Dashboard wird weiterhin pro Lauf erzeugt) und ignoriert `urls.yml`. Danach `urls.yml` löschen.
+5. Neue URLs: `SUPABASE_DB_URL=... uv run add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector`, `js`, `ignore`, `only_added`, `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+
+Tests gegen echtes Postgres (`tests/test_pgstore.py`) laufen mit `WATCHLIST_TEST_DSN=...` oder mit installiertem `pgserver` (Python 3.12), sonst werden sie übersprungen.
+
 ## urls.yml
 ```yaml
 defaults:                      # gilt für alle URLs, ignore-Listen werden zusammengeführt
@@ -33,7 +45,7 @@ urls:
 - `ignore`-Regex werden beim Start geprüft: ungültige, über 300 Zeichen lange oder zu Backtracking neigende Muster (verschachtelte Quantifizierer wie `(a+)+`) markieren die URL als „Fehler" (Konfigurationsfehler, nicht abgerufen), der Lauf endet mit Fehler und löst die Alarmmail aus.
 - Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
 - Eine reine Liste von URLs ohne `defaults`/`urls` funktioniert weiterhin.
-- `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn `js: true` in `urls.yml` vorkommt.
+- `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn irgendwo `js: true` konfiguriert ist (`check.py --needs-js`).
 
 ## URL hinzufügen
 ```

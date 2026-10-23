@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 79 Tests. `mypy --strict` meldet noch 127 Fehler (fehlende Annotationen).
+Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 83 Tests. `mypy --strict` meldet noch 127 Fehler (fehlende Annotationen).
 
 ## Nächste Schritte (Top 7)
 
@@ -117,6 +117,7 @@ Stand: `check.py` 626 Zeilen (26 Funktionen), `dashboard.py` 116, `add.py` 172, 
 
 | Thema | Umsetzung |
 |-------|-----------|
+| Speicher in Supabase | `store.py` (FileStore/PgStore), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`, `add.py` schreibt in die DB; Workflow wechselt mit Secret `SUPABASE_DB_URL`. Offen: Migration ausführen, `urls.yml` und Branch `state` entfernen |
 | Ein Playwright-Browser pro Lauf | `BrowserPool` startet Chromium lazy beim ersten `js: true`-Aufruf, nutzt eine Seite pro URL in einem eigenen Thread (Sync-API ist thread-gebunden) und schließt am Laufende; Neustart nach Absturz |
 | Actions per Commit-SHA gepinnt | `checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages` mit SHA und Versionskommentar (Dependabot aktualisiert) |
 | Rechte im Workflow minimiert | `permissions: {}` global, `contents: write` nur im Job `check`, `pages: write` und `id-token: write` nur im Job `pages` |

@@ -20,6 +20,7 @@ import yaml
 from bs4 import BeautifulSoup, Tag
 
 import dashboard
+from store import open_store
 
 ROOT = Path(__file__).parent
 # Im Workflow liegen state/ und site/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
@@ -352,8 +353,11 @@ def config_errors(opts):
 
 
 def load_config(path):
+    return merge_config(yaml.safe_load(path.read_text()) or [])
+
+
+def merge_config(raw):
     """Akzeptiert eine reine Liste oder {defaults: {...}, urls: [...]}."""
-    raw = yaml.safe_load(path.read_text()) or []
     defaults, urls = ({}, raw) if isinstance(raw, list) else (raw.get("defaults") or {}, raw.get("urls") or [])
     entries = []
     for e in urls:
@@ -369,14 +373,6 @@ def as_list(value):
     if value is None:
         return []
     return [value] if isinstance(value, str) else list(value)
-
-
-def read_json(path, default):
-    return json.loads(path.read_text()) if path.exists() else default
-
-
-def write_json(path, data):
-    path.write_text(json.dumps(data, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 HINT_CONTENT = (
@@ -497,35 +493,41 @@ def fetch_all(jobs):
 
 
 def run():
-    STATE.mkdir(parents=True, exist_ok=True)
+    store = open_store(STATE, ROOT / "urls.yml")
+    try:
+        return _run(store)
+    finally:
+        store.close()
+
+
+def _run(store):
     now = datetime.now(UTC)
     stamp = now.strftime("%Y-%m-%d %H:%M UTC")
-    entries = load_config(ROOT / "urls.yml")
-    old_status = read_json(STATE / "status.json", {})
-    history = read_json(STATE / "history.json", [])
-    meta = read_json(STATE / "meta.json", {})
+    entries = merge_config(store.raw_config())
+    old_status = store.doc("status", {})
+    history = store.history(MAX_HISTORY)
+    new_history = []
+    meta = store.doc("meta", {})
     status, changes, problems, pending = {}, [], [], []
     config_bad = []
-    http_cache = read_json(STATE / "http.json", {})
+    http_cache = store.doc("http", {})
     new_cache = {}
 
     print(f"Prüfe {len(entries)} URL(s)...")
     jobs = []
+    snapshot_keys = store.snapshot_keys()
     for opts in entries:
         if config_errors(opts):
             continue
         url = opts["url"]
         cached = http_cache.get(url, {})
-        snap_exists = (STATE / f"{hashlib.sha1(url.encode()).hexdigest()[:16]}.txt").exists()
+        snap_exists = hashlib.sha1(url.encode()).hexdigest()[:16] in snapshot_keys
         jobs.append((opts, cached if snap_exists and cached.get("config") == config_hash(opts) else {}))
     fetched = fetch_all(jobs)
 
     for opts in entries:
         url = opts["url"]
         key = hashlib.sha1(url.encode()).hexdigest()[:16]
-        snap = STATE / f"{key}.txt"
-        fail = STATE / f"{key}.fail"
-        short = STATE / f"{key}.short"
         prev = old_status.get(url, {})
         entry = {
             "name": opts.get("name") or prev.get("name") or url,
@@ -551,19 +553,23 @@ def run():
                 raise result
             title, text, feed, validators = result
         except Exception as ex:
-            n = int(fail.read_text()) + 1 if fail.exists() else 1
-            fail.write_text(str(n))
+            n = store.counter(key, "fail") + 1
+            store.set_counter(key, "fail", n)
             entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"), streak=n)
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == FAIL_ALERT_AFTER:
                 problems.append(
-                    {"text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", str(ex)), "counter": fail, "value": n}
+                    {
+                        "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", str(ex)),
+                        "counter": (key, "fail"),
+                        "value": n,
+                    }
                 )
             continue
-        fail.unlink(missing_ok=True)
+        store.clear_counter(key, "fail")
 
         if text is None:
-            short.unlink(missing_ok=True)
+            store.clear_counter(key, "short")
             new_cache[url] = cached
             print(f"[UNVERÄNDERT] {entry['name']} [304 Not Modified, nicht neu geladen]")
             continue
@@ -571,12 +577,12 @@ def run():
         name = opts.get("name") or title or url
         entry["name"] = name
         kind = "Feed" if feed else "Seite"
-        old = snap.read_text() if snap.exists() else None
+        old = store.snapshot(key)
 
         min_ratio = float(opts.get("min_ratio", DEFAULT_MIN_RATIO))
         if old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio:
-            n = int(short.read_text()) + 1 if short.exists() else 1
-            short.write_text(str(n))
+            n = store.counter(key, "short") + 1
+            store.set_counter(key, "short", n)
             msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
             entry.update(status="warn", error=msg, checked=prev.get("checked", "-"), streak=n)
             print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
@@ -584,12 +590,12 @@ def run():
                 problems.append(
                     {
                         "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "kaum text"),
-                        "counter": short,
+                        "counter": (key, "short"),
                         "value": n,
                     }
                 )
             continue
-        short.unlink(missing_ok=True)
+        store.clear_counter(key, "short")
 
         if old is None:
             entry["status"] = "new"
@@ -607,7 +613,7 @@ def run():
                 pending.append(
                     {
                         "change": change,
-                        "snap": snap,
+                        "key": key,
                         "text": text,
                         "entry": entry,
                         "cache": {**validators, "config": cfg} if validators else None,
@@ -617,7 +623,7 @@ def run():
                     new_cache[url] = cached
                 continue
             print("            (nur entfernte Zeilen, keine Mail)")
-        snap.write_text(text)
+        store.set_snapshot(key, url, text)
         if validators:
             new_cache[url] = {**validators, "config": cfg}
 
@@ -639,9 +645,11 @@ def run():
             )
         for p in pending:
             if sent_ok:
-                p["snap"].write_text(p["text"])
+                store.set_snapshot(p["key"], p["change"]["url"], p["text"])
                 p["entry"]["changed"] = stamp
-                history.append({**p["change"], "time": stamp})
+                record = {**p["change"], "time": stamp}
+                history.append(record)
+                new_history.append(record)
                 if p["cache"]:
                     new_cache[p["change"]["url"]] = p["cache"]
             else:
@@ -653,7 +661,7 @@ def run():
             ok = False
             print(f"[MAILFEHLER] Problemmeldung konnte nicht gesendet werden: {ex}")
             for p in problems:  # Zähler zurücksetzen, damit die Warnung beim nächsten Lauf erneut ausgelöst wird
-                p["counter"].write_text(str(p["value"] - 1))
+                store.set_counter(*p["counter"], p["value"] - 1)
 
     history = history[-MAX_HISTORY:]
     try:
@@ -661,10 +669,10 @@ def run():
     except Exception as ex:
         ok = False
         print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
-    write_json(STATE / "status.json", status)
-    write_json(STATE / "history.json", history)
-    write_json(STATE / "meta.json", meta)
-    write_json(STATE / "http.json", new_cache)
+    store.set_doc("status", status)
+    store.add_history(new_history, MAX_HISTORY)
+    store.set_doc("meta", meta)
+    store.set_doc("http", new_cache)
     dashboard.build([{**v, "url": k} for k, v in status.items()], history, stamp)
     bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
@@ -675,6 +683,12 @@ def main(argv):
     if len(argv) >= 3 and argv[1] == "--alert":
         send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
         return 0
+    if len(argv) >= 2 and argv[1] == "--needs-js":
+        store = open_store(STATE, ROOT / "urls.yml")
+        try:
+            return 0 if any(e.get("js") for e in merge_config(store.raw_config())) else 1
+        finally:
+            store.close()
     return 0 if run() else 1
 
 
