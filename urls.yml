@@ -68,3 +68,6 @@ urls:
   - url: https://www.commend.com/en/jobs/jobs-at-commend-in-salzburg/
     group: Commend
     selector: main
+  - url: https://kletterhallesalzburg.at/events
+    group: Climbing
+    selector: '[role=main]'
