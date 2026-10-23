@@ -4,3 +4,5 @@ __pycache__/
 state/
 site/
 data/
+node_modules/
+dist/

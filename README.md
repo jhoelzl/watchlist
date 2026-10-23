@@ -20,8 +20,16 @@ Mit `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` (Umgebungsvariablen bzw. Repo-Secr
 1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (RLS ist aktiv, keine öffentlichen Policies).
 2. Project Settings → API Keys: **Project URL** als `SUPABASE_URL` und den **service_role**-Key als `SUPABASE_SERVICE_KEY` verwenden. Der Anon-Key reicht nicht, er darf wegen RLS nichts lesen oder schreiben. Der service_role-Key ist geheim (umgeht RLS): nur in `.env` und als Secret, nie im Frontend.
 3. Lokal migrieren (einmalig, wiederholbar): `git worktree add /tmp/wl-state state`, dann `uv run --env-file .env migrate.py --state-dir /tmp/wl-state/state`.
-4. Beide Werte als Repo-Secrets eintragen. Der Workflow nutzt dann Supabase (Branch `state` wird nicht mehr gebraucht, das Dashboard wird weiterhin pro Lauf erzeugt) und ignoriert `urls.yml`. Danach `urls.yml` löschen.
+4. Beide Werte als Repo-Secrets eintragen. Der Workflow nutzt dann Supabase (Branch `state` wird nicht mehr gebraucht) und ignoriert `urls.yml`. Danach `urls.yml` löschen.
 5. Neue URLs: `uv run --env-file .env add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector`, `js`, `ignore`, `only_added`, `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+
+### Dashboard mit Login (`web/`)
+
+Vite + React + `supabase-js`, Anmeldung per E-Mail und Passwort wie in der App sheet-music (gleiches Supabase-Projekt, gleiche Konten). Es liest Status und Änderungsverlauf direkt aus Supabase. Ohne Anmeldung sieht man nichts.
+
+- Die Registrierung im Projekt ist offen, deshalb schaltet `supabase/schema.sql` nur Konten aus `watchlist_admins` frei (Policies, kein Zugriff auf Snapshots). Nach dem Ausführen des Schemas das eigene Konto freischalten (SQL-Editor): `insert into watchlist_admins (user_id) select id from auth.users where email = 'du@example.com' on conflict do nothing;`. Ein Konto, das noch nicht freigeschaltet ist, sieht „nicht freigeschaltet".
+- Lokal: `cd web`, `.env.example` nach `.env` kopieren und `VITE_SUPABASE_URL` sowie `VITE_SUPABASE_ANON_KEY` (Publishable/Anon-Key, **nicht** der Secret-Key) eintragen, dann `npm ci && npm run dev`. Prüfen mit `npm run lint`, `npm test`, `npm run build`.
+- GitHub Pages: Secret `SUPABASE_ANON_KEY` (Publishable-Key) anlegen und die Variable `ENABLE_PAGES=true` setzen. Der Workflow baut dann `web/` und veröffentlicht `web/dist` statt des statischen `site/index.html`. Der statische Dashboard-Export (Dateimodus) ist öffentlich lesbar, sobald Pages aktiv ist. Das Web-Dashboard ist es nicht.
 
 Alternativ geht eine direkte Postgres-Verbindung mit `SUPABASE_DB_URL` (Session-Pooler-URL mit Datenbankpasswort), sie hat Vorrang.
 

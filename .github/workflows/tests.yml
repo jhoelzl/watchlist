@@ -23,3 +23,19 @@ jobs:
       - run: uv run --frozen mypy check.py add.py dashboard.py
       - run: uv run --frozen pytest -q
       - run: uv audit --frozen --preview-features audit-command
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: test
+      - run: npm audit --omit=dev

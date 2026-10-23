@@ -1,6 +1,6 @@
 -- Schema für die Watchlist. Im Supabase SQL-Editor ausführen (mehrfach ausführbar).
--- RLS ist aktiv und es gibt keine Policies: über die öffentliche API (anon/authenticated) ist nichts lesbar.
--- Das Skript greift direkt per Postgres-Verbindung zu (SUPABASE_DB_URL) und ist davon nicht betroffen.
+-- RLS ist aktiv. Das Python-Skript nutzt den Secret-/service_role-Key bzw. eine Postgres-Verbindung und umgeht RLS.
+-- Über die öffentliche API ist nur lesbar, was unten für freigeschaltete Konten (watchlist_admins) erlaubt wird.
 
 create table if not exists watchlist_settings (
   key text primary key,
@@ -56,3 +56,29 @@ alter table watchlist_snapshots enable row level security;
 alter table watchlist_counters enable row level security;
 alter table watchlist_history enable row level security;
 alter table watchlist_state enable row level security;
+
+-- Dashboard (web/): Lesezugriff nur für freigeschaltete Konten, nicht für jedes registrierte Konto.
+-- Die Registrierung im Supabase-Projekt ist offen (gleiche Auth wie andere Apps), deshalb reicht "authenticated" nicht.
+create table if not exists watchlist_admins (
+  user_id uuid primary key references auth.users (id) on delete cascade
+);
+alter table watchlist_admins enable row level security;
+
+drop policy if exists "own admin row" on watchlist_admins;
+create policy "own admin row" on watchlist_admins for select to authenticated using (user_id = auth.uid());
+
+-- Snapshots (Seitentexte), Zähler und Einstellungen bleiben bewusst unlesbar.
+drop policy if exists "admins read urls" on watchlist_urls;
+create policy "admins read urls" on watchlist_urls for select to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+drop policy if exists "admins read history" on watchlist_history;
+create policy "admins read history" on watchlist_history for select to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+drop policy if exists "admins read state" on watchlist_state;
+create policy "admins read state" on watchlist_state for select to authenticated
+  using (key = 'status' and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Eigenes Konto freischalten (E-Mail anpassen, Konto muss vorher registriert sein):
+-- insert into watchlist_admins (user_id) select id from auth.users where email = 'du@example.com' on conflict do nothing;
