@@ -62,3 +62,5 @@ urls:
   - url: https://www.thelindycats.at/de/workshops
     group: Dance
     selector: main
+  - url: https://ksdbmerge.tools/mysql-diff-merge-watsnew.html
+    only_added: true
