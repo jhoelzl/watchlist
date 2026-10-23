@@ -1,18 +1,17 @@
 """Einmalige Migration nach Supabase: uv run migrate.py [--state-dir DIR] [--config urls.yml]
 
-Braucht SUPABASE_DB_URL und das angelegte Schema (supabase/schema.sql).
+Braucht SUPABASE_URL + SUPABASE_SERVICE_KEY (oder SUPABASE_DB_URL) und das angelegte Schema (supabase/schema.sql).
 Übernimmt URLs, Defaults, Snapshots, Zähler, Status, Meta, HTTP-Cache und Verlauf. Mehrfaches Ausführen ist unkritisch.
 Den Ordner mit den Snapshots liefert der Branch state: git worktree add /tmp/wl-state state, dann --state-dir /tmp/wl-state/state
 """
 
 import argparse
 import hashlib
-import os
 import sys
 from pathlib import Path
 
 import check
-from store import COUNTER_KINDS, DB_ENV, FileStore, PgStore
+from store import COUNTER_KINDS, FileStore, PgStore, open_store
 
 
 def url_key(url: str) -> str:
@@ -58,14 +57,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--state-dir", type=Path, default=check.STATE)
     ap.add_argument("--config", type=Path, default=check.ROOT / "urls.yml")
     args = ap.parse_args(argv)
-    dsn = os.environ.get(DB_ENV)
-    if not dsn:
-        sys.exit(f"{DB_ENV} ist nicht gesetzt (Postgres-Verbindungs-URL aus Supabase, Session-Pooler).")
     if not args.config.exists():
         sys.exit(f"{args.config} nicht gefunden.")
     if not args.state_dir.exists():
         print(f"Hinweis: {args.state_dir} fehlt, es werden nur die URLs übernommen.")
-    db = PgStore(dsn)
+    db = open_store(args.state_dir, args.config)
+    if isinstance(db, FileStore):
+        sys.exit("Keine Datenbank konfiguriert: SUPABASE_URL und SUPABASE_SERVICE_KEY setzen (oder SUPABASE_DB_URL).")
     try:
         files = FileStore(args.state_dir, args.config)
         result = migrate(files, db)

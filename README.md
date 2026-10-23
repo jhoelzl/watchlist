@@ -15,13 +15,15 @@ Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Ä
 
 ## Supabase statt Dateien (URLs, Snapshots, Diffs, Status)
 
-Mit der Umgebungsvariable bzw. dem Secret `SUPABASE_DB_URL` liegen URLs, Snapshots, Fehlerzähler, Status, HTTP-Cache und der Änderungsverlauf (inkl. Diffs) in Supabase-Tabellen mit dem Präfix `watchlist_`. Ohne die Variable bleibt alles wie bisher (`urls.yml`, `state/`, Branch `state`).
+Mit `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` (Umgebungsvariablen bzw. Repo-Secrets) liegen URLs, Snapshots, Fehlerzähler, Status, HTTP-Cache und der Änderungsverlauf (inkl. Diffs) in Supabase-Tabellen mit dem Präfix `watchlist_`. Ohne sie bleibt alles wie bisher (`urls.yml`, `state/`, Branch `state`).
 
-1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (legt `watchlist_urls`, `watchlist_snapshots`, `watchlist_counters`, `watchlist_history`, `watchlist_state`, `watchlist_settings` an, RLS aktiv, keine öffentlichen Policies).
-2. Project Settings → Database → Connection string → **Session pooler** (IPv4, die direkte Verbindung ist nur IPv6 und geht aus GitHub Actions nicht) kopieren, Passwort einsetzen.
-3. Lokal migrieren (einmalig, wiederholbar): `git worktree add /tmp/wl-state state`, dann `SUPABASE_DB_URL='postgresql://...' uv run migrate.py --state-dir /tmp/wl-state/state`.
-4. Als Repo-Secret `SUPABASE_DB_URL` eintragen. Der Workflow nutzt dann Supabase (Branch `state` wird nicht mehr gebraucht, das Dashboard wird weiterhin pro Lauf erzeugt) und ignoriert `urls.yml`. Danach `urls.yml` löschen.
-5. Neue URLs: `SUPABASE_DB_URL=... uv run add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector`, `js`, `ignore`, `only_added`, `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (RLS ist aktiv, keine öffentlichen Policies).
+2. Project Settings → API Keys: **Project URL** als `SUPABASE_URL` und den **service_role**-Key als `SUPABASE_SERVICE_KEY` verwenden. Der Anon-Key reicht nicht, er darf wegen RLS nichts lesen oder schreiben. Der service_role-Key ist geheim (umgeht RLS): nur in `.env` und als Secret, nie im Frontend.
+3. Lokal migrieren (einmalig, wiederholbar): `git worktree add /tmp/wl-state state`, dann `uv run --env-file .env migrate.py --state-dir /tmp/wl-state/state`.
+4. Beide Werte als Repo-Secrets eintragen. Der Workflow nutzt dann Supabase (Branch `state` wird nicht mehr gebraucht, das Dashboard wird weiterhin pro Lauf erzeugt) und ignoriert `urls.yml`. Danach `urls.yml` löschen.
+5. Neue URLs: `uv run --env-file .env add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector`, `js`, `ignore`, `only_added`, `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+
+Alternativ geht eine direkte Postgres-Verbindung mit `SUPABASE_DB_URL` (Session-Pooler-URL mit Datenbankpasswort), sie hat Vorrang.
 
 Tests gegen echtes Postgres (`tests/test_pgstore.py`) laufen mit `WATCHLIST_TEST_DSN=...` oder mit installiertem `pgserver` (Python 3.12), sonst werden sie übersprungen.
 

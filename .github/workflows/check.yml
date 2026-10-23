@@ -16,10 +16,12 @@ jobs:
       contents: write # Push auf den Branch state
     env:
       WATCHLIST_STATE_DIR: ${{ github.workspace }}/data/state
-      # Mit Secret SUPABASE_DB_URL liegen URLs, Snapshots und Verlauf in Supabase, sonst (alt) im Branch state
+      # Mit Supabase-Secrets liegen URLs, Snapshots und Verlauf in Supabase, sonst (alt) im Branch state
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      HAS_DB: ${{ secrets.SUPABASE_DB_URL != '' }}
-      WATCHLIST_SITE_DIR: ${{ github.workspace }}/${{ secrets.SUPABASE_DB_URL != '' && 'site' || 'data/site' }}
+      HAS_DB: ${{ secrets.SUPABASE_SERVICE_KEY != '' || secrets.SUPABASE_DB_URL != '' }}
+      WATCHLIST_SITE_DIR: ${{ github.workspace }}/${{ (secrets.SUPABASE_SERVICE_KEY != '' || secrets.SUPABASE_DB_URL != '') && 'site' || 'data/site' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Branch "state" (Snapshots und Dashboard) auschecken

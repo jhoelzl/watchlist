@@ -9,7 +9,7 @@ import yaml
 from bs4 import BeautifulSoup
 
 import check
-from store import PgStore, open_store
+from store import FileStore, open_store
 
 CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
 SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
@@ -172,7 +172,7 @@ def main(argv=None):
 
     path = check.ROOT / "urls.yml"
     store = open_store(check.STATE, path)
-    if isinstance(store, PgStore):
+    if not isinstance(store, FileStore):
         try:
             return add_to_database(args, store)
         finally:
