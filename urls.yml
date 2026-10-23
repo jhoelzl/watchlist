@@ -128,3 +128,24 @@ urls:
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-language-support?tabs=speechoutput
     group: Voice Live
     selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=stt
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=tts
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=custom-tts
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=pronunciation-assessment
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=speech-translation
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=language-identification
+    group: Azure
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support?tabs=custom-keyword
+    group: Azure
+    selector: main
