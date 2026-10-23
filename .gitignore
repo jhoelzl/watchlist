@@ -1,0 +1,11 @@
+__pycache__/
+.venv/
+.env
+state/
+site/
+data/
+node_modules/
+dist/
+# Persönliche Daten (nur lokal): URL-Liste und Import
+urls.yml
+supabase/import_urls.sql

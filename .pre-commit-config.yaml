@@ -1,0 +1,22 @@
+# Einmalig aktivieren: uv run pre-commit install
+# Alle Dateien prüfen: uv run pre-commit run --all-files
+# Die Hooks nutzen die in uv.lock fixierten Versionen (gleich wie CI).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --frozen ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format --check
+        entry: uv run --frozen ruff format --check
+        language: system
+        types: [python]
+      - id: mypy
+        name: mypy
+        entry: uv run --frozen mypy check.py add.py dashboard.py
+        language: system
+        types: [python]
+        pass_filenames: false
