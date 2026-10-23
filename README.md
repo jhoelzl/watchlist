@@ -30,6 +30,7 @@ urls:
     ignore_robots: true        # optional, robots.txt-Sperre übergehen
   - url: https://example.com/feed.xml   # RSS/Atom wird automatisch erkannt
 ```
+- `ignore`-Regex werden beim Start geprüft: ungültige, über 300 Zeichen lange oder zu Backtracking neigende Muster (verschachtelte Quantifizierer wie `(a+)+`) markieren die URL als „Fehler" (Konfigurationsfehler, nicht abgerufen), der Lauf endet mit Fehler und löst die Alarmmail aus.
 - Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
 - Eine reine Liste von URLs ohne `defaults`/`urls` funktioniert weiterhin.
 - `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn `js: true` in `urls.yml` vorkommt.

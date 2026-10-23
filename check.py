@@ -268,6 +268,33 @@ def send_mail(subject, text, html_body=None):
     print(f"Mail gesendet: {subject} (Resend-ID {r.json().get('id')})")
 
 
+# Quantifizierte Gruppe mit Quantifizierer, z. B. (a+)+ oder (.*)*: klassisches Muster für katastrophales Backtracking.
+NESTED_QUANTIFIER = re.compile(r"\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]")
+MAX_PATTERN_LENGTH = 300
+
+
+def config_errors(opts):
+    """Prüft die ignore-Regex einer URL. Liefert eine Liste verständlicher Fehlermeldungen (leer = alles gut)."""
+    errors = []
+    for pattern in opts.get("ignore", []):
+        if not isinstance(pattern, str):
+            errors.append(f"ignore-Eintrag ist kein Text: {pattern!r}")
+            continue
+        if len(pattern) > MAX_PATTERN_LENGTH:
+            errors.append(f"ignore-Regex zu lang ({len(pattern)} > {MAX_PATTERN_LENGTH} Zeichen): {pattern[:40]}...")
+            continue
+        try:
+            re.compile(pattern)
+        except re.error as ex:
+            errors.append(f"ungültige ignore-Regex {pattern!r}: {ex}")
+            continue
+        if NESTED_QUANTIFIER.search(pattern):
+            errors.append(
+                f"ignore-Regex {pattern!r} kann katastrophal langsam werden (verschachtelte Quantifizierer, z. B. (a+)+)"
+            )
+    return errors
+
+
 def load_config(path):
     """Akzeptiert eine reine Liste oder {defaults: {...}, urls: [...]}."""
     raw = yaml.safe_load(path.read_text()) or []
@@ -276,9 +303,16 @@ def load_config(path):
     for e in urls:
         e = {"url": e} if isinstance(e, str) else dict(e)
         merged = {**defaults, **e}
-        merged["ignore"] = list(defaults.get("ignore") or []) + list(e.get("ignore") or [])
+        merged["ignore"] = as_list(defaults.get("ignore")) + as_list(e.get("ignore"))
         entries.append(merged)
     return entries
+
+
+def as_list(value):
+    """Ein einzelner Text (statt Liste) zählt als ein Eintrag und wird nicht in Zeichen zerlegt."""
+    if value is None:
+        return []
+    return [value] if isinstance(value, str) else list(value)
 
 
 def read_json(path, default):
@@ -319,6 +353,7 @@ def run():
     history = read_json(STATE / "history.json", [])
     meta = read_json(STATE / "meta.json", {})
     status, changes, problems, pending = {}, [], [], []
+    config_bad = []
     http_cache = read_json(STATE / "http.json", {})
     new_cache = {}
     robots = {}
@@ -340,6 +375,13 @@ def run():
             "error": "",
         }
         status[url] = entry
+        errors = config_errors(opts)
+        if errors:
+            msg = "Konfigurationsfehler: " + "; ".join(errors)
+            entry.update(status="error", error=msg[:300], checked=prev.get("checked", "-"))
+            config_bad.append(f"{url}\n  {msg}")
+            print(f"[KONFIG]    {url}: {msg}")
+            continue
         cfg = config_hash(opts)
         cached = http_cache.get(url, {})
         cond = cached if snap.exists() and cached.get("config") == cfg else {}
@@ -412,7 +454,7 @@ def run():
         if validators:
             new_cache[url] = {**validators, "config": cfg}
 
-    ok = True
+    ok = not config_bad
     sent_ok = True
     if changes:
         if len(changes) == 1:

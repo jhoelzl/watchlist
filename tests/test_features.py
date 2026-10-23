@@ -233,3 +233,45 @@ def test_add_blocked_by_robots(tmp_path, monkeypatch):
     monkeypatch.setattr(check, "robots_allowed", lambda url, cache: False)
     with pytest.raises(SystemExit):
         add.main(["https://b", "-y"])
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    [r"Last updated on\s*\S+", r"\d{2}:\d{2}", r"(Stand|Update): \d+", r"(a)?b"],
+)
+def test_config_errors_accepts_normal_patterns(pattern):
+    assert check.config_errors({"ignore": [pattern]}) == []
+
+
+@pytest.mark.parametrize("pattern", ["(unclosed", "[a-", "(a+)+$", "(.*)*x", "(\\d+\\s*)+"])
+def test_config_errors_rejects_bad_patterns(pattern):
+    assert len(check.config_errors({"ignore": [pattern]})) == 1
+
+
+def test_config_errors_rejects_long_and_non_text():
+    assert check.config_errors({"ignore": ["a" * 301]})
+    assert check.config_errors({"ignore": [5]})
+
+
+def test_load_config_single_string_ignore_is_not_split(tmp_path):
+    f = tmp_path / "u.yml"
+    f.write_text("urls:\n  - url: https://a\n    ignore: 'abc'\n")
+    assert check.load_config(f)[0]["ignore"] == ["abc"]
+
+
+def test_invalid_ignore_marks_url_and_fails_run(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    ignore: ['(a+)+$']\n  - url: https://b\n")
+    fetched = []
+
+    def fake_fetch(url, opts, cond=None):
+        fetched.append(url)
+        return "T", "text", False, {}
+
+    monkeypatch.setattr(check, "fetch", fake_fetch)
+    assert check.run() is False
+    assert fetched == ["https://b"]
+    status = json.loads((tmp / "state" / "status.json").read_text())
+    assert status["https://a"]["status"] == "error"
+    assert "Konfigurationsfehler" in status["https://a"]["error"]
+    assert status["https://b"]["status"] == "new"
