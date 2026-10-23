@@ -19,7 +19,7 @@ async function load(): Promise<Load> {
   const [urls, status, history] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp').eq('active', true).order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
-    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(50),
+    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(200),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
@@ -31,6 +31,10 @@ async function load(): Promise<Load> {
       updated: status.data?.updated_at ?? null,
     },
   }
+}
+
+function countLines(diff: string, sign: '+' | '-'): number {
+  return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
 }
 
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'main', js: false }
@@ -77,6 +81,7 @@ export function Dashboard() {
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState('')
   const [status, setStatus] = useState<StatusFilter>('')
+  const [tab, setTab] = useState<'urls' | 'changes'>('urls')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
 
@@ -126,10 +131,13 @@ export function Dashboard() {
         <div className={`stat${sum.problems ? ' bad' : ''}`}><b>{sum.problems}</b><span>Probleme</span></div>
         <div className="stat"><b>{sum.new}</b><span>Neu</span></div>
         <div className="stat"><b>{sum.pending}</b><span>Offen</span></div>
-        <div className="stat"><b>{data?.changes.length ?? 0}</b><span>Änderungen (letzte {data?.changes.length === 50 ? '50' : 'alle'})</span></div>
+        <div className="stat"><b>{data?.changes.length ?? 0}</b><span>Änderungen (letzte {data?.changes.length === 200 ? '200' : 'alle'})</span></div>
         <div className="stat"><b>{groups.length}</b><span>Gruppen</span></div>
       </div>
-      <AddUrl entries={data?.entries ?? []} onAdded={() => void load().then(setResult)} />
+      <div className="tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
+        <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Letzte Änderungen<span className="count">{data?.changes.length ?? 0}</span></button>
+      </div>
       <div className="toolbar">
         <div className="search-field">
           <span aria-hidden="true">⌕</span>
@@ -140,6 +148,9 @@ export function Dashboard() {
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>
+      {tab === 'urls' && (
+        <>
+      <AddUrl entries={data?.entries ?? []} onAdded={() => void load().then(setResult)} />
       <div className="filter-bar">
         {STATUS_FILTERS.map(([value, label]) => (
           <button key={value} className={`filter-pill${status === value ? ' active' : ''}`} onClick={() => setStatus(value)}>{label}</button>
@@ -184,11 +195,14 @@ export function Dashboard() {
           </section>
         ))}
       </div>
-      <h2 className="section-title">Änderungsverlauf</h2>
+        </>
+      )}
+      {tab === 'changes' && (
+        <>
       {changes.length === 0 && <p className="muted">{data?.changes.length ? 'Keine Treffer.' : 'Noch keine Änderungen erkannt.'}</p>}
       {changes.map((c) => (
         <details className="change" key={c.id}>
-          <summary>{c.time} – {c.name ?? c.url}</summary>
+          <summary>{c.time} – {c.name ?? c.url}<span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span></summary>
           <p><a href={c.url} target="_blank" rel="noreferrer noopener">{c.url}</a></p>
           <pre>
             {c.diff.split('\n').map((line, i) => <div key={i} className={diffClass(line)}>{line || ' '}</div>)}
@@ -196,6 +210,8 @@ export function Dashboard() {
           </pre>
         </details>
       ))}
+        </>
+      )}
     </>
   )
 }

@@ -157,3 +157,10 @@ td a:hover { text-decoration: underline; }
 button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; text-align: left; font: inherit; color: inherit; }
 .chevron { display: inline-block; width: 18px; color: var(--muted); }
 .group-stats { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.tabs { display: flex; gap: 4px; margin: 20px 0 16px; border-bottom: 1px solid var(--line); }
+.tab { padding: 10px 16px; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.diff-stat { margin-left: 10px; font-size: 12px; font-weight: 600; }
+.diff-stat .plus { color: #116329; }
+.diff-stat .minus { color: #82071e; }
