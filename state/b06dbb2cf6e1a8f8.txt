@@ -1,0 +1,935 @@
+What's New – KS DB Merge Tools for MySQL
+Open menu
+KS DB Merge Tools
+database diff & merge
+for MySQL
+and MariaDB
+for SQL Server
+for PostgreSQL
+for Oracle
+for SQLite
+for MS Access
+for Cross-DBMS
+All-in-One
+Other tools
+Overview
+Use Cases
+Downloads
+What's New
+Standard Version
+FAQ
+Documentation
+All tools
+KS DB Merge Tools Reviews
+I think your software is excellent! I needed to compare 2 Access files and your software was able to identify differences and the information was presented in a very useful manner. You saved me a lot of time and effort.
+Alan C.
+, founder of start-up company in UK
+(about
+AccbdMerge
+)
+Top-voted answer for
+A data diff tool for finding the difference between two Access MDB Files
+StackOverflow
+(about AccdbMerge)
+I love the app, it is easy to use and super helpful
+Sean D.
+, Senior Software Developer, Excel Computer Services Ltd, London
+(about
+MssqlMerge
+)
+I always use this to compare Access objects, table data, and code. The developer is great at offering support and fixing any issues I have had with previous versions of his software.
+Someone
+from
+Reddit
+(about
+AccbdMerge
+)
+After testing numerous of data sync and merging tools in the market, this tool is the most intuitive and also the powerful one.
+Onur K.
+, Researcher, Dokuz Eylul University, Izmir, Turkey
+(about
+MssqlMerge
+)
+It was a great experience using your tool trying to recover a db even though the recovery was cancelled. Your tool is amazing.
+Ali Alkhawaher
+, Freelancer for IT Solution
+(about
+MssqlMerge
+)
+AccdbMerge makes it so easy to see the changes between different access databases. I use it multiple times every day. Konstantin (the developer) is always responsive and offers great support whenever I have questions. I love this software!
+Shawn Park
+, CEO of Shop Eyes, US
+(about
+AccbdMerge
+)
+Your program has been very helpful to me in my work with GeoPackages
+Andrew M.
+, GIS & IT Services, Adelaide, Australia
+(about
+KS DB Merge Tools for SQLite
+)
+Highly voted answer for
+Comparing 2 SQLite databases
+StackOverflow
+(about KS DB Merge Tools for SQLite)
+I used the tool to propagate changes made in one Access DB to its copies distributed across departments of my company. With the tool, I was able to do it effortlessly. It was a timesaver for me.
+Alexey K.
+, technical project manager, Washington D.C.
+(about
+AccbdMerge
+)
+KS-DB-Merge-Tools is a great application for diffs and version control
+Tony Daly
+, Amageo Limited
+(about
+KS DB Merge Tools for SQLite
+)
+Your software is a great tool which even gets better version by version. It saves me tons of time.
+Lars M.
+, founder of it-rockt.de, Hamburg
+(about
+AccbdMerge
+)
+❮
+❯
+KS DB Merge Tools
+for MySQL
+What's New
+What's New
+Windows MSI packages are digitally signed, Linux tar.gz packages include SHA-256 checksums for verification.
+Prior to version 1.18.0, version title contains the link for Windows installer.
+1.28.0, 2026-09-23
+- For Windows:
+MysqlMerge_1.28.0.msi
+, 11.45 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.28.0.tar.gz
+, 11.77 MB, SHA-256 db662df0013fd6caea3aff9a9baf9f9a6a095ae72e8e3ca14f0c3cb6d5ceac91
+- Recognize new MySQL version format and fix v26.7 compatibility issues
+- Fix MariaDB 13.0 compatibility issues
+- Procedures and functions - support SQL SECURITY parameter, default value excluded from object text (same as for other parameters)
+- Procedures and functions - fix dropped SQL data access on merge of deterministic routine
+- Support MariaDB triggers with multiple events and UPDATE OF specific column(s)
+- Table structure diff - support triggers execution order (presentation and merge)
+- Table structure diff - add columns Time and Event to Triggers subtable. Triggers are grouped by Time + Event (in the most cases) or by Time (if MariaDB multiple events) and sorted by execution order within a group (corresponding comment added to the Triggers header), order preserved during merge
+- Object list - fix foreign key export (provide data from boths sides for columns other than Table and Name)
+- Object list - for triggers add columns Table, Time, Event; add warning about triggers order
+- Object list - new 'Open in Query result diff' button for stored procedures and functions, open without Run
+- Object list - fix missing Unchanged count update after merge/delete
+- Query result diff - show date and time, year, decimal, bit, spatial and vector values the same way as Data diff (MariaDB VECTOR still shown as binary - blocked by MDEV-35831)
+- Query result diff - fix cases of missing NULLs
+- Execute script dialog - new warnings: when merge recreates objects (drop and create), when table structure changes may affect existing data, about lost triggers order if merged from object list
+- Sequences - fix lost table options on merge
+- Sequences - minor formatting changes
+- Fix database open failure with expression (functional) indexes on MySQL 8.1 and newer
+- MySQL expression indexes - fix merge by adding extra parentheses
+- Fix comment SQL escape for columns, procedures and functions
+- Update database title when specified by connection string
+- Scripting - fix invalid log name for ObjectsDelete
+- Scripting - fix cases of local cache cleanup errors in log on completion
+- Update MySqlConnector to 2.6.2
+1.27.1, 2026-06-05
+- For Windows:
+MysqlMerge_1.27.1.msi
+, 11.34 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.27.1.tar.gz
+, 11.77 MB, SHA-256 41a059fb7f1c07f4fc05d30dca2a83c2a3d37764dfda0caf3f574e7477df8dd6
+- Object list - fix duplicated data diff buttons for views
+1.27.0, 2026-06-03
+- For Windows:
+MysqlMerge_1.27.0.msi
+, 11.34 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.27.0.tar.gz
+, 11.77 MB, SHA-256 475ba0e22831c8439882104c6a348c92c41e9598e0c334145265f758d6552c93
+- Verify compatibility with MariaDB 12.3
+- Schema merge options - new dialog, for now shown only in case of merging new NOT NULL columns without default, with suggestion to remove NOT NULL or to add DEFAULT. Shown in appropriate cases on table/column merge from Object list and Table structure diff.
+- Custom data diff - add column filters
+- Custom data diff - minor layout updates and reorganization
+- Custom data diff - new Drag mapping items button
+- Custom data diff - fix unexptected error on clear table and then OK
+- Scripting - support diff profile mapping filters
+- Data diff - mark with ◔ columns with filters and table name in the tab header
+- Batch data diff - mark with ◔ tables with filters applied during calculation
+- Object list - move table/view data compare buttons into a separate new Data column, with a new 'Open Custom data diff'
+- Text diff - exit edit state after edit save/apply (more convenient for subsequent external edit)
+- Text diff - update logic of preparing text for external diff tool
+- License info dialog and Free session expiration notification - fix key acceptance on Cancel
+- Object list - fix no action on compare data for view which exist only in one DB (and missing in another one)
+- Diff profile tab - 'Click to edit column mapping' tooltip changed to 'Edit column mapping'
+1.26.3, 2026-05-14
+- For Windows:
+MysqlMerge_1.26.3.msi
+, 11.21 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.26.3.tar.gz
+, 11.74 MB, SHA-256 31efc2b7d37e85a35fb3686af7d8c3cd12c3089faead8569992454b611c91dcb
+- Data merge and batch data merge confirmation - new 'Backslash escaping' section with options to enable escapting and adjusting sql_mode respectively, default of 'Use backslash escaping' corresponds NO_BACKSLASH_ESCAPES sql_mode of the target DB
+- Scripting - use backslash escaping depending NO_BACKSLASH_ESCAPES sql_mode of the target DB
+- License info dialog and Free session expiration notification - add Cancel to 'Enter license key' popup
+- License info dialog and Free session expiration notification - add 'Choose and buy a license' button opening a product web page
+1.26.2, 2026-04-30
+- For Windows:
+MysqlMerge_1.26.2.msi
+, 11.21 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.26.2.tar.gz
+, 11.74 MB, SHA-256 0ad3e34b413d8e7d647ae8eddac96aaff938dcd0a59cec6ffc359ffa488a7c39
+- Verified compatibility with MySQL 9.7
+- Fix processing of Geometry data types for MySQL 9.7
+- Text diff - new 'Edit both in external diff tool' command, available after Settings configuration
+- Settings - new option to setup external text diff tool
+- Object list, Batch data diff - 'Use RegEx' filter option
+- Batch data diff - change 'Create data slice' to a button because it could be hidden by 'Use ReGex' filter option
+- Query result diff - minor layout adjustments to keep Run visually the same as in Batch data diff
+- On free session expiration lock tabs and cancel any running merge, with an appropriate warning in the Execute script dialog
+1.26.1, 2026-04-12
+- For Windows:
+MysqlMerge_1.26.1.msi
+, 11.18 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.26.1.tar.gz
+, 11.74 MB, SHA-256 a26661e0f137b423a87dfdd9dca893a0a20c62176bb5507a989e60138efbc4ce
+- Text diff - deny merge in 'wrap by character' mode (
+https://github.com/KS-DB-Merge-Tools/Issues/issues/25
+)
+- Update EULA - feedback
+1.26.0, 2026-04-07
+- For Windows:
+MysqlMerge_1.26.0.msi
+, 11.18 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.26.0.tar.gz
+, 11.74 MB, SHA-256 afb2edd4b38a2684d6f9792681552d51e84664b9b2ba18f4021894a82f402dd0
+- Free version - access almost all features with the following limitations - time-limited sessions, single app instance, output watermarks, and limited command line
+- Activation dialog - update description for Free license
+- Activation and 'License info' dialogs - accept valid trial/standard keys without additional confirmation dialogs (but keep them for errors)
+- License info - accept valid trial/standard keys without need to restart
+- License info - change 'full license' to 'Standard license'
+- Toolbar - new buttons to include granular change types - new on left, new on right, changed, unchanged
+- Toolbar - 'Show all/new/changed' filters are changed to toggles, and now it is kind of "presets" for combinations of granular filters
+- Toolbar - 'Unchanged' filter shortcut removed, the filter itself now only available as a granular 'include' option
+- Toolbar - Diff results panel (refres, excel, automation, copy) - moved to the right and placed before the Settings panel
+- Home, Batch data diff - click on New or New + Changed count opens open list that includes new items only for the given side (and excludes new items from the other side)
+- Home tab - per-side button indicating that list of shown object types is reduced to show only those which have new/changed/unchanged items and suggesting to remove this filter - use single common tooltip and icon (otherwise it would require too many options for new 'include' combinations)
+- Home, Object list, Query result diff, Data diff, Text diff - update toggle buttons styles, like in new main toolbar
+- Home - fix cases of visually loosing recent database date digits for some regional settings
+- Batch data diff - add Unchanged column and support Unchanged fiter
+- Object list, Data diff, Query result diff, Text diff - highlight NEW and NEW+CHG totals only if list includes new items for given side
+- Object list - next/previous change in the text preview (with Alt+PgDown/PgUp shortcuts, first last change also made available by Alt+Shift+PgDown/PgUp)
+- Object list - fix update of text preview selected line after disable preview, change object, enable again
+- Text diff - edit mode initial support
+- Text diff - allow Merge actions for portions of definitions
+- Text diff - support Unchanged filter
+- Text diff - produce foldings even if it is a single line (otherwise it looks like a bug that we don't fold a line violating the filter)
+- Data diff - disable merge/delete for Views (even if supported by DB engine, lacks for implementation on the app side and fails)
+- Data diff - fix cases of showing blobs as System.Byte[] if other side db/table/column is missing
+- Data diff - treat some errors as critical and show unexpected error dialog (for errors which have to be more related to app logic and not to server/connectivity issues)
+- What's new tab - make list of changes read-only
+- Update EULA - usage, trademark notice
+1.25.1, 2026-02-26
+- For Windows:
+MysqlMerge_1.25.1.msi
+, 11.07 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.25.1.tar.gz
+, 11.74 MB, SHA-256 4dd782c819ce7e09ca8f9a25caeeb0d169b141d488d0c4dec19e2e1867db6f4b
+- Free & Standard: Table structure diff and CREATE TABLE scripts - fix lost display width for tinyint(1) which can be treated as boolean
+- Free & Standard: Verify compatibility with MariaDB 12.2
+- Free & Standard: Data diff - treat some errors as critical and show unexpected error dialog (for errors which have to be more related to app logic and not to server/connectivity issues)
+- Free & Standard: Data diff - update internal processing of large values (strings/blobs)
+- Standard: Custom data diff - fix some cases unexpected index out of range errors
+1.25.0, 2026-02-07
+- For Windows:
+MysqlMerge_1.25.0.msi
+, 11.06 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.25.0.tar.gz
+, 11.74 MB, SHA-256 319b2bbc87c8387448fa4691aa94690e35e44992244f39de40cede7a3ec0bbec
+- Free & Standard: Msi changed to 64-bit with default per-machine installation to Program Files, 32-bit GUI excluded
+- Free & Standard: Windows CLI changed to 64-bit
+- Free & Standard: Execute script dialog - update execution status every 0.5 sec (instead of every row like before, about 25-40 % faster)
+- Free & Standard: Verified compatibility with MySQL 9.6
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.6
+- Free & Standard: What's new tab - make list of changes read-only
+- Standard: Data merge - option to generate upsert SQL (instead of INSERT+UPDATE)
+- Standard: Data diff with mappings taken from diff profile - fix missing column existing only in one db
+- Standard: Data diff - fix nullref unexpected error on custom mapping saving to diff profile created after that custom mapping
+- Standard: Data merge and batch data merge confirmations - more compact comment regarding triggers disable for Id-Remap merge
+1.24.2, 2025-12-27
+- For Windows:
+MysqlMerge_1.24.2.msi
+, 13.64 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.24.2.tar.gz
+, 11.73 MB, SHA-256 d74b54ee5d1f83cab72ab61c6971c4c6442eb076314ec4ce5e74f350259363fd
+- Free & Standard: Update code sign certificate (may cause smart screen warnings)
+- Free & Standard: Data diff delete with triggers disable - fix taking triggers from the wrong side
+1.24.1, 2025-12-12
+- For Windows:
+MysqlMerge_1.24.1.msi
+, 13.63 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.24.1.tar.gz
+, 11.73 MB, SHA-256 95b37e7642f4f880be324ff41aa690277bcd0a942988ab8246448aa75d04d6f3
+- Free & Standard: Verify compatibility with MariaDB 12.1
+- Free & Standard: Fix failure on comparing MariaDB 12.1 databases with new auto-generated foreign key names
+- Free & Standard: Open Databases - Databases 'Refresh lists' button
+- Free & Standard: Open databases - clear database list on trying to refresh for new invalid parameters (was leaving previous db list before)
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.5
+- Free & Standard: Fix unexpected error on object type changes calculation
+- Free & Standard: Codesign all unsigned dlls, to fix compatibility with enabled Smart App Control
+- Free & Standard: Remove obsolete SHA1 codesign from all binaries and msi, leave only SHA256
+- Free & Standard: Deprecation notice for *.mydbs files
+- Free & Standard: Fix internal assembly name for 64-bit GUI exe
+- Standard: Data diff, Query result diff, Batch data diff, Object list: Next/previous changes - implement for new+changed and 'new only' (to jump from 'new on the left' to 'new on the right' and vice versa)
+- Standard: Data diff: Next/previous changes - jump thru pages with the same type of changes directly to the page with different type of changes
+- Standard: Query result diff: consider new items block from one side followed by new block on other side as a jump target for new/previous change actions
+- Standard: Triggers disable in Data merge and Batch data merge confirmations - replace note about 'Stop on first error' with a data integrity warning
+1.24.0, 2025-11-21
+- For Windows:
+MysqlMerge_1.24.0.msi
+, 13.54 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.24.0.tar.gz
+, 10.82 MB, SHA-256 ee558f61a2c7974c69af988424b36deeb3d5fbb0ab1899c35ba777d728fe4684
+- Free & Standard: Data diff and merge - making types comparable and mergeable (if fits target data type), in scope of type compatibility groups - integers, floating point numbers, datetime/timestamp, binaries, and strings
+- Free & Standard: Data merge - warn about potential data changes caused by triggers on target tables
+- Free & Standard: Execute script dialog - fix occasional 'database locked' unexpected errors during Run
+- Free & Standard: Execute script dialog - fix occasional unfinished execution
+- Free & Standard: Execute script dialog - new execution result option 'Update on item/row change during Run'
+- Free & Standard: Linux version AOT compilation
+- Free & Standard: Open databases - new test connection result 'Not enough parameters to check connection'
+- Free & Standard: Execute script dialog - remove execution result 'Not started' for non-executed-yet script items (which was looking confusing for started but not completed script items)
+- Free & Standard: Verified compatibility with MySQL 9.5
+- Standard: Data merge (table diff and batch data diff) - option to temporarily remove triggers on target tables during merge
+- Standard: Execute script dialog - 'Show all' made not available during Run
+- Standard: Scripting - fix cases when command line tool local cache cleanup could affect running GUI instance
+1.23.2, 2025-10-06
+- For Windows:
+MysqlMerge_1.23.2.msi
+, 13.51 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.23.2.tar.gz
+, 30.40 MB, SHA-256 9acd8c34caf4c5cb5685c6638751a9bda3b3ba90f6d577ae6faa10d5b5ac14e5
+- Free & Standard: Fix false positive table changes caused by constraints order (
+https://github.com/KS-DB-Merge-Tools/Issues/issues/23
+)
+- Standard: Fix 'Empty vs whitespace-only line makes object changed even if we ignore both in settings' (
+https://github.com/KS-DB-Merge-Tools/Issues/issues/22
+)
+- Standard: Text diff - completely disable syntax hightlight on 'Wrap by character'
+1.23.1, 2025-08-21
+- For Windows:
+MysqlMerge_1.23.1.msi
+, 13.50 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.23.1.tar.gz
+, 30.40 MB, SHA-256 9fc7a2f30342ae178c2f696bbb6b2feef97039045a3452defcf11f44965e4861
+- Free & Standard: Fixed and verified compatibility with MariaDB 12.0
+- Free & Standard: Verified compatibility with MySQL 9.4
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.4
+- Free & Standard: Fix unexpected XmlException on app start in case of damaged settings file (
+https://github.com/KS-DB-Merge-Tools/Issues/issues/21
+)
+- Free & Standard: Execute script dialog - 'no backup' warning
+- Standard: Data diff - truncate string and binary values depending new on settings (relates to
+https://github.com/KS-DB-Merge-Tools/Issues/issues/19
+)
+- Standard: Settings - new options to truncate string and binary values on Data diff tab
+- Standard: Text diff and Object list text preview - new 'Wrap by character' toggle
+- Standard: Query result diff - truncate string values the same way as for data diff, depending on new settings
+- Standard: Settings - rollback internal settings version number in case of downgrade to make subsequent upgrade more correct
+- Standard: Batch data merge dialog - added explicit merge/delete action indication, removed 'no backup' warning (moved to Execute script dialog)
+- Standard: Data merge dialog - minor layout adjustments in the Action section
+1.23.0, 2025-06-11
+- For Windows:
+MysqlMerge_1.23.0.msi
+, 13.48 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.23.0.tar.gz
+, 30.40 MB, SHA-256 6bdd7ad30c697953ea2a45f40639e907e218300494894135a4efc3e296bd0c58
+- Free & Standard: Execute script dialog - completely new dialog, with Script Structure, both for schema and data. Transaction and autoincrement options are moved to Data Merge and Batch Data Merge confirmation dialogs.
+- Free & Standard: Execute script dialog - in case of failure, rollback started transaction regardless of 'Stop on first error' option
+- Free & Standard: Execute script dialog - Copy ALL / Save ALL buttons removed. The whole script can be retreived on Copy / Save for the root Script element.
+- Free & Standard: Execute script dialog - Any script element text is truncated to 10k chars. First statement, if larger than 10k, shown without truncation.
+- Free & Standard: Execute script dialog - for altered objects, handle DROP and CREATE as two individual statements, prividing not the same result as before in case if DROP fails
+- Free & Standard: Data merge dialog - added 'Auto-generated primary key values' and 'Transactions' sections
+- Free & Standard: Data merge - disable autocommit for transactions
+- Free & Standard: Update UI group box control styles
+- Free & Standard: Activation dialog - make non-topmost and show in task bar
+- Free & Standard: Verified compatibility with MariaDB 11.8
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.3
+- Standard: Execute script dialog - 'Show all' button to show the whole script if it was truncated
+- Standard: Batch data merge dialog - content organized into sections, added 'Transactions' section
+- Standard: Batch data merge dialog - added 'Import existing AUTO_INCREMENT values on INSERT' option in the Scope section, shown for 'New' and 'New and changed'
+- Standard: Batch data merge dialog - Id-Remap and some other large texts are hidden in the expander controls
+- Standard: Data merge dialog - Id-Remap large texts are hidden in the expander controls
+1.22.0, 2025-04-28
+- For Windows:
+MysqlMerge_1.22.0.msi
+, 13.42 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.22.0.tar.gz
+, 30.39 MB, SHA-256 e3b64770e2f9c96883b7614c687f9261cd4b40ca25c2c29890f0af7b24bfc267
+- Free & Standard: All dialogs and progress panels - replace hyperlink buttons with regular buttons
+- Free & Standard: Layout adjustments for some dialogs caused by changing hyperlinks with buttons
+- Free & Standard: Verified compatibility with MySQL 9.3
+- Free & Standard: In dialogs, make Yes/Ok/Run default on Enter
+- Free & Standard: Pressed hyperlink indication
+- Free & Standard: Activation dialog - update Questions section content
+- Free & Standard: Activation dialog - 'Copy' updated to 'Copy both' instance Id and app version
+- Free & Standard: Activation dialog - minor label fix related to Help/Questions action reference, add globe icon for Interface language section
+- Free & Standard: Generic dialog - clicked Copy indication
+- Free & Standard: Unexpected error dialog - fix locked log file right after sending a report
+- Free & Standard: Msi - Update EULA formatting
+- Standard: Settings - change tabs background to system control color (like in other dialogs)
+- Free: License info - Standard key entry using generic dialog
+1.21.1, 2025-04-14
+- For Windows:
+MysqlMerge_1.21.1.msi
+, 13.41 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.21.1.tar.gz
+, 30.39 MB, SHA-256 ec07e634854e4b1c875602418cd92fbebbc2cedf9fc320d435c55d212c87baf2
+- Free & Standard: Msi - Help button on the Welcome dialog, going to the new Installation help page
+- Free & Standard: Msi - Update EULA formatting
+- Free & Standard: Accessibility - ability to copy text from basic yes/no and ok/cancel dialogs (for example, for further translation)
+- Free & Standard: Activation dialog - added 'Interface language and documentation' section, 'Help' renamed to 'Questions?'
+- Standard: Id-Remap Merge dialog - fix 'Id-Merge' typo
+- Standard: Fix unexpected DispatcherUnhandledException in cases related to the quick filter usage (Batch data diff, etc)
+- Standard: Settings - minor label fixes related to obsolete 'project' word usage
+- Standard: ScriptEditor - fix help url
+- Standard: Diff profile editor - remove Extensions group
+1.21.0, 2025-03-31
+- For Windows:
+MysqlMerge_1.21.0.msi
+, 13.42 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.21.0.tar.gz
+, 30.38 MB, SHA-256 326187b6d324dee7fd9a79e81c6d8dc9ecda97bd765e448a12946410226a607a
+- Free & Standard: Verified compatibility with MySQL 9.2
+- Free & Standard: Verified compatibility with MariaDB 11.7
+- Free & Standard: Support VECTOR data type for MariaDB 11.7+
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.2
+- Free & Standard: Table definition merge - if we drop both collate and charset (reset to default option items calculated as New in Table structure diff), then update charset only
+- Free & Standard: Handle application settings reading failure
+- Free & Standard: Fix occasional empty file settings of the correct size but filled with zero bytes
+- Free & Standard: Command line tool - add current thread ID to the log on app start
+- Free & Standard: Fix local cache cleanup issues when running both 32 and 64 bit
+- Standard: MariaDB - initial support of vector indexes (without M and DISTANCE parameters)
+- Standard: Text diff - new 'Show line numbers' toggle
+- Standard: Do not assign DL for self-referenced tables (the same way as for other sycled table dependencies)
+- Standard: Batch data merge confirm dialog - replace 'all the tables .. must have DL ..' with 'all the tables that needs to be merged must have DL ..'
+- Standard: Batch data merge confirm dialog - don't allow Id-Remap merge if selected table(s) has no children with DL
+- Standard: Data merge confirm dialog - fix 'Some of selected tables have', change to 'This table has'
+- Standard: Data merge confirm dialog - don't allow Id-Remap merge if selected table has no children with DL
+- Standard: Id-Remap Merge dialog - exclude tables without DL (children and other parents). This could make possible the same table to appear both in tables to merge and other parents, and if both selected - 'An item with the same key has already been added' unexpected error (error report from Feb 21)
+- Standard: Scripting - fix 'invalid license' message text in console
+1.20.0, 2025-02-06
+- For Windows:
+MysqlMerge_1.20.0.msi
+, 13.40 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.20.0.tar.gz
+, 30.38 MB, SHA-256 2193ad793f989ad604803414603b75306a52196aad388a3b6878689341faa4d3
+- Free & Standard: Table definitions - initial support for table options (COMMENT, CHARSET, COLLATE, ENGINE, ROW_FORMAT)
+- Free & Standard: Table definitions - recognize GENERATED ALWAYS AS columns
+- Free & Standard: Table definitions - recognize INVISIBLE columns
+- Free & Standard: Object list - fix table definition merge failure caused by circular FK (foreign key) references, for such a case move FK creation after all tables
+- Free & Standard: Merge data warning dialog - include merge/delete action and target DB name, misc. other redesign
+- Free & Standard: Scripting DataMerge - new updateOnlyChanged optional parameter
+- Free & Standard: Data diff - fix merge failure for tables with generated-as columns
+- Free & Standard: Msi - removed Uninstall from Windows menu
+- Free & Standard: Msi - in Windows menu product page is replaced with 'Which app do I need' help page
+- Free & Standard: Remove 'Tools' word from app shortcuts to make them a bit more compact
+- Standard: Table structure diff - new Options group
+- Standard: Table structure diff - new allowed values in Extra for generated and invisible columns
+- Standard: Merge data warning dialog - new option 'Update only changed columns'
+- Standard: Batch data merge dialog - new 'Update only changed' option, shown for Changed and New-and-changed non-Id-Remap merge
+- Standard: Batch data merge dialog - update title and adjust window vertical position on window height change
+- Standard: Settings - new option 'Update only changed columns' on the Data Diff tab, minor adjustments for 'merge all pages' controls
+1.19.0, 2024-12-13
+- For Windows:
+MysqlMerge_1.19.0.msi
+, 13.46 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.19.0.tar.gz
+, 30.37 MB, SHA-256 a4f063fc49ed85cb6ff667668b721ec8f313959338e0a76674f842d3fddd35cb
+- Free & Standard: 64-bit executable added to msi, installed both x32 and x64
+- Free & Standard: Fix 'Error when reading DB information in Windows 11 ARM for MariaDB' for 32-bit version (
+https://github.com/KS-DB-Merge-Tools/Issues/issues/11
+). 64-bit version is currently not supported by Windows ARM.
+- Free & Standard: Verified compatibility with MariaDB 11.6
+- Free & Standard: Database open dialog - option to use connection strings
+- Free & Standard: Fix case of local cache failure after opening gui with command line args
+- Free & Standard: Scripting - text diff options (ignore case/whitespaces/lines) made available in SetOption
+- Free & Standard: Scripting - new LogTo(logConnectionString) parameter, false by default. Now logging of connection string during database open is managed by this parameter.
+1.18.0, 2024-11-14
+- For Windows:
+MysqlMerge_1.18.0.msi
+, 10.78 MB
+- For Linux:
+MysqlMerge_Linux_x64_1.18.0.tar.gz
+, 30.37 MB, SHA-256 153faec0204facdb120e0dd5e94de2a38e919469ad2d5dec3d9e9f42b379056c
+- Free & Standard: Pro renamed to Standard
+- Free & Standard: Scripting - binary for Linux x64
+- Free & Standard: EULA updated (more details on automated usage, removed redundant statement regarding terminal)
+- Free & Standard: Verified compatibility with MySQL 9.0 and 9.1
+- Free & Standard: Support VECTOR data type for MySQL 9+ (not for MariaDB yet)
+- Free & Standard: Fix processing of Geometry data types for MySQL 9.0 and 9.1
+- Free & Standard: Update libraries, including MySqlConnector and SSH.NET
+- Free & Standard: Table definition merge - fix with codepage default expression that could appear and cause
+- Free & Standard: Home - fix case of non-updated left DB if we had left opened and then open both
+- Free & Standard: Scripting - /forcescriptrun parameter to prevent unintended merge/delete script execution, new related error code 10 'deny script run'
+- Free & Standard: Scripting - new function SetOption, for now to setup table diff options and local cache folder
+- Free & Standard: Scripting - unknown return code changed from 7 to 255, 7 is used now for 'not supported statement' error
+- Free & Standard: Scripting - data merge/delete - logging improvements, new error code 8 'invalid object'
+- Free & Standard: Scripting - new error code 9 'EULA not accepted' for Linux and related --accepteula parameter
+- Free & Standard: Scripting - update command line arguments parsing and help
+- Free & Standard: Scripting - improve diagnostics of parsing errors
+- Free & Standard: Scripting - fix local cache cleanup on completion
+1.17.0, 2024-10-01
+- Free & Pro: Verified compatibility with MariaDB 11.5
+- Free & Pro: Object list - removed merge/delete to the left on Ctrl+M / Ctrl+D if the right grid is active (according to the docs and toolbar tooltips)
+- Free & Pro: Object list - 'Replace' action tooltips updated according to the actual behavior (depending on active grid, regardless of Shift key, Ctrl+Shift+R shortcut is used for Refresh)
+- Free & Pro: Support email changed back to support@db-merge-tools.net (agreement, activation dialog)
+- Pro: Scripting / Automation support, new tools: MysqlMergeCmd.exe to run and Script Editor application to simplify creation and troubleshooting of scripts
+- Pro: New 'Generate automation script stub' toolbar button, applicable for Home, Batch data diff, Data diff, Object list and Query result diff tabs
+- Pro: Json export (in addition to Xlsx, 'Export' toolbar button icon and tooltip updated respectively)
+- Pro: Settings, Misc tab - Reports section updated to specify default export format (xlsx/json)
+- Pro: Data diff - fix 'Index out of range' unexpected error on next/last change for tables without common key and with result truncated by paging
+- Pro: Id-Remap Merge - ignore child tables having multiple foreign keys on the same column (was causing unexpected error before)
+1.16.0, 2024-08-01
+- Free & Pro: Object list, Data diff, Text diff and Query result diff tabs - totals panel redesign: highlight counts of currenlty shown items according to the new/changed filters, other layout updates
+- Free & Pro: Data diff - new toggle to show list of selected columns, disabled by default
+- Free & Pro: Home tab - new button indicating that list of shown object types is reduced to show those which have new/changed items, suggesting to remove this filter (appears only in appropriate case)
+- Free & Pro: Fix 'Invalid enum value' settings reading error on application start: ignore unknown and add missing settings
+- Free & Pro: Fix cases of splash screen jump for non-100% system display scale
+- Free & Pro: Data diff - new toggle to show list of selected columns, disabled by default
+- Pro: Home, Object list, Data diff, Text diff and Query result diff tabs - new Unchanged total count
+- Pro: New 'Show only unchanged' toolbar button, applicable for Home, Object list, Data diff and Query result diff tabs
+- Pro: New 'Last change below' and 'First change above' toolbar buttons, applicable for Object list, Data diff, Text diff, Query result diff, Batch data diff and Table structure diff tabs
+- Pro: Home - don't show object type counts and disable title if type was disabled in Settings on database open
+- Pro: Batch data diff - click on Custom Query new/changed - open Query result diff with appropriate filter
+1.15.0, 2024-07-09
+- Free & Pro: Activation dialog - fix typo in the 'Information about current license'
+- Free & Pro: What's new tab - fix typo in the 'Information about current license'
+- Pro: Change format of diff profile files, suggest convertion to the new format on load
+- Pro: Diff profile editor - new 'Data slices' section
+- Pro: Diff profile editor - 'Show in Batch data diff' option for table mappings and queries
+- Pro: Batch data diff - options to show 'Custom mappings' and 'Custom queries' from diff profile
+- Pro: Batch data diff - 'Create data slice' command
+- Pro: Batch data diff - Data slice mode to show data slice, comparing to the regular mode it has data slice name in the tab header, different tab icon and removed 'Create data slice' command
+- Pro: Custom data diff - allow to save to diff profile mappings for different tables, title changed to 'Save to diff profile and use by default' for same tables and 'Save to diff profile' in other cases
+1.14.1, 2024-07-01
+- Free & Pro: Verified compatibility with MariaDB 11.4
+- Free & Pro: Fix table and view columns reading progress indication
+- Pro: Diff profile editor - 'Created' column and sorting on all columns in both grids
+- Pro: Query result diff tab - fix default focus on query text
+- Pro: Query result diff - ask for diff profile title on save
+- Pro: Open databases dialog - allow to drag & drop files to SSH key file name text boxes
+- Pro: Batch data diff - minor performance improvement for large amount of tables
+1.14.0, 2024-05-22
+- Free & Pro: Cache potentially large object definitions on disk instead of memory; for views, stored procedures and functions; and fix related 'out of memory' on database open
+- Free & Pro: Fix processing of Geometry data types for MySQL 8.3 and 8.4
+- Free & Pro: Verified compatibility with MySQL 8.3 and 8.4
+- Free & Pro: Fix some cases on loading the first database to the left panel even if it was requested to be opened in the right panel
+- Free & Pro: Find tab - fix default focus on search textbox
+- Free & Pro: Check for local cache folder existence on startup
+- Free & Pro: Database opening - calculate views dependency level
+- Free & Pro: Object list - merge views ordered by dependency level
+- Free & Pro: Object list - delete table definitions and views ordered by dependency level
+- Pro: Data diff - merge rows of table without DL and having other foreign-key-dependent tables - fix invalid unconditional Id-Remap logic, replaced with unconditional regular data merge (Id-Remap can't be done for tables without DL)
+- Pro: Data merge warning dialog - warn about auto-increment merge and non-applicable Id-Remap caused by missing dependency level
+- Pro: Data merge - fix ignored samed 'Merge all page' setting in case of Id-Remap confirmation shown (without 'Merge all pages' confirmation)
+- Pro: Data diff - Export all pages confirmation dialog
+- Pro: Settings - add Data Merge and Data Export sections on Data diff tab
+- Pro: Settings - add Local Cache section on Misc tab
+- Pro: Object list - DL (dependency level) toggle and column made available for views
+- Pro: Excel exports without opening file - remove hour glass before report completion notification
+- Pro: Data merge confirmation, copy all results - fix in 1000000 limit message 'Script' -> 'Combined result'
+- Free: Text diff - fix missing changes in background highlight on switching text diff options
+1.12.4, 2024-04-05
+- Free & Pro: Home - fix bug 'Open single database, Refresh, and other side loaded with the same DB instead of refresh'
+- Free & Pro: SQL syntax highlight - recognize multiline strings
+- Free & Pro: What's new - enable word wrap for list of changes to avoid horizontal scroll for long items
+- Free & Pro: Text diff - change line numbers to dark-gray to avoid visual confusion with actual text
+- Free & Pro: Fix focus on selected tab, switching between data diff tabs and clicking Refresh could produce selection of some other previously focused tab
+- Free & Pro: Data diff - add 'Click to sort by this column' column tooltip where applicable
+- Pro: Table structure diff - show 'Compare data' and 'Open in Query result diff' buttons for tables missing on other side (or other side db is not loaded at all)
+- Pro: Query result diff - fix cases of missing first row selection on Run (and therefore fix missing bottom row grid)
+- Pro: Query result diff - clear previous result on subsequent Run
+- Pro: Query result diff - handle properly cases when only one side result is available (error on other side, different resultset count, other side returned no table result)
+- Pro: Query result diff - error text word wrap, ability to copy, and some other layout updates
+- Pro: Query result diff - better error handling of database connection errors
+- Pro: Text diff - new 'Show tabs and spaces' toggle
+- Pro: Text diff - new bottom line implementation, with selectable text and fixed tabulation width
+- Pro: Data diff - allow to compare string values in the separate text diff tab (the up-right arrow near column name in the bottom grid, useful for multiline values)
+1.12.3, 2024-03-20
+- Free & Pro: EULA updated (divided into sections, more information and clarifications)
+- Pro: Query result diff - fix unexpected error on compare by row number then click result column name to sort
+- Pro: Custom data diff - fix validation of sorting on more than one non-key column
+1.12.2, 2024-03-12
+- Free & Pro: Verified compatibility with MariaDB 11.3
+- Free & Pro: Recent database open only if one side has no saved password - fix missing password for other side
+- Pro: Text diff - change Expand above/below links to folding sections (and fix some syntax highlight issues if it shows new/changed lines)
+- Pro: Text diff - if show only new/changed lines, do not hide block containing only one line
+- Pro: Text diff - show 'Additional lines' configuration directly in tab and remove it from Settings
+1.12.1, 2024-03-01
+- Free & Pro: SQL syntax highlight - highlight identifiers and numbers, reduced list of keywords to the most generally used
+- Free & Pro: Splash screen
+- Free & Pro: Updated application binary protection
+- Free & Pro: Fix 'Full screen' toggle state if changed by F11
+- Free & Pro: Fix 'It is an expired trial key' key entry error presentation
+- Free & Pro: Data diff - use the same fonts in the merge/delete progress as in other places
+- Pro: Custom data diff - fix broken paging on setting up sort order for more than one key
+- Pro: Custom data diff - deny sorting on more than one non-key column (not supported)
+- Pro: Custom data diff - minor layout adjustments
+- Pro: Fix cases of broken Ctrl+C in the new text editor (Query result diff, etc.)
+1.12.0, 2024-02-14
+- Free & Pro: SQL Syntax highlight in the Text diff, Object list text preview, Table structure trigger text preview, Merge dialog and Query result diff
+- Free & Pro: Ability to switch to the full screen, with F11 shortcut
+- Free & Pro: Home tab - 'Copy all' database progress actions appearing in case of errors
+- Free & Pro: Reduce cases of duplicated ';' in generated scripts
+- Pro: Id-Remap Merge dialog - fix occasionaly broken table order by name for same DL
+1.11.0, 2024-01-26
+- Free & Pro: Fix broken Data Diff for binary keys
+- Free & Pro: Data merge dialog - change 'Import existing AUTO_INCREMENT' to 'Import existing AUTO_INCREMENT, sequence or other..' and make applicable for these types of auto-generated primary keys
+- Free & Pro: Object list - show object action buttons for new objects or if other side db is not opened (as result, allow to view data)
+- Free & Pro: Data merge dialog - minor label fixes
+- Pro: Id-Remap Merge new feature allowing to merge properly foreign key values referencing to autoincrement/sequence numeric primary keys, integrated with Data Diff and Batch Data Diff merge actions
+- Pro: Batch data merge dialog - show Id-Remap Merge suggestion and applicability warnings in appropriate cases
+- Pro: Data merge dialog - show Id-Remap Merge suggestion in appropriate cases
+- Pro: Batch data merge dialog - minor label fixes
+- Pro: Batch data merge dialog - Alt hotkeys
+- Pro: Query result diff - 'Split..' and 'Run both..' options adjustments for the new case of opening from Object List when other side db is not opened
+1.10.6, 2023-12-12
+- Free & Pro: Verified compatibility with MariaDB 11.2
+- Free & Pro: Home tab - indicate that recent database requires password entry (was opened by password without saved password)
+- Free & Pro: Opening db with save password if other side loaded and has no saved saved password - fix invalid save password for both (and the same for unsaved password)
+- Pro: Opening database in the new app instance: fix lost 'Save passwords' (both for other side database and the newly opened one)
+1.10.5, 2023-11-05
+- Free & Pro: Fix processing of Geometry data types for MySQL 8.2
+- Free & Pro: Verified compatibility with MySQL 8.2
+1.10.4, 2023-10-20
+- Free & Pro: Fix processing of Geometry data types for MySQL 8.1
+- Free & Pro: Verified compatibility with MySQL 8.1
+1.10.3, 2023-10-13
+- Free & Pro: Verified compatibility with MariaDB 11.1
+- Pro: Query key columns dialog - restore broken 'Save to diff profile' option
+- Pro: Batch data merge dialog - restore lost note regarding script generation time and space
+- Pro: Batch data diff - fix invalid 'Change columns' = No for the case of new column(s) in the left DB without other changes
+1.10.2, 2023-09-03
+- Free & Pro: Fix app crash on unknown error during dialog open
+- Free & Pro: Improved logic of changes invalidation after objects merge and refresh
+- Pro: Support for All-in-one license
+- Pro: Fix 'Cannot call StartAt' unknown error on Batch data diff -> click on view name -> compare data
+1.10.1, 2023-08-07
+- Free & Pro: Instance id unification with the rest of KS DB Merge Tools, fix for
+[M] All App start - "ManagementException: Invalid class" unexpected error
+- Free & Pro: Open database dialog - fix TestConnection ignoring database name (was checking only connection to server)
+- Free & Pro: Fix occasional 'Cannot set Owner property to a Window that has not been shown previously' unexpected error for basic dialogs
+- Pro: Encrypt command line passwords on opening database in the new app instance
+- Free: Allow to drop and merge new only table definitions, mark them as MERGE NEW ONLY on the Home tab and update tooltip text for that mark
+1.10.0, 2023-07-05
+- Free & Pro: Fix some issues for MariaDB 11.0 and verify its compatibility
+- Free & Pro: Home tab, database open - 'Close both' progress action (useful if both progresses have errors)
+- Free & Pro: Open database dialog - fix 'Save passswords' typo
+- Free & Pro: Update code sign certificate (may cause smart screen warnings)
+- Free & Pro: Data diff tab - show italic NULL text for NULLs in columns with 'visual match' mapping (which have a gray background color, was just nothing before)
+- Free & Pro: Table definition merge confirmation dialog - minor label adjustments regarding Data diff
+- Pro: Batch data diff, merge new and changed - add option to delete target rows missing in source
+- Pro: Batch data diff - populate startup data in the background and fix occasional DispatcherUnhandledException unexpected error for large lists
+- Pro: Data merge - fix ignored disabled AUTO_INCREMENT for Copy ALL and Save ALL actions
+- Pro: Object list - show selected count only if something selected
+- Free: Data diff - show total counts in the top panel
+- Free: Object list - show counts in the top panel
+- Free: Text diff - show counts in the top panel
+- Free: Data merge/delete 'all page rows selected' confirmation warning - add clarification that other pages are not going to be processed
+1.9.0, 2023-03-15
+- Free & Pro: Verified MariaDB 10.11 compatibility
+- Free & Pro: MariaDB - read and merge sequence default expressions without database name
+- Pro: Events support
+- Pro: MariaDB sequences support
+1.8.0, 2023-03-01
+- Free & Pro: Database open - exclude system databases from db dropdown (sys, mysql, information_schema, performance_schema), configurable for Pro
+- Free & Pro: Data diff tab - fix non-closeable progress on merge/delete script generation failure
+- Free & Pro: Data diff tab - save error log for unexpected error on tab open
+- Free & Pro: Database open progress - better formatting of duplicate objects error
+- Free & Pro: Data diff - fix 'Failed to define merge script structure' delete script generation error in case of changed key name(s) (custom mapping or case-sensitive only changes)
+- Free & Pro: Home tab - recent databases, opening DBs from toolbar one by one - fix invalid left side progress for the second DB
+- Free & Pro: Home tab - new 'Delete this pair from recent database list' button
+- Free & Pro: Parallel database open - improved progress completion responsiveness
+- Free & Pro: Activation dialog - minor label and layout adjustments, change support email to use the new ksdbmerge.tools domain
+- Free & Pro: Activation dialog - more responsive processing of trial retreival, disable OK during execution to fix 'DialogResult can be set only after..' occasional error
+- Free & Pro: Check for updates - change requested url to use the new ksdbmerge.tools domain
+- Free & Pro: Data merge warning dialog - minor layout adjustments
+- Free & Pro: Apply zoom to almost all dialogs (except unknown error and initial activation dialog)
+- Free & Pro: Handle settings reading error on app start
+- Free & Pro: EULA minor adjustments regarding location
+- Pro: Triggers support (show on Home tab, manage from Object list and Table structure diff tabs)
+- Pro: Batch data diff - fix slow and unresponsive merge/delete if no totals were pre-calculated
+- Pro: Batch data diff - provide inner exception in case of script generation failure
+- Pro: Batch data diff - don't generate scripts on delete cancellation
+- Pro: Batch data diff - minor label adjustments
+- Pro: Data diff - fix 'key not found' error on using non-applicable diff profile mapping, ignore such mappings
+- Pro: Query result diff - hide per page counts (there is no paging), show selected counts only if any row selected
+- Pro: Query result diff - show resultset number only if there is more than one resultset
+- Pro: Query result diff - add result error tooltip showing the whole error text (useful if error is truncated)
+- Pro: Data diff - show selected counts only if any row selected
+- Pro: What's new - 'license key is not valid for this update' notice
+1.7.6, 2023-01-25
+- Free & Pro: Check for object names to be case-insentitive unique (fix 'An item with the same key has already been added' unknown error on database open)
+- Pro: Batch data diff - merge/delete progress indication
+1.7.5, 2023-01-23
+- Free & Pro: Open database dialog - add recent servers to db/ssh server dropdowns, with port and username; populate relevant fields (with passwords if were saved) on drowpdown item selection
+- Pro: Batch data diff - merge/delete actions made active allowing to process multiple selected tables
+- Pro: New 'Batch data merge warning' dialog
+- Pro: Execute data script - show table name with 'and N more' if processing more than 1 table from the Batch data diff
+1.7.4, 2023-01-17
+- Free & Pro: Allow missing table create/update date to fix RDS Aurora MySQL compatibility
+1.7.3, 2023-01-14
+- Free & Pro: Msi - allow per-user installation, without UAC confirmation and Administrator privileges (upgrade from per-machine to per-user still requires Administrator privileges to uninstall previous per-machine version)
+- Free & Pro: Msi - change images to application icon
+- Free & Pro: Msi - option to launch after installation completion
+- Free & Pro: Object list - don't re-create unchanged objects on merge
+- Free & Pro: Object list - allow merge only if there are any new or changed item (deny if all items are unchanged)
+- Free & Pro: Merge objects dialog - increase Execution result area, allow window resize/minimize/maximize
+- Free & Pro: Merge data dialog - allow window resize/minimize/maximize
+- Pro: Custom data diff - allow window resize/minimize/maximize
+1.7.2, 2022-12-27
+- Pro: Object list - ability to alter multiple tables
+- Pro: Object list - DL column for tables with configurable visibility (foreign key dependency level)
+- Pro: Merge objects dialog - new 'Save to file' action for script and execution result
+- Pro: Merge objects dialog - alter table(s) warning
+- Pro: Batch data diff - DL columns (foreign key dependency level)
+1.7.1, 2022-12-16
+- Free & Pro: Data diff - case-insensitive primary key column match
+- Free & Pro: Data merge dialog - handle connectivity failure on Run
+- Free & Pro: Object list - handle connectivity failure on Refresh
+- Free & Pro: Database open progress on table definition merge or table list refresh - clarify multiple "Calculating changes" with object type name
+- Free & Pro: Data diff - fix sorting in the right panel on columns having case-sensitive changes
+- Free & Pro: Object list - fix swapped progress panels on Refresh
+- Pro: Handle copy to clipboard error (clipboard can be busy with some other app, https://stackoverflow.com/a/68857/282694)
+- Pro: Batch data diff - Select row with single click (like in object list and data diff, instead of double)
+- Pro: Batch data diff - Fix calculation of Total+New for the case of Common key = No (was SQL error before)
+- Pro: Table structure diff - Case-insensitive match by name
+1.7.0, 2022-12-01
+- Free & Pro: Update hyperlinks, grids, text, selection look & feel
+- Free & Pro: Verified compatibility with MariaDB 10.10
+- Free & Pro: Update app icon
+- Free & Pro: Toolbar online help button
+- Free & Pro: Data diff & merge - optimize internal processing of binary data, use X'..' instead of UNHEX('..') for merge scripts
+- Free & Pro: Data diff - fix merge script generation for changed case of column names and custom mapping
+- Free & Pro: Data diff - fix rare occasional ArgumentOutOfRangeException on open (was 'unknown error' before)
+- Free & Pro: Object list - object name hyperlink tooltips
+- Free & Pro: Data diff - add 'Page'/'Paging' label
+- Free & Pro: Unknown error dialog - add 'recommended' for option 'Send error report and close'
+- Free & Pro: Improve action logs for 'Unknown error' reports (merge/delete actions, table structure diff item selection)
+- Pro: Scroll background changes indication - more pale colors, fixed Changed indication in the object list
+- Pro: Data diff, Excel export - output signed and unsigned byte-sized numbers as numbers, not as text
+- Pro: Data diff - fix disablity to merge/delete for tables without PK and with custom key defined
+- Pro: Query key fields and Custom data diff dialogs - case-insensitive column match
+- Pro: Settings - Database open/reload label adjustments
+- Free: Data diff paging and page merge confirmation
+- Free: Data diff - remove limitation on number of columns and key definition
+- Free: Home tab - allow show new/all/changed
+2022-10-28 important note
+Verified compatibility with MariaDB 10.9
+1.6.0, 2022-06-30
+- Free & Pro: Verified MariaDB 10.8 compatibility
+- Free & Pro: Fix table definition reading for case when it has two constraints with the same name (unique and FK)
+- Free & Pro: Show database open progress errors on the fly instead of accumulation
+- Free & Pro: License Info dialog - after trial/full key submission keep app in the pure Free mode until restart (previously some Pro features could become partially available and cause some errors)
+- Pro: Home tab - add 'Diff profiles' section
+- Pro: New tab - Diff profile editor, opened by click on loaded diff profile status on the Home tab
+- Pro: Custom data diff - add 'Save to diff profile' option
+- Pro: Query key columns dialog - add 'Save to diff profile' option
+- Pro: Query result diff - 'Save to diff profile' option
+- Pro: Batch data diff - calculate new/changed counts for views with keys defined in the diff profile
+- Pro: Batch data diff - 'Common primary key' renamed to 'Common key' and now includes keys defined in the diff profile
+- Pro: Batch data diff - optimize 'new only' calculation
+- Pro: Custom data diff - minor label adjustments
+1.5.4, 2022-04-15
+- Free & Pro: Find tab - Find button moved to the left and F5 shortcut added. Regex search added for Pro.
+- Free & Pro: Unknown error dialog - 'Close' renamed to 'Close w/o report', added 'Close app'
+- Free & Pro: Object list - remove usless Created and Modified columns for Views
+- Pro: Query result diff - in case of error show it without db name
+- Pro: Query result diff - reset selection count on resultset change
+- Pro: Object list, Query result dif - bottom grid - reduce a bit header height to make inner horizontal border more visible
+- Pro: Object list - remove useless column checkboxes for Foreign keys
+- Pro: Table structure diff - fix some cases of missing bottom grid update on rigth column click
+- Pro: Table structure diff - cases of grayed out row selection are replaced with merge/delete deny reason tooltip
+- Pro: Data diff - reset selected count on page change
+- Free: Object list - 'Compare two selected items' hidden for tables
+1.5.3, 2022-04-06
+- Free & Pro: Data diff - fix binary fields processing (broken in 1.5.1)
+- Pro: Settings, Text Diff - fix lost custom normalization options on Settings dialog open
+1.5.2, 2022-04-05
+- Free & Pro: Text diff - highlight in yellow lines with ignored changes (case-insensitive, ignore whitespace, custom text normalization)
+- Free & Pro: Open database dialog - option 'Encrypt passwords' for *.mydbs files
+- Pro: Settings, Text Diff - add custom text normalization rules
+- Pro: Settings, Text Diff - add 'Ignore empty lines' option
+1.5.1, 2022-03-31
+- Free & Pro: add "Compatibility Mode" application shortcut to start with COR_ENABLE_PROFILING=0 environment variable (to avoid conflicts with profilers)
+- Free & Pro: Home tab - fix broken open recent db without saved password (show Open database dialog asking for password)
+- Free & Pro: improve settings stability by using read/write retry attempts
+- Pro: Query result diff - show query execution errros as counts overlay instead of message box
+- Pro: Query result diff - fix query cancellation
+- Pro: Query result diff, when single db opened - fix nullref on single query
+- Pro: Data diff, Object list - consider new items block from one side followed by new block on other side as a jump target for new/previous change actions
+- Free: Data diff - in case of limitations show regular dialog instead of unknown error
+- Free: Object list - deny table delete
+1.5.0, 2022-03-05
+- Free & Pro: Home/Project tab redesign
+- Free & Pro: Home/Project tab - Close other tabs, updated Close icon for other tabs
+- Free & Pro: Header panel redesign for Find tab, Batch data diff and Query result diff tabs
+- Free & Pro: File open progress - add one more 'Calculating changes..' step
+- Free & Pro: File open progress - show database open errors in progress panel (instead of dialog)
+- Free & Pro: Object lists - highlight Created/Modified dates of changed objects as yellow (color of ignored change) instead of red to indicate that date is not the reason of considering object as changed
+- Pro: Generate xlsx reports without use of Excel, improve report generation performance
+- Pro: Settings - Appearance tab renamed to Misc, added new options for ambiguous object names and reports
+- Pro: Custom data diff - show mapping type and sorting as radio-button to change them in single click
+- Pro: Custom data diff - change 'project' -> 'database
+- Pro: Object list - add 'Open in Query result diff' action for table definitions and views
+- Pro: Table structure diff - add 'Open in Query result diff' action
+- Pro: Table structure diff - Excel export
+- Pro: Batch data diff - object name click - open Table structure diff for tables, indented Text diff for queries
+- Free: Limit number of opened Find tabs
+1.4.4, 2022-01-28
+- Free & Pro: Fix CURRENT_TIMESTAMP default SQL generation for MySQL 5.7 and below
+- Free & Pro: Text diff - fix occasionally missing underscore on some display settings
+- Pro: Object list - add 'Open table definition as text' action for table definitions
+1.4.3, 2021-12-21
+- Free & Pro: Activation dialog - allow to configure 'check for updates', updated some information
+- Free & Pro: Project tab - change 'reload' label to 'refresh' and run action without closing other tabs
+- Free & Pro: Text diff - 'Ignore empty line' option
+- Pro: 'Copy to selection to clipboard' action, applicable for Project tab, Object list, Data diff, Text diff and Query result diff
+- Pro: Table structure diff - fix nullref error on 'Compare data (new and changed)'
+- Pro: Query result diff - fix index out of range error
+- Pro: Object list text diff preview - fix disappearing scrollbar issue
+- Free: Object list - fix 'Sequence contains no matching element' error on Table definitions refresh
+1.4.2, 2021-11-11
+- Free & Pro: Fix showing 'new version released' for the same version
+- Free & Pro: MariaDB - update script generation and merge logic for column DEFAULT values
+- Free & Pro: MariaDB - update script generation for foreign keys - exclude default RESTRICT clause
+- Free: Make Refresh action available
+1.4.1, 2021-11-09
+- Free & Pro: Fix broken comparison of binary/blob values
+- Free & Pro: Data diff - truncate varchar, tinytext, mediumtext and longtext data on UI to 100 chars (the same way as for char and text)
+- Add Refresh action applicable for Data diff and Object list tabs
+- Table structure diff tab - fix missing size for bit data type
+1.4.0, 2021-11-01
+- Free & Pro: Tab toolbar actions moved inside tab, into the panel splitter
+- Free & Pro: Check for updates implemented for future updates. Can be disabled using 'Information about current license' dialog (blue 'i' toolbar button)
+- Free & Pro: Table definitions - use script generated by application instead of SHOW CREATE TABLE result
+- Free & Pro: Enable legacyUnhandledExceptionPolicy to avoid crash after background thread error
+- Free & Pro: More usage of system control background color
+- Free & Pro: Minor text adjustments in the activation and settings dialogs
+- Pro: Table structure diff tab - restored and redesigned, allowing to merge/delete columns, constraints and indexes
+- Pro: Project tab - removed "Indexes (non-primary)". Indexes, including PRIMARY KEY are managed now using Table structure diff tab
+- Pro: Project tab - removed "MERGE NEW ONLY" mark for Table definitions since now they can be edited using Table structure diff tab
+- Pro: Object list - fix Replace action tooltips for foreign keys
+1.3.1, 2021-06-04
+- Free & Pro: Toolbar - showing tooltips on disabled buttons, with disable reason
+- Free & Pro: Open databases dialog - 'Save passwords' option added
+- Free & Pro: Increase row heights of some grids (to be the same as for data diff)
+- Free & Pro: Open databases dialog - 'Test connectivity' actions
+- Free & Pro: Object list - performance improvements for large amount of objects
+- Pro: Open databases dialog - SSH connectivity support
+- Pro: Project tab - ability to show new/changed lines only
+- Pro: Project tab - update presentation of DB port number
+1.3.0, 2021-03-10
+- Free & Pro: For now Table structure diff tab replaced with Text diff tab because 1) it is not enough to cover all table options, and 2) to provide consistency between object list bottom text preview, table definition and table merge text. Table script is taken as SHOW CREATE TABLE result without table options (particularly to avoid AUTO_INCREMENT changes which are caused by data)
+- Free & Pro: Project reload dialog simplified
+- Free & Pro: Fix app start failure caused by FIPS
+- Free & Pro: Updated app icon
+- Pro: Custom data diff - fix failure caused by mapping duplicates
+1.2.2, 2021-02-05
+- Free & Pro: Data diff - fixed 'index out of range' error for some cases when compared tables have different number of columns and there are new rows
+- Free & Pro: License activation dialog - minor help text updates
+- Free: Find tab - fixed nullref error and reduced results
+1.2.1, 2020-12-10
+- Free & Pro: Data diff - fixed column headers truncated text for 100% windows scaling
+- Pro: Query result diff - fix missing data changes highlight
+1.2.0, 2020-12-07
+- Free & Pro: Updated MySqlConnector to 1.2.0, tested MariaDB compatibility
+- Free & Pro: Data diff - show NULL values explicitely
+- Free & Pro: Data diff - using local cache for string and binary data and for data merge scripts, this should fix most of out-of-memory errors which could appear before; on UI strings are truncated to 100 characters
+- Free & Pro: New 'Execute data script' dialog with options to run as transaction and stop of first error, new option to save script and results to file (save whole script to file and clipboard are available for Pro only)
+- Free & Pro: New instanceId algorithm (to reduce collisions), updated trial activation server and logic
+- Free & Pro: Data diff - mark key columns in headers
+- Free & Pro: License text and installation folder updated with new ThirdPartyNotices.txt file
+- Free & Pro: Handle AccessViolationException
+- Pro: Ability to delete and merge table definitions (MERGE NEW ONLY)
+- Pro: Foreign keys support
+- Pro: Indexes support
+- Pro: Text diff - ability to show new/changed lines only
+- Pro: Data diff - 'No comparison key(s)' and 'Sorting on non-key column(s)' result warnings
+- Pro: Data diff - 'Compare definition' action, 'Column mapping' action changed from text to icon
+- Pro: Text diff - 'Compare data' actions
+- Pro: Project tab - export to Excel
+1.1.3, 2020-01-20
+- Free & Pro: Improved unexpected errors handling and logging
+- Pro: Data diff - fixed some failures on jump previous/next change
+1.1.2, 2020-01-13
+- Free & Pro: Project tab - added 'Recent projects' bottom panel
+1.1.1, 2019-08-04
+- Free & Pro: Online help on F1 keyboard shortcut
+- Pro: Query key columns dialog - don't show if there are no columns to choose
+1.1.0, 2019-07-25
+- Free & Pro: Tab icons
+- Free & Pro: Project panel object type icons
+- Free & Pro: Dynamic tab header width (max value configurable in Settings)
+- Free & Pro: Some uncommon tab-specific actions moved to the separate toolbar
+- Free & Pro: Deny visual (not actual) object/row deletion from some data grids (object list, data diff, query result diff, custom data diff, table structure diff)
+- Free & Pro: Find tab - acceleration keys, Alt+S (search for), Alt+L (left project) Alt+R (right project), Alt+W (match whole word), Alt+C (match case)
+- Free & Pro: Rename field -> column in UI (data diff tab, query result diff tab, query key columns dialog, custom data diff dialog)
+- Free & Pro: Minor tooltip text update for select all/none actions
+- Pro: Object list text diff preview
+- Free: Allow sorting only on single-column primary key (was broken by background processing in 0.2.0)
+1.0.1, 2019-05-31
+- Free & Pro: Show loaded project names in application title
+- Pro: Query result diff - fix STA error for basic and customized field mappings
+- Pro: Query diff view - remove "no paging" label (AccdbMerge artefact)
+1.0.0, 2019-05-23
+- Pro: Diff overview in scrollbar (for object list, data diff, text diff, batch data diff, query result diff, table structure diff)
+- Pro: Data diff - fix sorting (was broken by background processing)
+- Pro: Batch data diff - fix some jump prev/next issues related to sorting
+- Pro: Excel - fix always-plus 'exists in' value for object list and table structure diff
+- Pro: Table structure diff - fix missing project names in excel export
+- Pro: Query result diff - fix error on row selection by space
+0.2.0, 2019-03-30
+- Free & Pro: Data diff - run in background
+- Free & Pro: Project reload warning and options
+- Free & Pro: Zoom button splinted into separate zoom in / zoom out buttons
+- Free & Pro: Database open dialog - remember last server names, port, 'use both' and 'display password' flags
+- Free & Pro: Improved processing of unexpected failures
+- Free & Pro: Improved database object reading error handling
+- Free & Pro: open dialog - fixed lock on left port and username when you open only right DB
+- Pro: Batch data diff - column sorting
+- Pro: Settings - new 'Appearance' tab with 'Don't resize toolbar on application zoom' option
+- Pro: Command line - /srv /port /db /user /psw keys support (with Left/Right suffix each)
+0.1.5, 2019-02-15
+- Free & Pro: Product renamed to 'KS DB Merge Tools for MySQL'
+- Free & Pro: Append SQL data access for non-deterministic functions and stored procedures
+- Free & Pro: Reading routine comments for functions and stored procedures
+- Free & Pro: Open dialog usability fixes (tab order, saving Save/Load expanded state)
+- Free & Pro: Start license dialog keyboard navigation improvements, updated Help text
+- Free: Object list - fixed blocked by-mouse selection of the top item in list
+0.1.4, 2018-11-23
+- Free & Pro: Object list - fix broken drilldown to table structure only if one side loaded
+- Pro: Data diff - fix paging
+0.1.3, 2018-11-21
+- Free & Pro: Fix duplicate key error on some projects load (use case sensitive db name filter on project load)
+0.1.2, 2018-11-13
+- Free & Pro: Initial public version
+© 2012-2026 Konstantin Semenenkov. This site has no cookies.
+Privacy
+.
+Terms
+.
+Contact
+.
