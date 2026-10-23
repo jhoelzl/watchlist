@@ -65,3 +65,6 @@ urls:
   - url: https://ksdbmerge.tools/mysql-diff-merge-watsnew.html
     group: Tools
     only_added: true
+  - url: https://www.commend.com/en/jobs/jobs-at-commend-in-salzburg/
+    group: Commend
+    selector: main
