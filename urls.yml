@@ -19,13 +19,13 @@ urls:
     selector: main
     only_added: true
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live
-    group: Azure
+    group: Voice Live
     selector: main
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to
-    group: Azure
+    group: Voice Live
     selector: main
   - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize
-    group: Azure
+    group: Voice Live
     selector: main
   - url: https://cloud.google.com/text-to-speech/docs/release-notes
     group: Google
@@ -71,3 +71,60 @@ urls:
   - url: https://kletterhallesalzburg.at/events
     group: Climbing
     selector: '[role=main]'
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-api-reference-2026-07-15
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/python/api/overview/azure/ai-voicelive-readme?view=azure-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-faq
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-agent-integration?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-proactive-messages?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-auto-truncation?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-interim-response?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-hosted-agent-integration
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-mcp-server?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-webrtc
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-telephony
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-telemetry?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-evaluate
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-quickstart?tabs=foundry-new%2Clinux%2Ckeyless&pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-agents-quickstart?tabs=linux&pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-voice-live-function-calling?pivots=programming-language-python
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/how-to-bring-your-own-model?tabs=rest
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-language-support?tabs=speechinput
+    group: Voice Live
+    selector: main
+  - url: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-language-support?tabs=speechoutput
+    group: Voice Live
+    selector: main
