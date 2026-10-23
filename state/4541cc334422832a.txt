@@ -82,12 +82,19 @@ Word-level timestamps
 ✅
 ✅
 Supported languages
-The service operates in multi-lingual mode by default, so you don't need to specify the input language locale. Optionally, to guide recognition toward a specific language locale, you can set the
+The
 locales
-parameter using a supported locale code (for example,
-en-us
-). For more information about the supported language locales, see
-supported languages
+field is optional. Azure LLM Speech is multilingual and automatically detects the languages in your audio when you omit this field. If you know the locale of your audio, specifying a supported locale code, such as
+en-US
+, might improve transcription quality. For the complete locale list, see
+Azure LLM Speech transcription locales
+.
+For translation, the
+targetLanguage
+field is required and uses a language code, such as
+en
+, rather than a transcription locale. See
+Azure LLM Speech translation target languages
 .
 You can try LLM Speech in
 Microsoft Foundry
@@ -151,7 +158,7 @@ Call the LLM Speech API
 In your POST request to the
 transcriptions
 endpoint, use the multipart/form-data content type with the audio file and the request body properties.
-The following example shows how to transcribe an audio file with a specified locale. If you know the locale of the audio file, you can specify it to improve transcription accuracy and minimize the latency.
+The following examples show how to transcribe or translate an audio file.
 Replace
 YourSpeechResoureKey
 with your Speech resource key.
@@ -170,7 +177,11 @@ with
 role-based access control
 guide.
 Use LLM Speech to transcribe an audio file
-You can transcribe audio in the input language without specifying a locale code. The model automatically detects and selects the appropriate language based on the audio content.
+The
+locales
+field is optional. The model is multilingual and automatically detects the languages in your audio when you omit this field. If you know the locale of your audio, specifying it may improve transcription quality. See
+Azure LLM Speech transcription locales
+for the complete list.
 curl --location 'https://YourResourceName.cognitiveservices.azure.com/speechtotext/transcriptions:transcribe?api-version=2025-10-15' \
 --header 'Content-Type: multipart/form-data' \
 --header 'Ocp-Apim-Subscription-Key: <YourSpeechResourceKey>' \
@@ -194,29 +205,11 @@ curl --location 'https://YourResourceName.cognitiveservices.azure.com/speechtote
 "targetLanguage": "ko"
 }
 }'
-The following target languages are supported in
+For the language codes supported in
 targetLanguage
-by specifying the corresponding language code:
-Language code
-Language
-de
-German
-en
-English
-es
-Spanish
-fr
-French
-it
-Italian
-ko
-Korean
-ja
-Japanese
-pt
-Portuguese
-zh
-Chinese
+, see
+Azure LLM Speech translation target languages
+.
 Use prompt-tuning to alter performance
 You can provide an optional text to guide the output style for the
 transcribe

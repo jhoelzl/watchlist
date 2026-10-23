@@ -1,7 +1,7 @@
 {
  "https://cloud.google.com/text-to-speech/docs/release-notes": {
   "changed": "",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Google",
   "name": "Cloud TTS release notes | Cloud Text-to-Speech | Google Cloud Documentation",
@@ -9,23 +9,23 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/language-service/whats-new?tabs=csharp": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "What's new in Azure Language in Foundry Tools? - Foundry Tools | Microsoft Learn",
   "status": "ok"
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry": {
-  "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "changed": "2026-10-23 06:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "Use Azure LLM Speech - Speech Service - Foundry Tools | Microsoft Learn",
   "status": "ok"
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text": {
-  "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "changed": "2026-10-23 06:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "What's new - Speech service - Foundry Tools | Microsoft Learn",
@@ -33,7 +33,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "Voice Live API Overview - Foundry Tools | Microsoft Learn",
@@ -41,7 +41,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "How to use the Voice Live API - Foundry Tools | Microsoft Learn",
@@ -49,7 +49,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live-how-to-customize": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "How to customize Voice Live input and output - Foundry Tools | Microsoft Learn",
@@ -57,7 +57,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/foundry-classic/openai/whats-new": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "What's new in Azure OpenAI in Microsoft Foundry Models? (classic) - Microsoft Foundry (classic) portal | Microsoft Learn",
@@ -65,7 +65,7 @@
  },
  "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/realtime-audio?tabs=keyless%2Clinux&pivots=programming-language-python#quickstart": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "Use the GPT Realtime API for speech and audio with Azure OpenAI - Microsoft Foundry | Microsoft Learn",
@@ -73,7 +73,7 @@
  },
  "https://learn.microsoft.com/en-us/cli/azure/release-notes-azure-cli?view=azure-cli-latest": {
   "changed": "2026-10-21 20:27 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Azure",
   "name": "Release notes & updates – Azure CLI | Microsoft Learn",
@@ -81,7 +81,7 @@
  },
  "https://www.allthatswing.at/feed/": {
   "changed": "",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Dance",
   "name": "Lindy Hop und Swing in Salzburg: All That Swing",
@@ -89,7 +89,7 @@
  },
  "https://www.commend.com/en/products/cloud-services/ivy-live-translation/": {
   "changed": "",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Commend",
   "name": "Ivy Live Translation | Multilingual Intercom Communication | COMMEND",
@@ -97,7 +97,7 @@
  },
  "https://www.commend.com/en/products/cloud-services/virtual-assistant-ivy/": {
   "changed": "",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Commend",
   "name": "Meet Ivy: Your Intercom Voice Assistant | COMMEND",
@@ -105,15 +105,15 @@
  },
  "https://www.thelindycats.at/de/specials": {
   "changed": "",
-  "checked": "2026-10-22 18:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Dance",
   "name": "The Lindy Cats",
   "status": "ok"
  },
  "https://www.thelindycats.at/de/workshops": {
-  "changed": "2026-10-22 18:02 UTC",
-  "checked": "2026-10-22 18:02 UTC",
+  "changed": "2026-10-23 06:02 UTC",
+  "checked": "2026-10-23 06:02 UTC",
   "error": "",
   "group": "Dance",
   "name": "The Lindy Cats",

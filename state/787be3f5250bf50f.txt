@@ -7788,7 +7788,11 @@ Improve recognition accuracy with phrase list
 Improved runtime latency
 This release includes service-side runtime enhancements that reduce end-to-end latency across short, medium, and long audio. No customer action is required. Results vary by workload and instance load.
 Azure LLM Speech 07 2026 model release
-Azure LLM Speech 07 2026 improves multilingual transcription quality across supported languages and mixed-language inputs. Use the service-managed model update through the API and the Microsoft Foundry playground. No client change or model version selection is required. For more information, see the
+Azure LLM Speech 07 2026 improves multilingual transcription quality across supported languages and mixed-language inputs. Use the service-managed model update through the API and the Microsoft Foundry playground. No client change or model version selection is required. For the complete locale list, see
+Azure LLM Speech transcription locales
+. The
+locales
+field is optional: the model detects languages automatically, but specifying a known locale may improve transcription quality. For more information about the release, see the
 published blog
 .
 MAI-transcribe-2 release
@@ -8242,7 +8246,7 @@ video translation overview
 Pronunciation Assessment
 Speech
 Pronunciation Assessment
-now supports 24 languages generally available (with one new language added), with 7 more languages available in public preview. For more information, see the full
+now supports 24 languages generally available (with one new language added), with 7 more languages available in preview. For more information, see the full
 language list for Pronunciation Assessment
 .
 April 2024 release

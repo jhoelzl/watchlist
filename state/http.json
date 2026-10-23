@@ -10,13 +10,13 @@
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/llm-speech?tabs=new-foundry%2Clinux%2Cwindows&pivots=ai-foundry": {
   "config": "35e48f63b62e",
-  "etag": "\"iiadFOPoQ0LqIChLnPN7y7/Tapg=\"",
-  "last_modified": "Mon, 19 Oct 2026 22:13:30 GMT"
+  "etag": "\"WU2M37R2djROTp+ORN/WzMzI68w=\"",
+  "last_modified": "Thu, 22 Oct 2026 22:18:10 GMT"
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/releasenotes?tabs=speech-to-text": {
   "config": "35e48f63b62e",
-  "etag": "\"gdlrl8nyLb1Dr/PcXds/wngJTc0=\"",
-  "last_modified": "Mon, 19 Oct 2026 22:10:21 GMT"
+  "etag": "\"9GzAGC/0fAfP4gk2lb7dyd2aXFo=\"",
+  "last_modified": "Thu, 22 Oct 2026 22:09:41 GMT"
  },
  "https://learn.microsoft.com/en-us/azure/ai-services/speech-service/voice-live": {
   "config": "35e48f63b62e",
@@ -55,7 +55,7 @@
  },
  "https://www.commend.com/en/products/cloud-services/ivy-live-translation/": {
   "config": "79f2c6dbd1b1",
-  "last_modified": "Thu, 22 Oct 2026 12:31:58 GMT"
+  "last_modified": "Thu, 22 Oct 2026 19:14:37 GMT"
  },
  "https://www.commend.com/en/products/cloud-services/virtual-assistant-ivy/": {
   "config": "35e48f63b62e",
