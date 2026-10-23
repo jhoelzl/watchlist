@@ -63,4 +63,5 @@ urls:
     group: Dance
     selector: main
   - url: https://ksdbmerge.tools/mysql-diff-merge-watsnew.html
+    group: Tools
     only_added: true
