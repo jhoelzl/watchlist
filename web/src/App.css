@@ -171,3 +171,5 @@ button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--
   .change .del mark { background: #7a2a2a; }
 }
 .day-heading { margin: 20px 0 8px; font-size: 15px; font-weight: 650; }
+.icon-btn { border: 0; background: none; color: var(--muted, #888); font-size: 20px; line-height: 1; padding: 2px 8px; border-radius: 6px; cursor: pointer; }
+.icon-btn:hover { background: rgba(200, 0, 0, 0.12); color: #c00; }

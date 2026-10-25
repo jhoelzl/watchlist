@@ -204,7 +204,7 @@ export function Dashboard() {
                     </td>
                     <td>{e.checked || '-'}</td>
                     <td>{e.changed || '-'}</td>
-                    <td><button className="btn" onClick={() => void remove(e)}>Löschen</button></td>
+                    <td><button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => void remove(e)}>×</button></td>
                   </tr>
                 ))}
               </tbody>
