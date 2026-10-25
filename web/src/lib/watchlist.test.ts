@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -206,7 +206,7 @@ describe('URLs bearbeiten', () => {
 
 describe('view hash', () => {
   it('roundtrip', () => {
-    const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b' }
+    const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b', sort: { key: 'changed' as const, desc: true } }
     expect(parseView(buildHash(v))).toEqual(v)
   })
   it('default ist leer', () => {
@@ -253,6 +253,26 @@ describe('Fehlerserie', () => {
   })
 })
 
+describe('Sortierung', () => {
+  const e = (name: string, status: Entry['status'], changed = '', checked = '') => ({ url: name, name, group: 'G', checked, changed, error: '', status }) as Entry
+  const items = [e('B', 'ok', '2026-10-24 06:00 UTC'), e('A', 'error'), e('C', 'ok', '2026-10-25 06:00 UTC')]
+  const names = (s: Parameters<typeof sortEntries>[1]) => sortEntries(items, s).map((x) => x.name)
+  it('nach Name und Status', () => {
+    expect(names({ key: 'name', desc: true })).toEqual(['C', 'B', 'A'])
+    expect(names({ key: 'status', desc: false })).toEqual(['A', 'B', 'C'])
+  })
+  it('Zeit: leere Werte immer am Ende', () => {
+    expect(names({ key: 'changed', desc: false })).toEqual(['B', 'C', 'A'])
+    expect(names({ key: 'changed', desc: true })).toEqual(['C', 'B', 'A'])
+  })
+  it('Standard ohne Schlüssel und Klick-Reihenfolge', () => {
+    expect(names({ key: '', desc: false })).toEqual(['B', 'A', 'C'])
+    const s1 = nextSort({ key: '', desc: false }, 'name')
+    const s2 = nextSort(s1, 'name')
+    expect([s1.desc, s2.desc, nextSort(s2, 'name').key]).toEqual([false, true, ''])
+  })
+})
+
 describe('runPhase', () => {
   const run = (id: number, status: string, conclusion: string | null = null) => ({ id, status, conclusion, url: '' })
   it('wartet auf neuen Lauf', () => {
@@ -267,7 +287,7 @@ describe('runPhase', () => {
 })
 
 describe('pickView', () => {
-  const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '' }, collapsed: [] }
+  const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '', sort: { key: '' as const, desc: false } }, collapsed: [] }
   it('Hash hat Vorrang, sonst gespeicherte Ansicht', () => {
     expect(pickView('#t=changes', stored).tab).toBe('changes')
     expect(pickView('', stored).tab).toBe('groups')

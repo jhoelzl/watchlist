@@ -345,8 +345,11 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
 }
 
 export type Tab = 'urls' | 'changes' | 'groups'
-export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string }
-export const DEFAULT_VIEW: ViewState = { tab: 'urls', group: '', status: '', period: '', query: '' }
+export type SortKey = '' | 'name' | 'status' | 'checked' | 'changed'
+export type Sort = { key: SortKey; desc: boolean }
+export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
+export const DEFAULT_VIEW: ViewState = { tab: 'urls', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
+const SORT_KEYS = ['name', 'status', 'checked', 'changed']
 const TABS: Tab[] = ['urls', 'changes', 'groups']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
@@ -365,7 +368,15 @@ export function parseView(hash: string): ViewState {
     status: (STATUSES.includes(s) ? s : '') as StatusFilter,
     period: (PERIOD_VALUES.includes(per) ? per : '') as Period,
     query: p.get('q') ?? '',
+    sort: parseSort(p.get('o') ?? ''),
   }
+}
+
+// "changed" = aufsteigend, "-changed" = absteigend
+function parseSort(raw: string): Sort {
+  const desc = raw.startsWith('-')
+  const key = desc ? raw.slice(1) : raw
+  return SORT_KEYS.includes(key) ? { key: key as SortKey, desc } : { key: '', desc: false }
 }
 
 export function buildHash(v: ViewState): string {
@@ -375,6 +386,7 @@ export function buildHash(v: ViewState): string {
   if (v.status) p.set('s', v.status)
   if (v.period) p.set('p', v.period)
   if (v.query) p.set('q', v.query)
+  if (v.sort.key) p.set('o', (v.sort.desc ? '-' : '') + v.sort.key)
   const out = p.toString()
   return out ? `#${out}` : ''
 }
@@ -467,4 +479,28 @@ export function sparkBars(counts: number[], width = 90, height = 18): { x: numbe
   const max = Math.max(...counts, 1)
   const w = width / counts.length
   return counts.flatMap((c, i) => (c ? [{ x: i * w, y: height - Math.max(2, (c / max) * height), w: Math.max(w - 1, 1), h: Math.max(2, (c / max) * height) }] : []))
+}
+
+const STATUS_RANK: Record<Status, number> = { error: 0, warn: 1, new: 2, pending: 3, ok: 4, paused: 5 }
+
+/** Klick auf eine Spalte: aufsteigend, dann absteigend, dann Standardreihenfolge. */
+export function nextSort(current: Sort, key: SortKey): Sort {
+  if (current.key !== key) return { key, desc: false }
+  return current.desc ? { key: '', desc: false } : { key, desc: true }
+}
+
+/** Sortiert Einträge innerhalb einer Gruppe. Leere Zeitwerte stehen immer am Ende. */
+export function sortEntries(items: Entry[], sort: Sort): Entry[] {
+  if (!sort.key) return items
+  const dir = sort.desc ? -1 : 1
+  const key = sort.key
+  const empty = (v: string) => !v || v === '-'
+  return [...items].sort((a, b) => {
+    if (key === 'name') return dir * a.name.localeCompare(b.name, 'de', { sensitivity: 'base' })
+    if (key === 'status') return dir * (STATUS_RANK[a.status] - STATUS_RANK[b.status]) || a.name.localeCompare(b.name, 'de', { sensitivity: 'base' })
+    const x = a[key]
+    const y = b[key]
+    if (empty(x) !== empty(y)) return empty(x) ? 1 : -1
+    return dir * x.localeCompare(y)
+  })
 }

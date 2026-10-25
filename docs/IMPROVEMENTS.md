@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 44 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 47 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 7)
 
@@ -13,7 +13,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | 3 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
 | 4 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
 | 5 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
-| 6 | Sortierbare Spalten und Toasts statt `window.confirm` | Dashboard | 🟡 | S |
+| 6 | Toasts statt `window.confirm` | Dashboard | 🟡 | S |
 | 7 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
 
 ---
@@ -47,7 +47,6 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 
 ## 4. Dashboard
 
-- 🟡 **Sortierung:** Spalten sortierbar (zuletzt geändert, zuletzt geprüft, Status). Gruppen sind bereits alphabetisch. (S)
 - 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
 - 🟡 **Lazy-Load/Pagination** des Verlaufs, falls `MAX_HISTORY` wächst. (M)
 - ⚪ **Seitenweise Diff-Ansicht:** Nebeneinander (Alt/Neu) zusätzlich zum Inline-Diff, Umschalter „nur geänderte Zeilen“. (M)
@@ -132,6 +131,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | CONTRIBUTING.md | Setup, Tests, Stil, Daten und Doku-Pflege in `CONTRIBUTING.md`, in der README verlinkt |
 | Edge Functions abgesichert | `watchlist-trigger-check` und `watchlist-preview` erlauben CORS nur für `https://jhoelzl.github.io` (und `localhost:5173` für die Entwicklung), fremde Origins bekommen 403. Der Start einer Prüfung ist auf einen pro Minute begrenzt (429) |
 | Fehlerserie im Dashboard | Badge „N Läufe in Folge“ bei Fehlern (aus `streak`), ab 6 Läufen „Dauerhaft kaputt“ (gleiche Schwelle wie `STUCK_AFTER` in `check.py`) und neuer Filter „Dauerhaft kaputt“ |
+| Sortierbare Spalten | Klick auf Status, Seite, Zuletzt geprüft oder Zuletzt geändert sortiert innerhalb der Gruppen (aufsteigend, absteigend, Standard). Leere Zeiten bleiben am Ende, die Sortierung steht im URL-Hash (`o=-changed`) und wird gemerkt |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

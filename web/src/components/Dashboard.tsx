@@ -3,12 +3,14 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, nextSort, sortEntries, type Sort, type SortKey, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
 type Data = { freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
+
+const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Seite'], ['checked', 'Zuletzt geprüft'], ['changed', 'Zuletzt geändert']]
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
   ['', 'Alle'], ['problem', 'Probleme'], ['stuck', 'Dauerhaft kaputt'], ['error', 'Fehler'], ['warn', 'Zu wenig Text'], ['new', 'Neu'], ['ok', 'OK'], ['pending', 'Offen'], ['paused', 'Pausiert'],
@@ -201,6 +203,7 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>(initial.period)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
+  const [sort, setSort] = useState<Sort>(initial.sort)
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(initial.tab)
@@ -246,13 +249,13 @@ export function Dashboard() {
   }, [data, mailTarget])
 
   useEffect(() => {
-    writePrefs({ view: { tab, group, status, period, query }, collapsed: [...collapsed] })
-  }, [tab, group, status, period, query, collapsed])
+    writePrefs({ view: { tab, group, status, period, query, sort }, collapsed: [...collapsed] })
+  }, [tab, group, status, period, query, sort, collapsed])
 
   useEffect(() => {
-    const hash = buildHash({ tab, group, status, period, query })
+    const hash = buildHash({ tab, group, status, period, query, sort })
     if (hash !== window.location.hash) history.replaceState(null, '', hash || window.location.pathname + window.location.search)
-  }, [tab, group, status, period, query])
+  }, [tab, group, status, period, query, sort])
 
   // Lauf-Status alle 5 s abfragen, bis der Lauf fertig ist (max. 10 Minuten)
   useEffect(() => {
@@ -405,9 +408,13 @@ export function Dashboard() {
               </span>
             </button>
             {!collapsed.has(name) && <table>
-              <thead><tr><th>Status</th><th>Seite</th><th>Zuletzt geprüft</th><th>Zuletzt geändert</th><th>Letzte {SPARK_DAYS} Tage</th><th></th></tr></thead>
+              <thead><tr>{SORT_COLUMNS.map(([key, label]) => (
+                <th key={key} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : 'none'}>
+                  <button className="sort-btn" onClick={() => setSort(nextSort(sort, key))}>{label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</button>
+                </th>
+              ))}<th>Letzte {SPARK_DAYS} Tage</th><th></th></tr></thead>
               <tbody>
-                {items.map((e) => (
+                {sortEntries(items, sort).map((e) => (
                   <Fragment key={e.url}>
                   <tr className={e.active === false ? 'paused' : ''}>
                     <td><span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span></td>

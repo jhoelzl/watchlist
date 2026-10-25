@@ -322,3 +322,6 @@ tr.edit-row td { opacity: 1; padding: 0; }
 }
 
 .flip { display: inline-block; transform: scaleX(-1); }
+
+.sort-btn { all: unset; cursor: pointer; text-transform: inherit; letter-spacing: inherit; font: inherit; color: inherit; }
+.sort-btn:hover, .sort-btn:focus-visible { color: var(--text); text-decoration: underline; }
