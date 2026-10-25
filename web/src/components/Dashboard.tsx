@@ -205,6 +205,10 @@ export function Dashboard() {
   const [editing, setEditing] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>(initial.sort)
   const [pageUrl, setPageUrl] = useState<string | null>(null)
+  const [extra, setExtra] = useState<Change[]>([])
+  const [noMore, setNoMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [moreError, setMoreError] = useState('')
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(initial.tab)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(prefs?.collapsed))
@@ -226,7 +230,26 @@ export function Dashboard() {
       .then(({ data: rows, error }) => { if (!stale) setPageHistory(error ? { error: error.message } : ((rows ?? []) as Change[])) })
     return () => { stale = true }
   }, [pageUrl])
-  const source = pageUrl ? (Array.isArray(pageHistory) ? pageHistory : []) : (data?.changes ?? [])
+  const base = pageUrl ? (Array.isArray(pageHistory) ? pageHistory : []) : (data?.changes ?? [])
+  const baseLimit = pageUrl ? PAGE_HISTORY_LIMIT : HISTORY_LIMIT
+  // Nachgeladene Einträge gehören zur aktuellen Basisliste und werden bei neuen Daten verworfen
+  useEffect(() => { setExtra([]); setNoMore(false); setMoreError('') }, [pageUrl, data])
+  const source = useMemo(() => [...base, ...extra], [base, extra])
+  const canLoadMore = !noMore && base.length >= baseLimit
+  const loadMore = async () => {
+    const lastId = source[source.length - 1]?.id
+    if (lastId === undefined) return
+    setLoadingMore(true)
+    setMoreError('')
+    let q = supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').lt('id', lastId).order('id', { ascending: false }).limit(HISTORY_LIMIT)
+    if (pageUrl) q = q.eq('url', pageUrl)
+    const { data: rows, error } = await q
+    setLoadingMore(false)
+    if (error) return setMoreError(error.message)
+    const more = (rows ?? []) as Change[]
+    setExtra((cur) => [...cur, ...more])
+    if (more.length < HISTORY_LIMIT) setNoMore(true)
+  }
   const pageName = pageUrl ? (data?.entries.find((e) => e.url === pageUrl)?.name ?? pageUrl) : ''
   const showHistory = (url: string) => { setPageUrl(url); setPeriod(''); setQuery(''); setGroup(''); setTab('changes') }
 
@@ -460,7 +483,7 @@ export function Dashboard() {
         {PERIODS.map(([value, label]) => (
           <button key={value} className={`filter-pill${period === value ? ' active' : ''}`} onClick={() => setPeriod(value)}>{label}</button>
         ))}
-        <span className="muted count-text">{changes.length} von {source.length}</span>
+        <span className="muted count-text">{changes.length} von {source.length}{canLoadMore ? '+' : ''}</span>
       </div>
       {changes.length === 0 && <p className="muted">{source.length ? 'Keine Treffer.' : pageUrl ? 'Für diese Seite wurde noch keine Änderung erkannt.' : 'Noch keine Änderungen erkannt.'}</p>}
       {days.map(([day, items]) => (
@@ -491,6 +514,10 @@ export function Dashboard() {
           ))}
         </section>
       ))}
+      {canLoadMore && (
+        <p><button className="btn" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Lade …' : 'Ältere Einträge laden'}</button></p>
+      )}
+      {moreError && <p className="error">Weitere Einträge konnten nicht geladen werden: {moreError}</p>}
         </>
       )}
     </>
