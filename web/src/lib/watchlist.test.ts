@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -152,5 +152,32 @@ describe('fragmentUrl Auswahl', () => {
       .toBe('https://a#:~:text=Noch%20eine%20deutlich%20l%C3%A4ngere%20schlichte%20Zeile%20hier')
     expect(fragmentUrl('https://a', '+Ganz langer Satz mit & vielen <Sonderzeichen> hier\n+Schlicht aber kurz')).toContain('text=Schlicht%20aber%20kurz')
     expect(fragmentUrl('https://a/feed', '+2026-01-01 | Neuer Beitrag | https://a/post/1 | Zusammenfassung')).toBe('https://a/post/1')
+  })
+})
+
+describe('Export/Import', () => {
+  const rows = [
+    { url: 'https://a/x', name: 'A', grp: 'Azure', options: { selector: 'main', js: true } },
+    { url: 'https://b', name: null, grp: null, options: null },
+  ]
+  it('exportiert im urls.yml-Format und liest es wieder ein', () => {
+    for (const format of ['yaml', 'json'] as const) {
+      const out = parseImport(exportUrls(rows, format), [])
+      expect(out.errors).toEqual([])
+      expect(out.rows.map((r) => [r.url, r.name, r.grp, r.options])).toEqual([
+        ['https://a/x', 'A', 'Azure', { selector: 'main', js: true }],
+        ['https://b', null, null, {}],
+      ])
+    }
+  })
+  it('überspringt vorhandene URLs und meldet Fehler', () => {
+    const out = parseImport('- https://a/x\n- ftp://c\n- {name: ohne}\n- https://neu', ['https://a/x'])
+    expect(out.skipped).toBe(1)
+    expect(out.rows.map((r) => r.url)).toEqual(['https://neu'])
+    expect(out.errors).toHaveLength(2)
+  })
+  it('akzeptiert Listen, lehnt Unbrauchbares ab', () => {
+    expect(parseImport('[', []).errors[0]).toContain('nicht lesbar')
+    expect(parseImport('foo: 1', []).errors).toHaveLength(1)
   })
 })

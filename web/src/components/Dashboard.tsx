@@ -3,8 +3,8 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, fragmentUrl, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
-  type Change, type Entry, type Period, type StatusFilter, type UrlRow,
+  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
+  type Change, type DbUrl, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
 type Data = { entries: Entry[]; changes: Change[]; updated: string | null }
@@ -177,6 +177,30 @@ export function Dashboard() {
     setTimeout(() => void load().then(setResult), 90_000)
   }
 
+  const download = async (format: 'yaml' | 'json') => {
+    const { data: rows, error } = await supabase.from('watchlist_urls').select('url, name, grp, options').order('position').order('id')
+    if (error) return window.alert(`Export fehlgeschlagen: ${error.message}`)
+    const blob = new Blob([exportUrls((rows ?? []) as DbUrl[], format)], { type: 'text/plain;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `watchlist-urls.${format}`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return
+    const { data: have, error } = await supabase.from('watchlist_urls').select('url')
+    if (error) return window.alert(`Import fehlgeschlagen: ${error.message}`)
+    const parsed = parseImport(await file.text(), (have ?? []).map((r) => r.url as string))
+    const note = [`${parsed.rows.length} neu, ${parsed.skipped} schon vorhanden.`, ...parsed.errors.slice(0, 5)].join('\n')
+    if (parsed.rows.length === 0) return window.alert(`Nichts zu importieren.\n${note}`)
+    if (!window.confirm(`Importieren?\n${note}`)) return
+    const { error: failed } = await supabase.from('watchlist_urls').insert(parsed.rows)
+    if (failed) return window.alert(`Import fehlgeschlagen: ${failed.message}`)
+    setResult(await load())
+  }
+
   const remove = async (e: Entry) => {
     if (!window.confirm(`„${e.name}“ wirklich löschen?\n${e.url}`)) return
     const { error } = await supabase.from('watchlist_urls').delete().eq('url', e.url)
@@ -203,6 +227,14 @@ export function Dashboard() {
         </div>
         <div className="intro-actions">
           <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>URL hinzufügen</button>
+          <details className="menu">
+            <summary className="btn">Import / Export</summary>
+            <div className="menu-items">
+              <button className="btn" onClick={() => void download('yaml')}>Export als YAML</button>
+              <button className="btn" onClick={() => void download('json')}>Export als JSON</button>
+              <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
+            </div>
+          </details>
           <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy'}>
             {check.state === 'busy' ? 'Starte …' : 'Jetzt prüfen'}
           </button>

@@ -33,6 +33,7 @@ Vite + React + `supabase-js`, Anmeldung per E-Mail und Passwort wie in der App s
 - Tab „Gruppen“: Gruppen anlegen, umbenennen, URLs zuordnen und auflösen. Das ändert `grp` an den URLs und braucht die Policy `admins update urls` aus `supabase/schema.sql` (einmal im SQL-Editor ausführen).
 - „Jetzt prüfen“: Der Button ruft die Edge Function `watchlist-trigger-check` (`supabase/functions/`) auf. Sie prüft die Anmeldung und `watchlist_admins` und startet dann den Workflow `check`. Einrichten: Fine-grained Token auf GitHub anlegen (nur dieses Repo, Berechtigung „Actions: Read and write“), dann `supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>` und `supabase functions deploy watchlist-trigger-check --project-ref <ref> --no-verify-jwt`.
 - Selector-Vorschau: Im Formular „URL hinzufügen“ ruft die Edge Function `watchlist-preview` die Seite ab und zeigt den erkannten Bereich samt Textmenge. Deployen: `supabase functions deploy watchlist-preview --project-ref <ref> --no-verify-jwt`. Sie prüft wie der Button Anmeldung und `watchlist_admins`, blockt interne Adressen und rendert kein JavaScript.
+- Import / Export: Das Menü „Import / Export“ sichert die URL-Liste als YAML oder JSON (Format wie `urls.yml`) und liest solche Dateien wieder ein. Vorhandene URLs bleiben unberührt. Der Import braucht die Insert-Policy `admins add urls`.
 
 Alternativ geht eine direkte Postgres-Verbindung mit `SUPABASE_DB_URL` (Session-Pooler-URL mit Datenbankpasswort), sie hat Vorrang.
 

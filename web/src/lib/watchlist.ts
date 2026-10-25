@@ -1,3 +1,5 @@
+import { parse, stringify } from 'yaml'
+
 export type Status = 'ok' | 'new' | 'error' | 'warn' | 'pending'
 
 export type Entry = {
@@ -247,4 +249,52 @@ export function groupChange(entries: Entry[], current: string | null, name: stri
   const assign = [...selected]
   const clear = [...members].filter((u) => !selected.has(u))
   return { grp, assign, clear }
+}
+
+export type DbUrl = { url: string; name: string | null; grp: string | null; options: Record<string, unknown> | null }
+export type NewRow = ReturnType<typeof buildRow> extends infer R ? Extract<R, { row: unknown }>['row'] : never
+
+/** Format wie urls.yml: {urls: [{url, name, group, ...Optionen}]}. */
+export function exportUrls(rows: DbUrl[], format: 'yaml' | 'json'): string {
+  const urls = rows.map((r) => ({
+    url: r.url,
+    ...(r.name ? { name: r.name } : {}),
+    ...(r.grp ? { group: r.grp } : {}),
+    ...r.options,
+  }))
+  return format === 'json' ? JSON.stringify({ urls }, null, 2) + '\n' : stringify({ urls })
+}
+
+export type ImportResult = { rows: NewRow[]; skipped: number; errors: string[] }
+
+/** Liest YAML oder JSON (Liste oder {urls: [...]}, auch das alte urls.yml). Vorhandene URLs werden übersprungen. */
+export function parseImport(text: string, existing: string[]): ImportResult {
+  let doc: unknown
+  try {
+    doc = parse(text)
+  } catch (e) {
+    return { rows: [], skipped: 0, errors: [`Datei nicht lesbar: ${e instanceof Error ? e.message.split('\n')[0] : 'Syntaxfehler'}`] }
+  }
+  const list = Array.isArray(doc) ? doc : (doc as { urls?: unknown } | null)?.urls
+  if (!Array.isArray(list)) return { rows: [], skipped: 0, errors: ['Erwartet wird eine Liste oder ein Objekt mit "urls".'] }
+  const seen = [...existing]
+  const rows: NewRow[] = []
+  const errors: string[] = []
+  let skipped = 0
+  list.forEach((item, i) => {
+    const e: Record<string, unknown> = typeof item === 'string' ? { url: item } : { ...(item as object) }
+    if (!e || typeof e.url !== 'string') return void errors.push(`Eintrag ${i + 1}: url fehlt.`)
+    if (seen.includes(e.url.trim())) return void (skipped += 1)
+    const { url, name, group, ...options } = e
+    const built = buildRow(
+      { url: String(url), name: typeof name === 'string' ? name : '', group: typeof group === 'string' ? group : '', selector: '', js: false },
+      seen,
+      existing.length + rows.length + 1,
+    )
+    if ('error' in built) return void errors.push(`Eintrag ${i + 1} (${String(url)}): ${built.error}`)
+    built.row.options = options
+    seen.push(built.row.url)
+    rows.push(built.row)
+  })
+  return { rows, skipped, errors }
 }

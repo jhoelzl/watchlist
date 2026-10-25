@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 23 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 26 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -41,7 +41,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - ⚪ **Screenshots bei JS-Seiten** als Artefakt, hilft bei Layout-Problemen. (M)
 - ⚪ **Auth-Support** (Header/Cookies über Secrets) für geschützte Seiten. (M)
 - ⚪ **`add.py` verbessern:** mehrere URLs auf einmal (`-f liste.txt`), Duplikatserkennung über normalisierte URL, Vorschlag für `ignore`. (S)
-- ⚪ **Import/Export** der URL-Liste als YAML/JSON im Dashboard (Backup, Umzug), da `urls.yml` nicht mehr im Repo liegt. (S)
 
 ## 3. UX / UI (Mails und CLI)
 
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Audit-Job | `tests.yml`: `uv audit` und `npm audit` laufen im eigenen Job `audit` (auch wöchentlich). Beim Zeitplan laufen nur dort Schritte, Lint und Tests nur bei Push und PR |
 | Selector-Vorschau | Edge Function `watchlist-preview` ruft die Seite ab (SSRF-Schutz, nur freigeschaltete Konten) und zeigt im Formular erkannten Bereich, Zeichenzahl, Textprobe und Kandidaten. Logik in `analyze.ts` spiegelt `auto_root`. Kein JavaScript-Rendering |
 | Textfragment-Link | `fragment_url`/`fragmentUrl`: bei Feeds der Eintragslink, sonst die hinzugefügte Zeile mit dem längsten schlichten Textanfang (ohne Sonderzeichen), Fallback die längste |
+| Import/Export | Menü „Import / Export“ im Dashboard: Export als YAML oder JSON im `urls.yml`-Format, Import (auch alte `urls.yml`) mit Vorschau, vorhandene URLs werden übersprungen. Globale `defaults` sind nicht enthalten |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
