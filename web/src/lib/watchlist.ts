@@ -208,13 +208,33 @@ export function dayLabel(day: string): string {
 }
 
 /** URL mit Textfragment (#:~:text=) zur ersten hinzugefügten Zeile; sonst die unveränderte URL. */
+const PLAIN_SNIPPET = /^[\p{L}\p{N}_ .,'-]+$/u
+
+/** Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel. */
+function feedEntryLink(line: string): string {
+  return line.split(' | ').slice(1).map((p) => p.trim()).find((p) => /^https?:\/\/\S+$/.test(p)) ?? ''
+}
+
+/** Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment der längsten schlichten Zeile. */
 export function fragmentUrl(url: string, diff: string): string {
-  for (const line of diff.split('\n')) {
-    if (!line.startsWith('+') || line.startsWith('+++')) continue
-    const snippet = line.slice(1).trim().split(/\s+/).slice(0, 8).join(' ').slice(0, 80)
-    if (snippet.length >= 8) return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeURIComponent(snippet).replaceAll('-', '%2D')}`
+  const added = diff.split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1))
+  for (const line of added) {
+    const link = feedEntryLink(line)
+    if (link) return link
   }
-  return url
+  let best = ''
+  let bestPlain = false
+  for (const line of added) {
+    const snippet = line.trim().split(/\s+/).slice(0, 8).join(' ').slice(0, 80).trim()
+    if (snippet.length < 8) continue
+    const plain = PLAIN_SNIPPET.test(snippet)
+    if (plain > bestPlain || (plain === bestPlain && snippet.length > best.length)) {
+      best = snippet
+      bestPlain = plain
+    }
+  }
+  if (!best) return url
+  return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeURIComponent(best).replaceAll('-', '%2D')}`
 }
 
 export const DEFAULT_GROUP = 'Allgemein'

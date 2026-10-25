@@ -278,15 +278,40 @@ def make_diff(old, new, only_added):
     return diff[:STORE_DIFF_LINES], extra
 
 
+PLAIN_SNIPPET = re.compile(r"[\w .,'\-]+")
+
+
+def feed_entry_link(line):
+    """Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel."""
+    for part in line.split(" | ")[1:]:
+        if re.fullmatch(r"https?://\S+", part.strip()):
+            return part.strip()
+    return ""
+
+
 def fragment_url(url, diff):
-    """URL mit Textfragment (#:~:text=) zur ersten hinzugefügten Zeile, damit der Browser dorthin springt."""
-    for line in diff:
-        if line.startswith("+") and not line.startswith("+++"):
-            snippet = " ".join(line[1:].split()[:8])[:80]
-            if len(snippet) >= 8:
-                encoded = urllib.parse.quote(snippet, safe="").replace("-", "%2D")
-                return f"{url}{':~:text=' if '#' in url else '#:~:text='}{encoded}"
-    return url
+    """Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment (#:~:text=).
+
+    Gewählt wird die hinzugefügte Zeile mit dem längsten Textanfang ohne Sonderzeichen (die sind für das
+    Textfragment fehleranfällig), sonst die längste überhaupt.
+    """
+    added = [line[1:] for line in diff if line.startswith("+") and not line.startswith("+++")]
+    for line in added:
+        link = feed_entry_link(line)
+        if link:
+            return link
+    best = ("", False)
+    for line in added:
+        snippet = " ".join(line.split()[:8])[:80].strip()
+        if len(snippet) < 8:
+            continue
+        plain = PLAIN_SNIPPET.fullmatch(snippet) is not None
+        if (plain, len(snippet)) > (best[1], len(best[0])):
+            best = (snippet, plain)
+    if not best[0]:
+        return url
+    encoded = urllib.parse.quote(best[0], safe="").replace("-", "%2D")
+    return f"{url}{':~:text=' if '#' in url else '#:~:text='}{encoded}"
 
 
 def safe_link(url):

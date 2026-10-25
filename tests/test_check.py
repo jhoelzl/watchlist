@@ -287,3 +287,14 @@ def test_mail_links_to_dashboard_entry(monkeypatch):
     assert link in check.render_html(c) and link in check.render_text(c)
     assert f'href="{check.DASHBOARD_URL}#changes"' in check.render_html(c)
     assert "+1 -0" in check.render_text(c)
+
+
+def test_fragment_url_prefers_longest_plain_line_and_feed_links():
+    diff = ["+Kurz & knapp <b>", "+Eine schlichte Zeile mit Text", "+Noch eine deutlich längere schlichte Zeile hier"]
+    assert check.fragment_url("https://a", diff).endswith(
+        "#:~:text=Noch%20eine%20deutlich%20l%C3%A4ngere%20schlichte%20Zeile%20hier"
+    )
+    diff = ["+Ganz langer Satz mit & vielen <Sonderzeichen> hier", "+Schlicht aber kurz"]
+    assert check.fragment_url("https://a", diff).endswith("#:~:text=Schlicht%20aber%20kurz")
+    feed = ["+2026-01-01 | Neuer Beitrag | https://a/post/1 | Zusammenfassung"]
+    assert check.fragment_url("https://a/feed", feed) == "https://a/post/1"

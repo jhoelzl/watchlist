@@ -145,3 +145,12 @@ describe('groupChange', () => {
     expect(groupChange(entries, 'X', 'X', new Set()).clear.sort()).toEqual(['a', 'b'])
   })
 })
+
+describe('fragmentUrl Auswahl', () => {
+  it('bevorzugt die längste schlichte Zeile und bei Feeds den Eintragslink', () => {
+    expect(fragmentUrl('https://a', '+Kurz & knapp <b>\n+Eine schlichte Zeile mit Text\n+Noch eine deutlich längere schlichte Zeile hier'))
+      .toBe('https://a#:~:text=Noch%20eine%20deutlich%20l%C3%A4ngere%20schlichte%20Zeile%20hier')
+    expect(fragmentUrl('https://a', '+Ganz langer Satz mit & vielen <Sonderzeichen> hier\n+Schlicht aber kurz')).toContain('text=Schlicht%20aber%20kurz')
+    expect(fragmentUrl('https://a/feed', '+2026-01-01 | Neuer Beitrag | https://a/post/1 | Zusammenfassung')).toBe('https://a/post/1')
+  })
+})

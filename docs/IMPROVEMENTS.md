@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 94 Python- und 22 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 23 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -37,7 +37,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - 🟡 **Pro-URL-Intervall:** `interval: daily|weekly`, damit selten ändernde Seiten seltener geprüft werden. (M)
 - 🟡 **Ignore-Vorschläge:** Datums- und Zählerrauschen automatisch erkennen und `ignore`-Muster vorschlagen (in `add.py` oder Dashboard). Wiederkehrende Änderungen im Verlauf erkennen. (M)
 - 🟡 **Empfänger pro Gruppe:** `MAIL_TO` pro Gruppe überschreibbar. (S)
-- ⚪ **Textfragment-Link robuster machen:** Heute wird die erste hinzugefügte Zeile verwendet. Besser: die längste Zeile ohne Sonderzeichen, bei Feeds direkt der Eintragslink. (S)
 - ⚪ **JSON- und PDF-Quellen** unterstützen (JSON-Pfad, PDF-Text). (L)
 - ⚪ **Screenshots bei JS-Seiten** als Artefakt, hilft bei Layout-Problemen. (M)
 - ⚪ **Auth-Support** (Header/Cookies über Secrets) für geschützte Seiten. (M)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | pre-commit für web/ | Hooks `web oxlint` und `web tsc` in `.pre-commit-config.yaml`, mypy deckt alle Module ab. Aktivierung bleibt einmal pro Klon (`uv run pre-commit install`), CI prüft alles ohnehin |
 | Audit-Job | `tests.yml`: `uv audit` und `npm audit` laufen im eigenen Job `audit` (auch wöchentlich). Beim Zeitplan laufen nur dort Schritte, Lint und Tests nur bei Push und PR |
 | Selector-Vorschau | Edge Function `watchlist-preview` ruft die Seite ab (SSRF-Schutz, nur freigeschaltete Konten) und zeigt im Formular erkannten Bereich, Zeichenzahl, Textprobe und Kandidaten. Logik in `analyze.ts` spiegelt `auto_root`. Kein JavaScript-Rendering |
+| Textfragment-Link | `fragment_url`/`fragmentUrl`: bei Feeds der Eintragslink, sonst die hinzugefügte Zeile mit dem längsten schlichten Textanfang (ohne Sonderzeichen), Fallback die längste |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
