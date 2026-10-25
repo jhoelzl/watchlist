@@ -19,7 +19,7 @@ Current state: `check.py` 356 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 ## 1. Security
 
 - 🔴 **Verify dashboard permissions:** The Supabase project is shared with other apps and has open registration. Access depends solely on `watchlist_admins` and the RLS policies. Regularly verify policies (insert/update/delete) with a SQL script, for example using a second account that is not authorized. (S)
-- ⚪ **Redirect/schema validation:** Allow only `http`/`https` and check redirect targets because URLs can be entered in the dashboard (SSRF to internal addresses is rarely relevant on GitHub runners, but can matter locally). (S)
+- ⚪ **DNS rebinding:** `netsafe.py` resolves a host once for the check and again when requests connects, so a malicious DNS server could still answer differently the second time. Fix: connect to the checked IP (custom adapter) with the original `Host` header. (M)
 - ⚪ **Resend error text** (`r.text`) is written to the log. Ensure headers or keys are never exposed there. (S)
 - ⚪ **Document key rotation:** All secrets are in the `watchlist` 1Password vault (only `OP_SERVICE_ACCOUNT_TOKEN` remains in GitHub). Open item: how to renew the service-account token, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, and `GH_DISPATCH_TOKEN` (stored as a Supabase secret, not in 1Password), including the token expiration date. (S)
 

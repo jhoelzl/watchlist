@@ -443,6 +443,9 @@ class FakePage:
     def __init__(self, url):
         self.url = url
 
+    def route(self, pattern, handler):
+        pass
+
     def goto(self, url, **kwargs):
         self.url = url
 
