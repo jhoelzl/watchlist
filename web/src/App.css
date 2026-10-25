@@ -170,3 +170,4 @@ button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--
   .change .add mark { background: #1f6f3a; }
   .change .del mark { background: #7a2a2a; }
 }
+.day-heading { margin: 20px 0 8px; font-size: 15px; font-weight: 650; }

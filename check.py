@@ -7,6 +7,7 @@ import re
 import sys
 import threading
 import time
+import urllib.parse
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
@@ -25,7 +26,9 @@ from store import open_store
 ROOT = Path(__file__).parent
 # Im Workflow liegen state/ und site/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
-MAX_DIFF_LINES = 60
+STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
+MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
+DIFF_CONTEXT = 3
 MAX_HISTORY = 100
 DEFAULT_GROUP = "Allgemein"
 ROBOTS_AGENT = "watchlist"
@@ -249,9 +252,26 @@ def make_diff(old, new, only_added):
         seen = set(old_l)
         diff = ["+" + l for l in new_l if l not in seen]
     else:
-        diff = [l for l in difflib.unified_diff(old_l, new_l, lineterm="", n=1) if not l.startswith(("---", "+++"))]
-    extra = max(0, len(diff) - MAX_DIFF_LINES)
-    return diff[:MAX_DIFF_LINES], extra
+        diff = [l for l in difflib.unified_diff(old_l, new_l, lineterm="", n=DIFF_CONTEXT) if not l.startswith(("---", "+++"))]
+    extra = max(0, len(diff) - STORE_DIFF_LINES)
+    return diff[:STORE_DIFF_LINES], extra
+
+
+def fragment_url(url, diff):
+    """URL mit Textfragment (#:~:text=) zur ersten hinzugefügten Zeile, damit der Browser dorthin springt."""
+    for line in diff:
+        if line.startswith("+") and not line.startswith("+++"):
+            snippet = " ".join(line[1:].split()[:8])[:80]
+            if len(snippet) >= 8:
+                encoded = urllib.parse.quote(snippet, safe="").replace("-", "%2D")
+                return f"{url}{':~:text=' if '#' in url else '#:~:text='}{encoded}"
+    return url
+
+
+def mail_view(change):
+    """Diff für die Mail: gekürzt auf MAIL_DIFF_LINES, der Rest zählt zu "weitere Zeilen"."""
+    diff = change["diff"][:MAIL_DIFF_LINES]
+    return diff, change["extra"] + len(change["diff"]) - len(diff)
 
 
 TOKEN = re.compile(r"\s+|\w+|[^\w\s]")
@@ -312,33 +332,58 @@ def group_changes(changes):
     return groups
 
 
+def summary_line(changes):
+    pages, groups = len(changes), len(group_changes(changes))
+    return f"{pages} Seite{'n' if pages != 1 else ''} geändert in {groups} Gruppe{'n' if groups != 1 else ''}"
+
+
 def render_text(changes):
-    out = []
+    out = [summary_line(changes), ""] if len(changes) > 1 else []
     for group, items in group_changes(changes).items():
         out.append(f"=== {group} ===")
         for c in items:
-            out.append(f"{c['name']}\n{c['url']}\n")
-            out += c["diff"]
-            if c["extra"]:
-                out.append(f"... und {c['extra']} weitere Zeilen")
+            diff, extra = mail_view(c)
+            out.append(f"{c['name']}\n{fragment_url(c['url'], c['diff'])}\n")
+            out += diff
+            if extra:
+                out.append(f"... und {extra} weitere Zeilen (vollständig im Dashboard)")
             out.append("")
     return "\n".join(out).strip()
 
 
 def render_html(changes):
     parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
-    for group, items in group_changes(changes).items():
-        parts.append(f'<h2 style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>')
+    grouped = group_changes(changes)
+    if len(changes) > 1:
+        parts.append(
+            f'<p style="margin:0 0 8px"><strong>{summary_line(changes)}</strong></p><ul style="margin:0 0 8px;padding-left:20px">'
+        )
+        n = 0
+        for gi, (group, items) in enumerate(grouped.items()):
+            links = []
+            for c in items:
+                links.append(f'<a href="#c{n}">{html.escape(c["name"])}</a>')
+                n += 1
+            parts.append(f'<li><a href="#g{gi}"><strong>{html.escape(group)}</strong></a>: {", ".join(links)}</li>')
+        parts.append("</ul>")
+    n = 0
+    for gi, (group, items) in enumerate(grouped.items()):
+        parts.append(f'<h2 id="g{gi}" style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>')
         for c in items:
+            diff, extra = mail_view(c)
+            added, removed = diff_counts(c["diff"])
+            jump = fragment_url(c["url"], c["diff"])
+            jump_link = f' &middot; <a href="{html.escape(jump)}">zur geänderten Stelle</a>' if jump != c["url"] else ""
             parts.append(
-                f'<h3 style="margin:16px 0 4px">{html.escape(c["name"])} '
-                f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{diff_counts(c["diff"])[0]}</span> '
-                f'<span style="color:#82071e">&minus;{diff_counts(c["diff"])[1]}</span></span></h3>'
-                f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a></p>'
+                f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
+                f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
+                f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
+                f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a>{jump_link}</p>'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )
-            for l, segments in zip(c["diff"], annotate_diff(c["diff"]), strict=True):
+            n += 1
+            for l, segments in zip(diff, annotate_diff(diff), strict=True):
                 style = ""
                 mark = ""
                 if l.startswith("+"):
@@ -353,8 +398,8 @@ def render_html(changes):
                     f'<span style="{mark}">{html.escape(s)}</span>' if changed else html.escape(s) for s, changed in segments
                 )
                 parts.append(f'<div style="{style}">{body or "&nbsp;"}</div>')
-            if c["extra"]:
-                parts.append(f'<div style="color:#6e7781">... und {c["extra"]} weitere Zeilen</div>')
+            if extra:
+                parts.append(f'<div style="color:#6e7781">... und {extra} weitere Zeilen (vollständig im Dashboard)</div>')
             parts.append("</pre>")
     parts.append("</div>")
     return "".join(parts)

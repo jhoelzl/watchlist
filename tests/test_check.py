@@ -73,10 +73,10 @@ def test_make_diff_only_added_ignores_removals():
 
 
 def test_make_diff_truncates():
-    new = "\n".join(f"zeile {i}" for i in range(100))
+    new = "\n".join(f"zeile {i}" for i in range(600))
     diff, extra = check.make_diff("", new, only_added=True)
-    assert len(diff) == check.MAX_DIFF_LINES
-    assert extra == 100 - check.MAX_DIFF_LINES
+    assert len(diff) == check.STORE_DIFF_LINES
+    assert extra == 600 - check.STORE_DIFF_LINES
 
 
 def test_default_ignore_removes_last_updated():
@@ -174,3 +174,28 @@ def test_run_end_to_end(tmp_path, monkeypatch):
     hist = json.loads((tmp_path / "state" / "history.json").read_text())
     assert hist[0]["diff"] == ["-eins", "+zwei"] or "+zwei" in hist[0]["diff"]
     assert (tmp_path / "site" / "index.html").exists()
+
+
+def test_fragment_url_points_to_first_added_line():
+    diff = ["@@ -1 +1 @@", " Kontext", "-alt", "+Neue Preise ab 12-Euro, sofort & jetzt"]
+    assert (
+        check.fragment_url("https://a/x", diff) == "https://a/x#:~:text=Neue%20Preise%20ab%2012%2DEuro%2C%20sofort%20%26%20jetzt"
+    )
+    assert check.fragment_url("https://a/x#top", ["+Ein langer neuer Satz"]).startswith("https://a/x#top:~:text=")
+    assert check.fragment_url("https://a/x", ["-nur weg", "+kurz"]) == "https://a/x"
+
+
+def test_mail_shows_short_diff_and_summary():
+    diff = [f"+zeile {i}" for i in range(100)]
+    changes = [
+        {"name": "A", "url": "https://a", "group": "G1", "diff": diff, "extra": 5},
+        {"name": "B", "url": "https://b", "group": "G2", "diff": ["+x"], "extra": 0},
+    ]
+    text = check.render_text(changes)
+    assert text.startswith("2 Seiten geändert in 2 Gruppen")
+    assert "zeile 59" in text and "zeile 60" not in text
+    assert f"und {5 + 100 - check.MAIL_DIFF_LINES} weitere Zeilen" in text
+    html_out = check.render_html(changes)
+    assert 'href="#g1"' in html_out and 'id="c1"' in html_out
+    assert "2 Seiten geändert in 2 Gruppen" in html_out
+    assert "Seiten geändert" not in check.render_text(changes[1:])

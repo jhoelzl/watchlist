@@ -102,13 +102,15 @@ def build(entries, history, generated):
     if not history:
         parts.append('<p class="muted">Noch keine Änderungen erkannt.</p>')
     for h in reversed(history[-50:]):
-        more = f'<div class="muted">... und {h["extra"]} weitere Zeilen</div>' if h.get("extra") else ""
+        shown = h["diff"][:100]
+        rest = h.get("extra", 0) + len(h["diff"]) - len(shown)
+        more = f'<div class="muted">... und {rest} weitere Zeilen</div>' if rest else ""
         text = f"{h['name']} {h['url']} {' '.join(h['diff'])}".lower()
         parts.append(
             f'<details data-t="{esc(text)}" data-g="{esc(group_of(h))}">'
             f"<summary>{esc(h['time'])} - {esc(h['name'])}</summary>"
             f'<p><a href="{esc(h["url"])}">{esc(h["url"])}</a></p>'
-            f"<pre>{diff_html(h['diff'])}{more}</pre></details>"
+            f"<pre>{diff_html(shown)}{more}</pre></details>"
         )
     parts.append(f"<script>{JS}</script></body></html>")
 

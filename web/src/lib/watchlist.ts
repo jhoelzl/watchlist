@@ -168,3 +168,51 @@ export function annotateDiff(lines: string[]): Segment[][] {
 export function countLines(diff: string, sign: '+' | '-'): number {
   return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
 }
+
+export const HISTORY_LIMIT = 100
+
+export type Period = '' | 'today' | '7d' | '30d'
+
+export const PERIODS: [Period, string][] = [['', 'Alle'], ['today', 'Heute'], ['7d', '7 Tage'], ['30d', '30 Tage']]
+
+/** Zeitstempel wie "2026-10-23 06:00 UTC" als Date, sonst null. */
+export function parseStamp(time: string): Date | null {
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(time)
+  if (!m) return null
+  const d = new Date(`${m[1]}T${m[2]}:00Z`)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+export function inPeriod(time: string, period: Period, now: Date = new Date()): boolean {
+  if (!period) return true
+  const at = parseStamp(time)
+  if (!at) return true
+  if (period === 'today') return at.toDateString() === now.toDateString()
+  const days = period === '7d' ? 7 : 30
+  return now.getTime() - at.getTime() <= days * 86_400_000
+}
+
+/** Gruppiert nach Tag (Reihenfolge bleibt erhalten, neueste zuerst). */
+export function groupByDay<T extends { time: string }>(items: T[]): [string, T[]][] {
+  const days = new Map<string, T[]>()
+  for (const item of items) {
+    const day = item.time.slice(0, 10)
+    days.set(day, [...(days.get(day) ?? []), item])
+  }
+  return [...days]
+}
+
+export function dayLabel(day: string): string {
+  const d = new Date(`${day}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** URL mit Textfragment (#:~:text=) zur ersten hinzugefügten Zeile; sonst die unveränderte URL. */
+export function fragmentUrl(url: string, diff: string): string {
+  for (const line of diff.split('\n')) {
+    if (!line.startsWith('+') || line.startsWith('+++')) continue
+    const snippet = line.slice(1).trim().split(/\s+/).slice(0, 8).join(' ').slice(0, 80)
+    if (snippet.length >= 8) return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeURIComponent(snippet).replaceAll('-', '%2D')}`
+  }
+  return url
+}

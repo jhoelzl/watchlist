@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import {
-  STATUS_LABEL, annotateDiff, buildRow, countLines, diffClass, groupEntries, groupOf, matches, summarize, toEntries,
-  type Change, type Entry, type StatusFilter, type UrlRow,
+  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, fragmentUrl, groupByDay, inPeriod, groupEntries, groupOf, matches, summarize, toEntries,
+  type Change, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
 type Data = { entries: Entry[]; changes: Change[]; updated: string | null }
@@ -19,7 +19,7 @@ async function load(): Promise<Load> {
   const [urls, status, history] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp').eq('active', true).order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
-    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(200),
+    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
@@ -78,6 +78,7 @@ export function Dashboard() {
   const [group, setGroup] = useState('')
   const [status, setStatus] = useState<StatusFilter>('')
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
+  const [period, setPeriod] = useState<Period>('')
   const [tab, setTab] = useState<'urls' | 'changes'>('urls')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
@@ -89,9 +90,10 @@ export function Dashboard() {
     [data, query, group, status],
   )
   const changes = useMemo(
-    () => (data?.changes ?? []).filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '')),
-    [data, query, group],
+    () => (data?.changes ?? []).filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '') && inPeriod(c.time, period)),
+    [data, query, group, period],
   )
+  const days = useMemo(() => groupByDay(changes), [changes])
 
   const checkNow = async () => {
     setCheck({ state: 'busy' })
@@ -144,7 +146,7 @@ export function Dashboard() {
         <div className={`stat${sum.problems ? ' bad' : ''}`}><b>{sum.problems}</b><span>Probleme</span></div>
         <div className="stat"><b>{sum.new}</b><span>Neu</span></div>
         <div className="stat"><b>{sum.pending}</b><span>Offen</span></div>
-        <div className="stat"><b>{data?.changes.length ?? 0}</b><span>Änderungen (letzte {data?.changes.length === 200 ? '200' : 'alle'})</span></div>
+        <div className="stat"><b>{data?.changes.length ?? 0}</b><span>Änderungen (letzte {data?.changes.length === HISTORY_LIMIT ? HISTORY_LIMIT : 'alle'})</span></div>
         <div className="stat"><b>{groups.length}</b><span>Gruppen</span></div>
       </div>
       <div className="tabs" role="tablist">
@@ -212,21 +214,40 @@ export function Dashboard() {
       )}
       {tab === 'changes' && (
         <>
+      <div className="filter-bar">
+        {PERIODS.map(([value, label]) => (
+          <button key={value} className={`filter-pill${period === value ? ' active' : ''}`} onClick={() => setPeriod(value)}>{label}</button>
+        ))}
+        <span className="muted count-text">{changes.length} von {data?.changes.length ?? 0}</span>
+      </div>
       {changes.length === 0 && <p className="muted">{data?.changes.length ? 'Keine Treffer.' : 'Noch keine Änderungen erkannt.'}</p>}
-      {changes.map((c) => (
-        <details className="change" key={c.id}>
-          <summary>{c.time} – {c.name ?? c.url}<span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span></summary>
-          <p><a href={c.url} target="_blank" rel="noreferrer noopener">{c.url}</a></p>
-          <pre>
-            {annotateDiff(c.diff.split('\n')).map((segments, i) => (
-              <div key={i} className={diffClass(segments.map((s) => s.text).join(''))}>
-                {segments.map((s, n) => (s.changed ? <mark key={n}>{s.text}</mark> : s.text))}
-                {segments.length === 0 || segments[0].text === '' ? ' ' : ''}
-              </div>
-            ))}
-            {c.extra > 0 && <div className="muted">… und {c.extra} weitere Zeilen</div>}
-          </pre>
-        </details>
+      {days.map(([day, items]) => (
+        <section key={day}>
+          <h3 className="day-heading">{dayLabel(day)}<span className="count">{items.length}</span></h3>
+          {items.map((c) => (
+            <details className="change" key={c.id}>
+              <summary>
+                {c.time.slice(11)} – {c.name ?? c.url}
+                <span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span>
+              </summary>
+              <p>
+                <a href={c.url} target="_blank" rel="noreferrer noopener">{c.url}</a>
+                {fragmentUrl(c.url, c.diff) !== c.url && (
+                  <> · <a href={fragmentUrl(c.url, c.diff)} target="_blank" rel="noreferrer noopener">zur geänderten Stelle</a></>
+                )}
+              </p>
+              <pre>
+                {annotateDiff(c.diff.split('\n')).map((segments, i) => (
+                  <div key={i} className={diffClass(segments.map((s) => s.text).join(''))}>
+                    {segments.map((s, n) => (s.changed ? <mark key={n}>{s.text}</mark> : s.text))}
+                    {segments.length === 0 || segments[0].text === '' ? ' ' : ''}
+                  </div>
+                ))}
+                {c.extra > 0 && <div className="muted">… und {c.extra} weitere Zeilen</div>}
+              </pre>
+            </details>
+          ))}
+        </section>
       ))}
         </>
       )}
