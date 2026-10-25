@@ -3,11 +3,11 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
-type Data = { entries: Entry[]; changes: Change[]; updated: string | null }
+type Data = { entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
@@ -18,10 +18,11 @@ async function load(): Promise<Load> {
   const admin = await supabase.from('watchlist_admins').select('user_id').maybeSingle()
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
-  const [urls, status, history] = await Promise.all([
+  const [urls, status, history, groupRows] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
+    supabase.from('watchlist_groups').select('name, position, color, icon'),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
@@ -31,6 +32,8 @@ async function load(): Promise<Load> {
       entries: toEntries((urls.data ?? []) as UrlRow[], status.data?.value ?? {}),
       changes: (history.data ?? []) as Change[],
       updated: status.data?.updated_at ?? null,
+      metas: (groupRows.data ?? []) as GroupMeta[],
+      groupsReady: !groupRows.error,
     },
   }
 }
@@ -188,9 +191,10 @@ export function Dashboard() {
   useEffect(() => { void load().then(setResult) }, [])
 
   const data = result.state === 'ready' ? result.data : null
-  const groups = useMemo(() => groupEntries(data?.entries ?? []), [data])
+  const groups = useMemo(() => orderGroups(data?.entries ?? [], data?.metas ?? []), [data])
+  const metaOf = (name: string) => data?.metas.find((m) => m.name === name)
   const shown = useMemo(
-    () => groupEntries((data?.entries ?? []).filter((e) => matches({ ...e, text: e.error }, query, group, status))),
+    () => orderGroups((data?.entries ?? []).filter((e) => matches({ ...e, text: e.error }, query, group, status)), data?.metas ?? [], false),
     [data, query, group, status],
   )
   // Verlauf einer einzelnen Seite: komplett aus der Datenbank statt nur aus den letzten 100 insgesamt
@@ -311,7 +315,7 @@ export function Dashboard() {
         <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Letzte Änderungen<span className="count">{data?.changes.length ?? 0}</span></button>
         <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Gruppen<span className="count">{groups.length}</span></button>
       </div>
-      {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} onChanged={() => void load().then(setResult)} />}
+      {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} metas={data?.metas ?? []} groupsReady={data?.groupsReady ?? false} onChanged={() => void load().then(setResult)} />}
       {tab !== 'groups' && <div className="toolbar">
         <div className="search-field">
           <span aria-hidden="true">⌕</span>
@@ -338,10 +342,10 @@ export function Dashboard() {
       </div>
       <div className="composer-list">
         {shown.map(([name, items]) => (
-          <section className="composer-section" key={name}>
+          <section className="composer-section" key={name} style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}` } : undefined}>
             <button className="section-heading" aria-expanded={!collapsed.has(name)} onClick={() => toggle(name)}>
               <h3>
-                <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span>{name}<span className="count">{items.length}</span>
+                <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span>{metaOf(name)?.icon && <span className="group-icon">{metaOf(name)?.icon}</span>}{name}<span className="count">{items.length}</span>
               </h3>
               <span className="group-stats">
                 {items.some((e) => e.status === 'error' || e.status === 'warn') && (

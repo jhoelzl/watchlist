@@ -306,3 +306,6 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 /* Verlauf pro Seite */
 .page-filter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }
+
+.group-icon { margin-right: 6px; }
+.icon-input { width: 64px; }

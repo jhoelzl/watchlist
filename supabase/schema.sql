@@ -97,3 +97,16 @@ drop policy if exists "admins update urls" on watchlist_urls;
 create policy "admins update urls" on watchlist_urls for update to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()))
   with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Gruppen: Reihenfolge, Farbe und Icon (auch für leere Gruppen). Die Dashboard-Ansicht funktioniert auch ohne diese Tabelle.
+create table if not exists watchlist_groups (
+  name text primary key,
+  position int not null default 0,
+  color text,
+  icon text
+);
+alter table watchlist_groups enable row level security;
+drop policy if exists "admins manage groups" on watchlist_groups;
+create policy "admins manage groups" on watchlist_groups for all to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()))
+  with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));

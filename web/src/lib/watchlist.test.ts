@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -211,5 +211,25 @@ describe('view hash', () => {
     expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('urls')
     expect(parseView('#s=zzz').status).toBe('')
     expect(parseView('#changes:https%3A%2F%2Fa.de').tab).toBe('changes')
+  })
+})
+
+describe('group order', () => {
+  const e = (url: string, group: string) => ({ url, group }) as Entry
+  const entries = [e('1', 'B'), e('2', 'A'), e('3', 'C')]
+  it('nutzt gespeicherte Reihenfolge, Rest alphabetisch', () => {
+    const metas = [{ name: 'C', position: 0, color: null, icon: null }]
+    expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['C', 'A', 'B'])
+  })
+  it('leere Gruppen optional', () => {
+    const metas = [{ name: 'Leer', position: 0, color: null, icon: null }]
+    expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['Leer', 'A', 'B', 'C'])
+    expect(orderGroups(entries, metas, false).map(([n]) => n)).toEqual(['A', 'B', 'C'])
+  })
+  it('moveGroup und Farbprüfung', () => {
+    expect(moveGroup(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c'])
+    expect(moveGroup(['a', 'b'], 'a', -1)).toEqual(['a', 'b'])
+    expect(isHexColor('#2563eb')).toBe(true)
+    expect(isHexColor('red;x')).toBe(false)
   })
 })

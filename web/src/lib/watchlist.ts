@@ -373,3 +373,35 @@ export function buildHash(v: ViewState): string {
   const out = p.toString()
   return out ? `#${out}` : ''
 }
+
+export type GroupMeta = { name: string; position: number; color: string | null; icon: string | null }
+export const GROUP_COLORS: [string, string][] = [
+  ['', 'Keine'], ['#2563eb', 'Blau'], ['#16a34a', 'Grün'], ['#d97706', 'Orange'], ['#dc2626', 'Rot'], ['#9333ea', 'Violett'], ['#0891b2', 'Türkis'], ['#64748b', 'Grau'],
+]
+
+/** Gruppen nach gespeicherter Reihenfolge, danach alphabetisch. Leere Gruppen nur mit includeEmpty. */
+export function orderGroups(entries: Entry[], metas: GroupMeta[], includeEmpty = true): [string, Entry[]][] {
+  const map = new Map<string, Entry[]>()
+  for (const e of entries) map.set(e.group, [...(map.get(e.group) ?? []), e])
+  if (includeEmpty) for (const m of metas) if (!map.has(m.name)) map.set(m.name, [])
+  const pos = new Map(metas.map((m) => [m.name, m.position]))
+  return [...map].sort(([a], [b]) => {
+    const pa = pos.get(a) ?? Infinity
+    const pb = pos.get(b) ?? Infinity
+    return pa === pb ? a.localeCompare(b, 'de', { sensitivity: 'base' }) : pa < pb ? -1 : 1
+  })
+}
+
+/** Neue Reihenfolge nach Verschieben um eine Position (-1 hoch, +1 runter). */
+export function moveGroup(order: string[], name: string, delta: -1 | 1): string[] {
+  const i = order.indexOf(name)
+  const j = i + delta
+  if (i < 0 || j < 0 || j >= order.length) return order
+  const next = [...order]
+  ;[next[i], next[j]] = [next[j], next[i]]
+  return next
+}
+
+export function isHexColor(c: string | null | undefined): c is string {
+  return !!c && /^#[0-9a-fA-F]{6}$/.test(c)
+}
