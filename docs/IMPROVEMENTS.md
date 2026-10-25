@@ -2,20 +2,20 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 41 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 42 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
-| 1 | Bearbeiten von URLs im Dashboard (Name, Gruppe, Selector, JS, Pause) | Dashboard | 🔴 | M |
-| 2 | Tab-Varianten derselben Seite zusammenfassen (Mehrfach-Einträge in Mails) | Features | 🔴 | M |
-| 3 | Fehlerserie, Pause und Verlauf pro Seite im Dashboard | Dashboard | 🟡 | M |
-| 4 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
-| 5 | `check.py` in Module aufteilen, `run()` entflechten, Annotationen, mypy `strict` | Refactoring | 🟡 | L |
-| 6 | Branch Protection für `main` und Rate-Limit der Edge Function | Security | 🟡 | S |
-| 7 | Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten | Qualität | 🟡 | M |
-| 8 | Selector-Vorschau im Formular (erkannter Bereich und Textmenge) | Features | 🟡 | S |
+| 1 | Fehlerserie (`streak`) im Dashboard anzeigen, Filter „Dauerhaft kaputt“ | Dashboard | 🟡 | S |
+| 2 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
+| 3 | `check.py` in Module aufteilen, `run()` entflechten, Annotationen, mypy `strict` | Refactoring | 🟡 | L |
+| 4 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
+| 5 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
+| 6 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
+| 7 | Sortierbare Spalten und Toasts statt `window.confirm` | Dashboard | 🟡 | S |
+| 8 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
 
 ---
 
@@ -43,6 +43,8 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 
 ## 3. UX / UI (Mails und CLI)
 
+- Aktuell keine offenen Punkte.
+
 
 ## 4. Dashboard
 
@@ -58,7 +60,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 
 ## 5. Refactoring
 
-- 🟡 **`check.py` aufteilen** (817 Zeilen, `run()` ist weiterhin sehr lang):
+- 🟡 **`check.py` aufteilen** (927 Zeilen, `run()` ist weiterhin sehr lang):
   - `config.py`: Optionen laden und validieren (`config_errors`)
   - `fetch.py`: HTTP, Retry, robots, Playwright, `fetch_all`
   - `parse.py`: Feed/HTML, `clean`, `ignore`, `auto_root`
@@ -68,7 +70,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **`run()` entflechten:** Pro URL eine Funktion `check_url(opts, state) -> Result` (Dataclass) und getrennte Phasen „sammeln → senden → speichern“. (M)
 - 🟡 **Typisierung abschließen:** Dicts (`entry`, `change`, `opts`) durch `TypedDict` oder `dataclass` ersetzen und Funktionen annotieren. Danach `strict = true`. (M)
 - 🟡 **Python ↔ TypeScript angleichen:** `annotateDiff`, `fragmentUrl`, `countLines` und `groupOf` existieren doppelt. Per Test mit identischen Fällen (gemeinsame Fixture-Datei) abgleichen, damit sie nicht auseinanderlaufen. (S)
-- 🟡 **`Dashboard.tsx` zerlegen** (252 Zeilen): `UrlsTab`, `ChangesTab`, `AddUrl`, `useWatchlist` (Laden, Aktionen) in eigene Dateien. (S)
+- 🟡 **`Dashboard.tsx` zerlegen** (488 Zeilen; `GroupsPanel` ist schon ausgelagert): `UrlsTab`, `ChangesTab`, `AddUrl`, `useWatchlist` (Laden, Aktionen) in eigene Dateien. (S)
 - ⚪ **Konfigurationsschema** mit klaren Fehlern bei Tippfehlern (`selektor:`), unbekannten Optionen und falschen Typen, auch beim Speichern im Dashboard. (M)
 - ⚪ **Konstanten** in einem `Settings`-Objekt bündeln (`MAX_HISTORY`, `STORE_DIFF_LINES`, `MAIL_DIFF_LINES`, `DIFF_CONTEXT`, `MAX_WORKERS`, `STUCK_AFTER`). Das Dashboard liest `HISTORY_LIMIT` getrennt davon, beide müssen zusammenpassen. (S)
 - ⚪ **Logging** statt `print` (GitHub-Actions-Gruppen `::group::` und `::warning::`-Annotationen). (S)
@@ -83,7 +85,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
 - ⚪ **Dependabot gruppieren** (ein PR pro Woche) und Auto-Merge für Patch-Updates bei grünen Tests. (S)
-- ⚪ **Web-Prüfungen in `tests.yml`:** `tsc`, `oxlint` und `vitest` laufen bisher nur lokal, der `pages`-Workflow baut nur. (S)
 
 ## 7. Tests und Qualität
 
@@ -91,10 +92,9 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **`RestStore` testen:** Gegen einen HTTP-Mock (PostgREST-Antworten), inklusive Fehlern. `PgStore` hat Tests (Python 3.12 und `pgserver`), `RestStore` nicht. (M)
 - 🟡 **Tests für den `add.py`-Ablauf:** `main` mit gemocktem `fetch_body`, `--feed`, `-y`, Duplikate, robots-Sperre. (M)
 - 🟡 **Integrationstest** mit lokalem HTTP-Server für 304, 429/5xx-Retry, Redirects und Zeichensatz. (M)
-- 🟡 **Edge Function testen** (Deno-Test) für 401, 403, „Lauf aktiv“ und Start. (S)
+- 🟡 **Edge Functions testen** (Deno-Test, `watchlist-trigger-check` und `watchlist-preview`) für 401, 403, 429, „Lauf aktiv“, Start und CORS. (S)
 - 🟡 **End-to-End-Test** des Dashboards (Playwright) mit gemockten REST-Antworten. Playwright ist schon Abhängigkeit. (L)
 - 🟡 **Coverage** messen (`pytest --cov`, `vitest --coverage`) und Mindestwert in CI festlegen. (S)
-- ⚪ **Tests für `dashboard.build`:** Escaping, Gruppen, leere Historie, XSS-Fälle in Name und Diff. (S)
 - ⚪ **Property-Tests** (Hypothesis, fast-check) für `make_diff`, `annotate_diff`, `fragment_url`, `clean` und Regex-Ignore. (M)
 - ⚪ **Konfigurationsprüfung in CI:** `check.py --validate` ohne Netzwerkzugriff (Duplikate, ungültige Regex, unbekannte Optionen). (S)
 
