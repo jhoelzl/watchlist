@@ -463,7 +463,7 @@ export type Tab = 'urls' | 'changes' | 'groups'
 export type SortKey = '' | 'name' | 'status' | 'checked' | 'changed'
 export type Sort = { key: SortKey; desc: boolean }
 export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
-export const DEFAULT_VIEW: ViewState = { tab: 'urls', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
+export const DEFAULT_VIEW: ViewState = { tab: 'changes', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
 const TABS: Tab[] = ['urls', 'changes', 'groups']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
@@ -478,7 +478,7 @@ export function parseView(hash: string): ViewState {
   const s = p.get('s') ?? ''
   const per = p.get('p') ?? ''
   return {
-    tab: TABS.includes(t) ? t : 'urls',
+    tab: TABS.includes(t) ? t : DEFAULT_VIEW.tab,
     group: p.get('g') ?? '',
     status: (STATUSES.includes(s) ? s : '') as StatusFilter,
     period: (PERIOD_VALUES.includes(per) ? per : '') as Period,
@@ -496,7 +496,7 @@ function parseSort(raw: string): Sort {
 
 export function buildHash(v: ViewState): string {
   const p = new URLSearchParams()
-  if (v.tab !== 'urls') p.set('t', v.tab)
+  if (v.tab !== DEFAULT_VIEW.tab) p.set('t', v.tab)
   if (v.group) p.set('g', v.group)
   if (v.status) p.set('s', v.status)
   if (v.period) p.set('p', v.period)

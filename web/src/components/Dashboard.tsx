@@ -46,24 +46,31 @@ export function Dashboard() {
   const total = data?.entries.length ?? 0
   return (
     <>
-      <div className="library-intro">
-        <div>
-          <h2>Watchlist</h2>
-          <p>{data?.updated ? `Last updated: ${new Date(data.updated).toLocaleString('en-GB')}` : 'No run yet'}</p>
+      <div className="dashboard-nav">
+        <div className="library-intro">
+          <div>
+            <h2>Watchlist</h2>
+            <p>{data?.updated ? `Last updated: ${new Date(data.updated).toLocaleString('en-GB')}` : 'No run yet'}</p>
+          </div>
+          <div className="intro-actions">
+            <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>Add URL</button>
+            <details className="menu">
+              <summary className="btn">Import / Export</summary>
+              <div className="menu-items">
+                <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
+                <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
+                <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
+              </div>
+            </details>
+            <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy' || check.state === 'waiting' || check.state === 'running'}>
+              {check.state === 'busy' ? 'Starting …' : check.state === 'waiting' || check.state === 'running' ? 'Check running …' : 'Check now'}
+            </button>
+          </div>
         </div>
-        <div className="intro-actions">
-          <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>Add URL</button>
-          <details className="menu">
-            <summary className="btn">Import / Export</summary>
-            <div className="menu-items">
-              <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
-              <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
-              <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
-            </div>
-          </details>
-          <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy' || check.state === 'waiting' || check.state === 'running'}>
-            {check.state === 'busy' ? 'Starting …' : check.state === 'waiting' || check.state === 'running' ? 'Check running …' : 'Check now'}
-          </button>
+        <div className="tabs" role="tablist">
+          <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
+          <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Recent changes<span className="count">{data?.changes.length ?? 0}</span></button>
+          <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
         </div>
       </div>
       {check.state === 'waiting' && <p className="muted">Check started, waiting for the run on GitHub …</p>}
@@ -72,11 +79,6 @@ export function Dashboard() {
       {check.state === 'failed' && <p className="error">The check failed{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">View run</a>)</>}.</p>}
       {check.state === 'timeout' && <p className="error">The run is taking unusually long. Please check GitHub.</p>}
       {check.state === 'error' && <p className="error">Check could not be started: {check.message}</p>}
-      <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
-        <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Recent changes<span className="count">{data?.changes.length ?? 0}</span></button>
-        <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
-      </div>
       {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} metas={data?.metas ?? []} groupsReady={data?.groupsReady ?? false} onChanged={() => reload()} />}
       {tab !== 'groups' && <div className="toolbar">
         <div className="search-field">

@@ -307,6 +307,15 @@ tr.edit-row td { opacity: 1; padding: 0; }
 /* History per page */
 .page-filter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }
 
+.dashboard-nav { position: sticky; top: 60px; z-index: 1; margin: -28px -24px 18px; padding: 20px 24px 0; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.dashboard-nav .library-intro { margin-bottom: 12px; }
+.dashboard-nav .tabs { margin: 0 0 12px; }
+@media (max-width: 720px) {
+  .dashboard-nav { margin-right: -14px; margin-left: -14px; padding-right: 14px; padding-left: 14px; }
+  .dashboard-nav .intro-actions { flex-wrap: wrap; }
+  .dashboard-nav .intro-actions .btn { padding-right: 11px; padding-left: 11px; }
+}
+
 .group-icon { margin-right: 6px; }
 .icon-input { width: 64px; }
 
