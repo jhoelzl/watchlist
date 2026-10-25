@@ -204,7 +204,9 @@ HINTS = {
     "http_404": "Die Seite gibt es nicht mehr oder die URL hat sich geändert: URL in urls.yml prüfen.",
     "http_410": "Die Seite wurde entfernt: URL in urls.yml prüfen oder Eintrag löschen.",
     "http_429": "Rate-Limit: Der Server drosselt die Abrufe, meist hilft Abwarten.",
-    "timeout": "Der Server antwortet zu langsam oder gar nicht: Abwarten, bei Dauerproblem URL prüfen oder 'js: true' probieren.",
+    "timeout": "Der Server antwortet zu langsam oder gar nicht: Abwarten. "
+    "Bei Dauerproblem URL im eigenen Browser prüfen. Klappt sie dort, sperrt der Server vermutlich "
+    "die IPs der GitHub-Runner ('js: true' hilft dann nicht): Seite pausieren oder einen self-hosted Runner verwenden.",
     "connection": "Keine Verbindung zum Server (DNS, Netzwerk, Zertifikat): Host und URL prüfen.",
     "http_5xx": "Serverfehler auf der Gegenseite: meist vorübergehend, Abwarten.",
     "config": "Eintrag in urls.yml korrigieren (siehe Meldung).",
