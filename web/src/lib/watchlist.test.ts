@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -68,7 +68,7 @@ describe('summarize', () => {
   it('counts statuses and problems', () => {
     const e = (status: Entry['status']) => ({ url: status, name: status, group: 'G', checked: '', changed: '', error: '', status }) as Entry
     expect(summarize([e('ok'), e('ok'), e('error'), e('warn'), e('pending')])).toEqual({
-      total: 5, problems: 2, ok: 2, new: 0, error: 1, warn: 1, pending: 1,
+      total: 5, problems: 2, ok: 2, new: 0, error: 1, warn: 1, pending: 1, paused: 0,
     })
   })
 })
@@ -179,5 +179,22 @@ describe('Export/Import', () => {
   it('akzeptiert Listen, lehnt Unbrauchbares ab', () => {
     expect(parseImport('[', []).errors[0]).toContain('nicht lesbar')
     expect(parseImport('foo: 1', []).errors).toHaveLength(1)
+  })
+})
+
+describe('URLs bearbeiten', () => {
+  const entry = toEntries([{ url: 'https://a', name: 'A', grp: 'G', active: true, options: { selector: 'main', ignore: ['x.*'], min_ratio: 0.5 } }], {})[0]
+  it('füllt das Formular aus den Optionen', () => {
+    expect(toEditForm(entry)).toMatchObject({ name: 'A', group: 'G', selector: 'main', ignore: 'x.*', js: false, paused: false })
+  })
+  it('übernimmt Änderungen und behält unbekannte Optionen', () => {
+    const form = { ...toEditForm(entry), selector: '', js: true, onlyAdded: true, ignore: ' a+ \n\nb' }
+    expect(applyEdit(entry.options ?? {}, form)).toEqual({ options: { ignore: ['a+', 'b'], min_ratio: 0.5, js: true, only_added: true } })
+  })
+  it('lehnt ungültige Regex ab', () => {
+    expect('error' in applyEdit({}, { ...toEditForm(entry), ignore: '(' })).toBe(true)
+  })
+  it('pausierte URLs bekommen den Status "paused"', () => {
+    expect(toEntries([{ url: 'https://a', name: null, grp: null, active: false }], { 'https://a': { status: 'ok' } })[0].status).toBe('paused')
   })
 })

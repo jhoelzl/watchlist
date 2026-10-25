@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { Preview } from '../../../supabase/functions/watchlist-preview/analyze.ts'
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
-  type Change, type DbUrl, type Entry, type Period, type StatusFilter, type UrlRow,
+  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
+  type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
 type Data = { entries: Entry[]; changes: Change[]; updated: string | null }
 type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
-  ['', 'Alle'], ['problem', 'Probleme'], ['error', 'Fehler'], ['warn', 'Zu wenig Text'], ['new', 'Neu'], ['ok', 'OK'], ['pending', 'Offen'],
+  ['', 'Alle'], ['problem', 'Probleme'], ['error', 'Fehler'], ['warn', 'Zu wenig Text'], ['new', 'Neu'], ['ok', 'OK'], ['pending', 'Offen'], ['paused', 'Pausiert'],
 ]
 
 async function load(): Promise<Load> {
@@ -19,7 +19,7 @@ async function load(): Promise<Load> {
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
   const [urls, status, history] = await Promise.all([
-    supabase.from('watchlist_urls').select('url, name, grp').eq('active', true).order('position').order('id'),
+    supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
   ])
@@ -90,6 +90,46 @@ function PreviewBox({ preview, js }: { preview: PreviewState; js: boolean }) {
   )
 }
 
+function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState<EditForm>(() => toEditForm(entry))
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const preview = usePreview(entry.url, form.selector, true)
+  const set = (patch: Partial<EditForm>) => setForm((f) => ({ ...f, ...patch }))
+  const save = async () => {
+    const built = applyEdit(entry.options ?? {}, form)
+    if ('error' in built) return setError(built.error)
+    setBusy(true)
+    const { data, error: failed } = await supabase
+      .from('watchlist_urls')
+      .update({ name: form.name.trim() || null, grp: form.group.trim() || null, options: built.options, active: !form.paused })
+      .eq('url', entry.url)
+      .select('url')
+    setBusy(false)
+    if (failed) return setError(failed.message)
+    if (!data?.length) return setError('Keine Änderung gespeichert. Fehlt die Policy „admins update urls“ (supabase/schema.sql)?')
+    onSaved()
+  }
+  return (
+    <form className="panel add-panel edit-panel" onSubmit={(e) => { e.preventDefault(); void save() }}>
+      <p className="grow edit-title">Bearbeiten: <a href={entry.url} target="_blank" rel="noreferrer noopener">{entry.url}</a></p>
+      <label className="grow">Name<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Seitentitel" /></label>
+      <label>Gruppe<input value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
+      <label className="grow">Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto, CSS-Selector oder leer = ganze Seite" /></label>
+      <label className="grow">Ignore (ein Regex pro Zeile)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="z. B. Last updated.*" /></label>
+      <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
+      <label className="check"><input type="checkbox" checked={form.onlyAdded} onChange={(e) => set({ onlyAdded: e.target.checked })} />Nur Hinzugefügtes melden</label>
+      <label className="check"><input type="checkbox" checked={form.paused} onChange={(e) => set({ paused: e.target.checked })} />Pausiert (wird nicht geprüft)</label>
+      <PreviewBox preview={preview} js={form.js} />
+      <div className="add-actions">
+        <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
+        <button className="btn" type="button" onClick={onClose}>Abbrechen</button>
+      </div>
+      {error && <p className="error">{error}</p>}
+    </form>
+  )
+}
+
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'auto', js: false }
 
 function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: boolean; setOpen: (open: boolean) => void; onAdded: () => void }) {
@@ -138,6 +178,7 @@ export function Dashboard() {
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
   const [period, setPeriod] = useState<Period>('')
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<string | null>(null)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(() => (window.location.hash.startsWith('#changes') ? 'changes' : 'urls'))
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
@@ -292,7 +333,8 @@ export function Dashboard() {
               <thead><tr><th>Status</th><th>Seite</th><th>Zuletzt geprüft</th><th>Zuletzt geändert</th><th></th></tr></thead>
               <tbody>
                 {items.map((e) => (
-                  <tr key={e.url}>
+                  <Fragment key={e.url}>
+                  <tr className={e.active === false ? 'paused' : ''}>
                     <td><span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span></td>
                     <td>
                       <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>
@@ -300,8 +342,15 @@ export function Dashboard() {
                     </td>
                     <td>{e.checked || '-'}</td>
                     <td>{e.changed || '-'}</td>
-                    <td><button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => void remove(e)}>×</button></td>
+                    <td className="row-actions">
+                      <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}>✎</button>
+                      <button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => void remove(e)}>×</button>
+                    </td>
                   </tr>
+                  {editing === e.url && (
+                    <tr className="edit-row"><td colSpan={5}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load().then(setResult) }} /></td></tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>}

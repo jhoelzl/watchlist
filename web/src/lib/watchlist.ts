@@ -1,6 +1,6 @@
 import { parse, stringify } from 'yaml'
 
-export type Status = 'ok' | 'new' | 'error' | 'warn' | 'pending'
+export type Status = 'ok' | 'new' | 'error' | 'warn' | 'pending' | 'paused'
 
 export type Entry = {
   url: string
@@ -11,6 +11,8 @@ export type Entry = {
   status: Status
   error: string
   streak?: number
+  active?: boolean
+  options?: Record<string, unknown>
 }
 
 export type Change = {
@@ -25,13 +27,13 @@ export type Change = {
 
 export type StatusFilter = '' | Status | 'problem'
 
-export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'Neu', error: 'Fehler', warn: 'Zu wenig Text', pending: 'Noch nicht geprüft' }
+export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'Neu', error: 'Fehler', warn: 'Zu wenig Text', pending: 'Noch nicht geprüft', paused: 'Pausiert' }
 
 export function groupOf(group: string | null | undefined): string {
   return group || 'Allgemein'
 }
 
-export type UrlRow = { url: string; name: string | null; grp: string | null }
+export type UrlRow = { url: string; name: string | null; grp: string | null; active?: boolean; options?: Record<string, unknown> | null }
 
 type StatusDoc = Record<string, Partial<Omit<Entry, 'url'>>>
 
@@ -45,9 +47,11 @@ export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
       group: groupOf(u.grp),
       checked: s.checked ?? '',
       changed: s.changed ?? '',
-      status: s.status ?? 'pending',
+      status: u.active === false ? 'paused' : (s.status ?? 'pending'),
       error: s.error ?? '',
       streak: s.streak,
+      active: u.active !== false,
+      options: u.options ?? {},
     }
   })
 }
@@ -103,7 +107,7 @@ export function buildRow(
 export type Summary = Record<Status, number> & { total: number; problems: number }
 
 export function summarize(entries: Entry[]): Summary {
-  const s: Summary = { total: entries.length, problems: 0, ok: 0, new: 0, error: 0, warn: 0, pending: 0 }
+  const s: Summary = { total: entries.length, problems: 0, ok: 0, new: 0, error: 0, warn: 0, pending: 0, paused: 0 }
   for (const e of entries) s[e.status] += 1
   s.problems = s.error + s.warn
   return s
@@ -297,4 +301,39 @@ export function parseImport(text: string, existing: string[]): ImportResult {
     rows.push(built.row)
   })
   return { rows, skipped, errors }
+}
+
+export type EditForm = { name: string; group: string; selector: string; js: boolean; ignore: string; onlyAdded: boolean; paused: boolean }
+
+export function toEditForm(e: Entry): EditForm {
+  const o = e.options ?? {}
+  const ignore = o.ignore
+  return {
+    name: e.name === e.url ? '' : e.name,
+    group: e.group === 'Allgemein' ? '' : e.group,
+    selector: typeof o.selector === 'string' ? o.selector : '',
+    js: o.js === true,
+    ignore: (Array.isArray(ignore) ? ignore : typeof ignore === 'string' ? [ignore] : []).join('\n'),
+    onlyAdded: o.only_added === true,
+    paused: e.active === false,
+  }
+}
+
+/** Übernimmt das Formular in die Zeile. Unbekannte Optionen (min_ratio, ignore_robots, ...) bleiben erhalten. */
+export function applyEdit(options: Record<string, unknown>, form: EditForm): { options: Record<string, unknown> } | { error: string } {
+  const next: Record<string, unknown> = { ...options }
+  const set = (key: string, value: unknown, keep: boolean) => (keep ? (next[key] = value) : delete next[key])
+  const patterns = form.ignore.split('\n').map((l) => l.trim()).filter(Boolean)
+  for (const p of patterns) {
+    try {
+      new RegExp(p)
+    } catch {
+      return { error: `Ungültiger Ignore-Ausdruck: ${p}` }
+    }
+  }
+  set('selector', form.selector.trim(), form.selector.trim() !== '')
+  set('js', true, form.js)
+  set('only_added', true, form.onlyAdded)
+  set('ignore', patterns, patterns.length > 0)
+  return { options: next }
 }
