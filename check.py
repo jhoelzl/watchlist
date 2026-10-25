@@ -285,6 +285,14 @@ def fragment_url(url, diff):
     return url
 
 
+def safe_link(url):
+    """Verlinkt nur http(s)-URLs; alles andere (z. B. javascript:) bleibt reiner Text."""
+    esc = html.escape(url)
+    if urllib.parse.urlsplit(url.strip()).scheme.lower() in ("http", "https"):
+        return f'<a href="{esc}">{esc}</a>'
+    return esc
+
+
 def mail_view(change):
     """Diff für die Mail: gekürzt auf MAIL_DIFF_LINES, der Rest zählt zu "weitere Zeilen"."""
     diff = change["diff"][:MAIL_DIFF_LINES]
@@ -390,12 +398,16 @@ def render_html(changes):
             diff, extra = mail_view(c)
             added, removed = diff_counts(c["diff"])
             jump = fragment_url(c["url"], c["diff"])
-            jump_link = f' &middot; <a href="{html.escape(jump)}">zur geänderten Stelle</a>' if jump != c["url"] else ""
+            jump_link = (
+                f' &middot; <a href="{html.escape(jump)}">zur geänderten Stelle</a>'
+                if jump != c["url"] and safe_link(jump).startswith("<a")
+                else ""
+            )
             parts.append(
                 f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
                 f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
                 f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
-                f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a>{jump_link}</p>'
+                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}</p>'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )

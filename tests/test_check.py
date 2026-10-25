@@ -209,3 +209,48 @@ def test_auto_selector_picks_main_or_falls_back_to_whole_page():
     plain = "<body><p>Nur Text ohne Hauptbereich</p></body>"
     assert "Nur Text" in check.parse_html(plain, "auto")[1]
     assert "Menü" in check.parse_html(with_main, None)[1]
+
+
+EVIL = '<script>alert(1)</script> " onmouseover="x" <img src=x onerror=alert(1)>'
+
+
+def test_mail_html_escapes_hostile_content():
+    changes = [
+        {
+            "name": EVIL,
+            "url": 'https://a/?q="><script>x</script>',
+            "group": EVIL,
+            "diff": [f"+{EVIL} Zeile mit genug Text", f"-{EVIL}"],
+            "extra": 0,
+        },
+        {"name": "J", "url": "javascript:alert(1)", "group": "G", "diff": ["+etwas neuer Text hier"], "extra": 0},
+    ]
+    out = check.render_html(changes)
+    assert "<script" not in out and "<img" not in out
+    assert 'onmouseover="x"' not in out
+    assert "&lt;script&gt;" in out and "&quot; onmouseover=&quot;x&quot;" in out
+    assert 'href="javascript' not in out
+    assert "javascript:alert(1)" in out  # nur als Text
+    assert re.findall(r'href="([^"]*)"', out)
+    assert all(h.startswith(("#", "https://")) for h in re.findall(r'href="([^"]*)"', out))
+
+
+def test_mail_html_escapes_feed_content():
+    feed = """<rss version="2.0"><channel><title>T</title><item>
+<title>&lt;script&gt;alert(1)&lt;/script&gt; "x" onclick="y"</title><link>https://x/1</link>
+<description>&lt;img src=x onerror=alert(1)&gt; Beschreibung</description></item></channel></rss>"""
+    _, text = check.parse_feed(feed)
+    out = check.render_html([{"name": "F", "url": "https://f", "group": "G", "diff": [f"+{text}"], "extra": 0}])
+    assert "<script" not in out and "<img" not in out
+    assert 'onclick="y"' not in out
+
+
+def test_fragment_url_special_characters():
+    diff = ['+Preis: 5 & 6, "neu" <b>fett</b> #1 - Übung 100%']
+    url = check.fragment_url("https://a/x?y=1&z=2", diff)
+    frag = url.split("#:~:text=")[1]
+    assert re.fullmatch(r"[A-Za-z0-9%._~]+", frag)
+    assert "%3Cb%3E" in frag and "%2D" in frag
+    out = check.render_html([{"name": "N", "url": "https://a/x?y=1&z=2", "group": "G", "diff": diff, "extra": 0}])
+    assert 'href="https://a/x?y=1&amp;z=2#:~:text=' in out
+    assert "<b>fett" not in out

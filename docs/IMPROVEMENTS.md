@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 87 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 90 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -26,7 +26,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - 🟡 **ReDoS nur heuristisch abgefangen:** `config_errors` erkennt verschachtelte Quantifizierer und zu lange Muster, einen echten Timeout gibt es mit `re` nicht. Option: Bibliothek `regex` mit `timeout=`. Relevant, sobald `ignore`-Muster aus dem Dashboard kommen. (M)
 - ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
-- ⚪ **HTML-Mail:** Inhalte werden mit `html.escape` maskiert. Per Test absichern, dass auch Feed-Inhalte mit `<script>` und Attributen sauber bleiben. Gleiches für den Fragment-Link (`#:~:text=`) mit Sonderzeichen. (S)
 - ⚪ **Branch Protection für `main`** (Pull Requests, Status-Check `tests`). Kollidiert mit der Regel „direkt auf `main` pushen“ in `.github/copilot-instructions.md`. (S)
 - ⚪ **Key-Rotation dokumentieren:** Wo `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` und `GH_DISPATCH_TOKEN` gesetzt sind und wie man sie erneuert (Ablaufdatum des Tokens notieren). (S)
 
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 
 | Thema | Umsetzung |
 |-------|-----------|
+| HTML-Mail abgesichert | Tests für feindliche Inhalte (`<script>`, Attribute, Feed-Inhalte) und Sonderzeichen im Fragment-Link. `safe_link` verlinkt nur `http(s)`-URLs, `javascript:` bleibt Text |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
