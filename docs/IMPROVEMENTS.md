@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 49 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 98 Python- und 51 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 7)
 
@@ -50,7 +50,6 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
 - ⚪ **Als gelesen markieren** im Tab „Letzte Änderungen“ mit Zähler für Ungelesenes. (M)
 - ⚪ **Accessibility:** `aria-label` für Filter, Tastaturbedienung der Diffs, Status nicht nur über Farbe, Fokusreihenfolge im Formular. (S)
-- ⚪ **Laufhistorie:** Dauer und Fehlerquote der letzten Läufe anzeigen. (M)
 - ⚪ **PWA/Installierbar** mit Offline-Cache der letzten Daten. (M)
 
 ## 5. Refactoring
@@ -132,6 +131,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Sortierbare Spalten | Klick auf Status, Seite, Zuletzt geprüft oder Zuletzt geändert sortiert innerhalb der Gruppen (aufsteigend, absteigend, Standard). Leere Zeiten bleiben am Ende, die Sortierung steht im URL-Hash (`o=-changed`) und wird gemerkt |
 | Verlauf nachladen | Unter „Letzte Änderungen“ lädt „Ältere Einträge laden“ je 100 weitere Einträge per Keyset (`id < letzte id`), auch im Verlauf einer einzelnen Seite |
 | Diff-Ansicht Alt/Neu | Jeder Eintrag hat Umschalter „Inline“ / „Alt/Neu“ (zwei Spalten, ersetzte Zeilen gepaart, Wortmarkierung) und „nur geänderte Zeilen“. Helfer `sideBySide` |
+| Laufhistorie | `check.py` speichert pro Lauf Dauer, URL-Anzahl, Fehler, Warnungen und Änderungen (`record_run`, Dokument `runs`, letzte `MAX_RUNS=30`). Das Dashboard zeigt im Tab URLs eine aufklappbare Tabelle mit Ø-Dauer und Fehlerquote. Die Anzeige füllt sich ab dem nächsten Lauf |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

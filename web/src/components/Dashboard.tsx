@@ -3,11 +3,11 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, sideBySide, nextSort, sortEntries, type Sort, type SortKey, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runStats, formatDuration, type RunRecord, sideBySide, nextSort, sortEntries, type Sort, type SortKey, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
-type Data = { freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
+type Data = { runs: RunRecord[]; freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Seite'], ['checked', 'Zuletzt geprüft'], ['changed', 'Zuletzt geändert']]
@@ -21,12 +21,13 @@ async function load(): Promise<Load> {
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
   const since = new Date(Date.now() - SPARK_DAYS * 86_400_000).toISOString()
-  const [urls, status, history, groupRows, freqRows] = await Promise.all([
+  const [urls, status, history, groupRows, freqRows, runRows] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
     supabase.from('watchlist_groups').select('name, position, color, icon'),
     supabase.from('watchlist_history').select('url, time').gte('created_at', since).limit(5000),
+    supabase.from('watchlist_state').select('value').eq('key', 'runs').maybeSingle(),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
@@ -36,6 +37,7 @@ async function load(): Promise<Load> {
       entries: toEntries((urls.data ?? []) as UrlRow[], status.data?.value ?? {}),
       changes: (history.data ?? []) as Change[],
       updated: status.data?.updated_at ?? null,
+      runs: Array.isArray(runRows.data?.value) ? (runRows.data.value as RunRecord[]) : [],
       freq: ((freqRows.data ?? []) as { url: string; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[r.url] ??= []).push(r.time); return acc }, {}),
       metas: (groupRows.data ?? []) as GroupMeta[],
       groupsReady: !groupRows.error,
@@ -90,6 +92,36 @@ function DiffView({ diff, extra }: { diff: string; extra: number }) {
         </pre>
       )}
     </>
+  )
+}
+
+function RunsPanel({ runs }: { runs: RunRecord[] }) {
+  if (!runs.length) return null
+  const stats = runStats(runs)
+  const maxSeconds = Math.max(...runs.map((r) => r.seconds), 1)
+  const recent = [...runs].reverse()
+  return (
+    <details className="runs">
+      <summary>
+        Läufe: {runs.length} · Ø {formatDuration(stats.avgSeconds)} · Fehlerquote {(stats.errorRate * 100).toFixed(1).replace('.', ',')} %
+        {stats.failedRuns > 0 && <> · <span className="badge error">{stats.failedRuns} fehlgeschlagen</span></>}
+      </summary>
+      <table>
+        <thead><tr><th>Zeit</th><th>Dauer</th><th>URLs</th><th>Fehler</th><th>Warnungen</th><th>Änderungen</th></tr></thead>
+        <tbody>
+          {recent.map((r) => (
+            <tr key={r.time}>
+              <td>{r.time}{!r.ok && ' ⚠'}</td>
+              <td><span className="run-bar" style={{ width: `${Math.max(4, (r.seconds / maxSeconds) * 60)}px` }} /> {formatDuration(r.seconds)}</td>
+              <td>{r.total}</td>
+              <td>{r.errors || '-'}</td>
+              <td>{r.warns || '-'}</td>
+              <td>{r.changes || '-'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
   )
 }
 
@@ -453,6 +485,7 @@ export function Dashboard() {
       </div>}
       {tab === 'urls' && (
         <>
+      <RunsPanel runs={data?.runs ?? []} />
       <AddUrl entries={data?.entries ?? []} open={adding} setOpen={setAdding} onAdded={() => void load().then(setResult)} />
       <div className="filter-bar">
         {STATUS_FILTERS.map(([value, label]) => (

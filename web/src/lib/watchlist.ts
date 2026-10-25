@@ -227,6 +227,25 @@ export function countLines(diff: string, sign: '+' | '-'): number {
   return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
 }
 
+export type RunRecord = { time: string; seconds: number; total: number; errors: number; warns: number; changes: number; ok: boolean }
+
+export function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)} s`
+  return `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`
+}
+
+/** Durchschnittsdauer und Fehlerquote (Anteil URLs mit Fehler oder Warnung) über die übergebenen Läufe. */
+export function runStats(runs: RunRecord[]): { avgSeconds: number; errorRate: number; failedRuns: number } {
+  if (!runs.length) return { avgSeconds: 0, errorRate: 0, failedRuns: 0 }
+  const total = runs.reduce((a, r) => a + r.total, 0)
+  const bad = runs.reduce((a, r) => a + r.errors + r.warns, 0)
+  return {
+    avgSeconds: runs.reduce((a, r) => a + r.seconds, 0) / runs.length,
+    errorRate: total ? bad / total : 0,
+    failedRuns: runs.filter((r) => !r.ok).length,
+  }
+}
+
 export const HISTORY_LIMIT = 100
 export const PAGE_HISTORY_LIMIT = 500
 

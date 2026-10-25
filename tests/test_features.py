@@ -549,3 +549,30 @@ def test_render_html_highlights_words_and_counts():
     assert 'font-weight:600">1</span>' in html
     assert "+1" in html
     assert check.diff_counts(["+a", "+b", "-c", "+++x"]) == (2, 1)
+
+
+def test_record_run_keeps_last_runs_and_counts_errors():
+    status = {"a": {"status": "ok"}, "b": {"status": "error"}, "c": {"status": "warn"}}
+    runs = []
+    for i in range(check.MAX_RUNS + 2):
+        runs = check.record_run(runs, f"t{i}", 1.234, status, 1, True)
+    assert len(runs) == check.MAX_RUNS
+    assert runs[-1] == {
+        "time": f"t{check.MAX_RUNS + 1}",
+        "seconds": 1.2,
+        "total": 3,
+        "errors": 1,
+        "warns": 1,
+        "changes": 1,
+        "ok": True,
+    }
+    assert runs[0]["time"] == "t2"
+
+
+def test_run_stores_run_summary(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://b\n")
+    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", "text", False, {}))
+    check.run()
+    runs = json.loads((tmp / "state" / "runs.json").read_text())
+    assert len(runs) == 1 and runs[0]["total"] == 1 and runs[0]["errors"] == 0

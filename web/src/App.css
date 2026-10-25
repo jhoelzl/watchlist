@@ -345,3 +345,8 @@ tr.edit-row td { opacity: 1; padding: 0; }
   .side-diff .del mark { background: #7a2a2a; }
   .side-diff .add mark { background: #1f6f3a; }
 }
+
+.runs { margin: 12px 0; }
+.runs summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.runs table { margin-top: 8px; }
+.run-bar { display: inline-block; height: 6px; border-radius: 3px; background: #6366f1; vertical-align: middle; }

@@ -31,6 +31,7 @@ DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Um
 MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
 DIFF_CONTEXT = 3
 MAX_HISTORY = 100
+MAX_RUNS = 30
 DEFAULT_GROUP = "Allgemein"
 ROBOTS_AGENT = "watchlist"
 # Textwächter: Eine Seite mit vorher mind. GUARD_MIN_CHARS Zeichen, die unter
@@ -734,7 +735,22 @@ def run():
         store.close()
 
 
+def record_run(runs, stamp, seconds, status, changes, ok):
+    """Hängt eine Laufzusammenfassung an (Dauer, Fehlerquote) und behält die letzten MAX_RUNS."""
+    entry = {
+        "time": stamp,
+        "seconds": round(seconds, 1),
+        "total": len(status),
+        "errors": sum(1 for s in status.values() if s["status"] == "error"),
+        "warns": sum(1 for s in status.values() if s["status"] == "warn"),
+        "changes": changes,
+        "ok": ok,
+    }
+    return [*runs, entry][-MAX_RUNS:]
+
+
 def _run(store):
+    started = time.monotonic()
     now = datetime.now(UTC)
     stamp = now.strftime("%Y-%m-%d %H:%M UTC")
     entries = merge_config(store.raw_config())
@@ -905,6 +921,7 @@ def _run(store):
     store.add_history(new_history, MAX_HISTORY)
     store.set_doc("meta", meta)
     store.set_doc("http", new_cache)
+    store.set_doc("runs", record_run(store.doc("runs", []), stamp, time.monotonic() - started, status, len(changes), ok))
     bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
     return ok

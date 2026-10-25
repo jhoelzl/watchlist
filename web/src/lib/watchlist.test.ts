@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -250,6 +250,19 @@ describe('Fehlerserie', () => {
   it('Filter stuck', () => {
     expect(matches({ ...e('error', 6), text: '' }, '', '', 'stuck')).toBe(true)
     expect(matches({ ...e('error', 2), text: '' }, '', '', 'stuck')).toBe(false)
+  })
+})
+
+describe('Laufhistorie', () => {
+  const run = (seconds: number, total: number, errors: number, warns: number, ok = true) => ({ time: 't', seconds, total, errors, warns, changes: 0, ok })
+  it('Durchschnitt und Fehlerquote', () => {
+    const s = runStats([run(10, 10, 1, 0), run(30, 10, 0, 1, false)])
+    expect(s).toEqual({ avgSeconds: 20, errorRate: 0.1, failedRuns: 1 })
+    expect(runStats([])).toEqual({ avgSeconds: 0, errorRate: 0, failedRuns: 0 })
+  })
+  it('Dauer formatieren', () => {
+    expect(formatDuration(42.4)).toBe('42 s')
+    expect(formatDuration(125)).toBe('2 min 5 s')
   })
 })
 
