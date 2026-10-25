@@ -354,3 +354,24 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .suggestions { display: grid; gap: 6px; font-size: 13px; }
 .suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .suggestion code { background: var(--subtle); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+
+/* Kalender-Heatmap */
+.heatmap { margin: 0 0 16px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.heatmap-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.heatmap-head strong { color: var(--text); }
+.heatmap-head .btn { margin-left: auto; padding: 4px 10px; height: auto; font-size: 12px; }
+.heatmap-body { display: flex; gap: 8px; }
+.heatmap-weekdays { display: grid; grid-template-rows: 14px repeat(7, 1fr); gap: 3px; font-size: 10px; color: var(--muted); line-height: 1; }
+.heatmap-weekdays span { display: flex; align-items: center; }
+.heatmap-weekdays span:first-child { grid-row: 2; }
+.heatmap-grid { flex: 1; display: grid; grid-template-rows: 14px repeat(7, auto); gap: 3px; min-width: 0; }
+.heatmap-month { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.heat-cell { display: block; aspect-ratio: 1; min-width: 8px; max-width: 18px; width: 100%; padding: 0; border: 0; border-radius: 3px; background: var(--line); cursor: pointer; }
+.heat-cell.level-1 { background: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.heat-cell.level-2 { background: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.heat-cell.level-3 { background: color-mix(in srgb, var(--accent) 78%, var(--line)); }
+.heat-cell.level-4 { background: var(--accent); }
+.heat-cell.selected { outline: 2px solid var(--text); outline-offset: 1px; }
+.heatmap-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.heatmap-legend .heat-cell { width: 11px; min-width: 11px; cursor: default; }
+@media (max-width: 720px) { .heatmap-weekdays { display: none; } }

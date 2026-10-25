@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
-import { HISTORY_LIMIT, SPARK_DAYS, exportUrls, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
+import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
 
 export type Data = { runs: RunRecord[]; freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 export type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
@@ -11,7 +11,7 @@ async function load(): Promise<Load> {
   const admin = await supabase.from('watchlist_admins').select('user_id').maybeSingle()
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
-  const since = new Date(Date.now() - SPARK_DAYS * 86_400_000).toISOString()
+  const since = new Date(Date.now() - HEAT_WEEKS * 7 * 86_400_000).toISOString()
   const [urls, status, history, groupRows, freqRows, runRows] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),

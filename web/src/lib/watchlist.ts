@@ -589,6 +589,42 @@ export function dailyCounts(times: string[], now: Date = new Date(), days = SPAR
   return counts
 }
 
+export const HEAT_WEEKS = 26
+
+export type HeatCell = { day: string; count: number; level: 0 | 1 | 2 | 3 | 4 }
+
+/** Kalender-Heatmap: Spalten = Wochen (Mo–So, UTC), letzte Spalte = aktuelle Woche; Tage nach heute fehlen (null). */
+export function heatmap(times: string[], now: Date = new Date(), weeks = HEAT_WEEKS): { columns: (HeatCell | null)[][]; total: number; months: (string | null)[] } {
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const monday = today - ((new Date(today).getUTCDay() + 6) % 7) * 86_400_000
+  const start = monday - (weeks - 1) * 7 * 86_400_000
+  const counts = new Map<string, number>()
+  for (const t of times) {
+    const at = parseStamp(t)
+    if (!at) continue
+    const day = iso(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()))
+    counts.set(day, (counts.get(day) ?? 0) + 1)
+  }
+  const max = Math.max(1, ...[...counts].filter(([d]) => d >= iso(start) && d <= iso(today)).map(([, n]) => n))
+  let total = 0
+  const columns = Array.from({ length: weeks }, (_, w) =>
+    Array.from({ length: 7 }, (_, d): HeatCell | null => {
+      const ms = start + (w * 7 + d) * 86_400_000
+      if (ms > today) return null
+      const count = counts.get(iso(ms)) ?? 0
+      total += count
+      return { day: iso(ms), count, level: count ? (Math.min(4, Math.ceil((count / max) * 4)) as 1 | 2 | 3 | 4) : 0 }
+    }),
+  )
+  const months = columns.map((col, i) => {
+    const first = col.find((c) => c)?.day.slice(5, 7)
+    const prev = i ? columns[i - 1].find((c) => c)?.day.slice(5, 7) : undefined
+    return first && first !== prev ? new Date(`2000-${first}-15T12:00:00`).toLocaleDateString('de-AT', { month: 'short' }) : null
+  })
+  return { columns, total, months }
+}
+
 /** Balken-Sparkline als SVG-Rechtecke (x, y, Höhe) in einer Fläche von width x height. */
 export function sparkBars(counts: number[], width = 90, height = 18): { x: number; y: number; w: number; h: number }[] {
   const max = Math.max(...counts, 1)

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { HISTORY_LIMIT, PAGE_HISTORY_LIMIT, PERIODS, countLines, dayLabel, fragmentUrl, groupByDay, groupOf, inPeriod, matches, type Change, type Period } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { DiffView } from './DiffView'
+import { Heatmap } from './Heatmap'
 
 type Props = {
   data: Data
@@ -21,6 +22,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   const [loadingMore, setLoadingMore] = useState(false)
   const [moreError, setMoreError] = useState('')
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
+  const [day, setDay] = useState<string | null>(null)
   const scrolled = useRef(false)
   // Verlauf einer einzelnen Seite: komplett aus der Datenbank statt nur aus den letzten 100 insgesamt
   useEffect(() => {
@@ -54,9 +56,14 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   const pageName = pageUrl ? (data.entries.find((e) => e.url === pageUrl)?.name ?? pageUrl) : ''
 
   const changes = useMemo(
-    () => source.filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '') && inPeriod(c.time, period)),
-    [source, query, group, period],
+    () => source.filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '') && inPeriod(c.time, period) && (!day || c.time.startsWith(day))),
+    [source, query, group, period, day],
   )
+  const heatTimes = useMemo(() => {
+    if (pageUrl) return data.freq[pageUrl] ?? []
+    const urls = group ? data.entries.filter((e) => e.group === group).map((e) => e.url) : Object.keys(data.freq)
+    return urls.flatMap((u) => data.freq[u] ?? [])
+  }, [data, pageUrl, group])
   const days = useMemo(() => groupByDay(changes), [changes])
 
   // Mail-Link #changes:<URL> öffnet den passenden Eintrag (einmalig, sobald er in der Liste steht)
@@ -81,6 +88,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   )}
   {pageUrl && !pageHistory && <p className="muted">Lade Verlauf …</p>}
   {pageUrl && pageHistory && !Array.isArray(pageHistory) && <p className="error">Verlauf konnte nicht geladen werden: {pageHistory.error}</p>}
+  <Heatmap times={heatTimes} selected={day} onSelect={setDay} />
   <div className="filter-bar">
     {PERIODS.map(([value, label]) => (
       <button key={value} className={`filter-pill${period === value ? ' active' : ''}`} onClick={() => setPeriod(value)}>{label}</button>

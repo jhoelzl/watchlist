@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -355,5 +355,25 @@ describe('sparkline', () => {
   it('Balken nur für Tage mit Änderungen', () => {
     expect(sparkBars([0, 2, 1], 30, 10)).toHaveLength(2)
     expect(sparkBars([0, 0], 30, 10)).toEqual([])
+  })
+})
+
+describe('heatmap', () => {
+  const now = new Date('2026-10-25T12:00:00Z') // Sonntag
+  it('endet mit der aktuellen Woche, zählt pro Tag und stuft Stufen', () => {
+    const h = heatmap(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-10-24 07:00 UTC', '2026-10-23 06:00 UTC', '2026-10-22 06:00 UTC', '2026-10-21 06:00 UTC', 'kaputt'], now, 4)
+    expect(h.columns).toHaveLength(4)
+    const last = h.columns[3]
+    expect(last[6]).toMatchObject({ day: '2026-10-25', count: 2 })
+    expect(last[5]).toMatchObject({ day: '2026-10-24', count: 2, level: 4 })
+    expect(last[4]).toMatchObject({ day: '2026-10-23', count: 1, level: 2 })
+    expect(last[0]?.day).toBe('2026-10-19')
+    expect(h.columns[0][0]?.day).toBe('2026-09-28')
+    expect(h.total).toBe(7)
+  })
+  it('lässt Tage nach heute und alte Einträge aus', () => {
+    const h = heatmap(['2026-01-01 06:00 UTC'], new Date('2026-10-21T12:00:00Z'), 2)
+    expect(h.columns[1].slice(3)).toEqual([null, null, null, null])
+    expect(h.total).toBe(0)
   })
 })
