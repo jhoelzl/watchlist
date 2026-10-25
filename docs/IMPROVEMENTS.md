@@ -1,6 +1,6 @@
 # Verbesserungsideen
 
-Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
+Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
 Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
@@ -88,65 +88,6 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 - ⚪ **CHANGELOG** und Versionspflege (aktuell `0.1.0`). (S)
 
 ---
-
-## Erledigt
-
-| Thema | Umsetzung |
-|-------|-----------|
-| HTML-Mail abgesichert | Tests für feindliche Inhalte (`<script>`, Attribute, Feed-Inhalte) und Sonderzeichen im Fragment-Link. `safe_link` verlinkt nur `http(s)`-URLs, `javascript:` bleibt Text |
-| Tab-/Parameter-Varianten | `merge_variants` in `notify.py` fasst Einträge mit identischem Diff in derselben Gruppe in Mail und Betreff zu einem Eintrag zusammen, die weiteren URLs stehen als "Gleicher Inhalt auch unter". Snapshots und Verlauf bleiben pro URL |
-| Mail-Betreff | `subject_for`: "3 Änderungen: Voice Live, S-Bike, Drei, … (Gruppen)" statt nur der Anzahl |
-| Dashboard-Link | Jede Mail verlinkt `#changes` und pro Eintrag `#changes:<URL>`. Das Dashboard öffnet den Tab und springt zum Eintrag. Basis-URL per `DASHBOARD_URL` überschreibbar |
-| Plain-Text-Mail | Gleiche Struktur wie HTML: Zusammenfassung, Gruppen, +/−-Zähler, Sprunglink, Dashboard-Link, Varianten |
-| Fehlercodes statt Textsuche | `CheckError(message, code)` und `error_code(ex)`, `HINTS` ist ein Dict nach Code. Der Code steht auch im Status (`code`) |
-| pre-commit für web/ | Hooks `web oxlint` und `web tsc` in `.pre-commit-config.yaml`, mypy deckt alle Module ab. Aktivierung bleibt einmal pro Klon (`uv run pre-commit install`), CI prüft alles ohnehin |
-| Audit-Job | `tests.yml`: `uv audit` und `npm audit` laufen im eigenen Job `audit` (auch wöchentlich). Beim Zeitplan laufen nur dort Schritte, Lint und Tests nur bei Push und PR |
-| Selector-Vorschau | Edge Function `watchlist-preview` ruft die Seite ab (SSRF-Schutz, nur freigeschaltete Konten) und zeigt im Formular erkannten Bereich, Zeichenzahl, Textprobe und Kandidaten. Logik in `analyze.ts` spiegelt `auto_root`. Kein JavaScript-Rendering |
-| Textfragment-Link | `fragment_url`/`fragmentUrl`: bei Feeds der Eintragslink, sonst die hinzugefügte Zeile mit dem längsten schlichten Textanfang (ohne Sonderzeichen), Fallback die längste |
-| Import/Export | Menü „Import / Export“ im Dashboard: Export als YAML oder JSON im `urls.yml`-Format, Import (auch alte `urls.yml`) mit Vorschau, vorhandene URLs werden übersprungen. Globale `defaults` sind nicht enthalten |
-| URLs bearbeiten und pausieren | Stift-Button pro URL öffnet ein Formular: Name, Gruppe, Selector (mit Vorschau), JS, `ignore` (Regex pro Zeile, geprüft), `only_added` und Pausieren (`active = false`, Status „Pausiert“, eigener Filter). Unbekannte Optionen bleiben erhalten. Braucht die Policy `admins update urls` |
-| Verlauf pro Seite | Uhr-Button (⏱) in der URL-Tabelle öffnet „Letzte Änderungen“ gefiltert auf diese Seite. Die Änderungen kommen komplett aus `watchlist_history` (bis 500), nicht nur aus den letzten 100 insgesamt |
-| Filterzustand in der URL | Tab, Gruppe, Status, Zeitraum und Suche stehen im Hash (`#t=changes&g=Azure&s=problem&p=7d&q=…`), bleiben beim Neuladen und sind teilbar. Alte Mail-Links (`#changes:<URL>`) funktionieren weiter |
-| Gruppen-Tab erweitert | Reihenfolge (↑/↓), Farbe, Icon, leere Gruppen und „Alle pausieren/fortsetzen“ pro Gruppe. Metadaten liegen in der neuen Tabelle `watchlist_groups` (Block am Ende von `supabase/schema.sql` im SQL-Editor ausführen), ohne sie bleibt der Rest nutzbar |
-| Live-Status nach „Jetzt prüfen“ | Das Dashboard fragt alle 5 s den Lauf über die Edge Function ab (wartet/läuft/fertig/Fehler, Link zum Lauf, max. 10 Minuten) und lädt die Daten nach Ende neu, statt fest 90 Sekunden zu warten |
-| Anzeige-Einstellungen gemerkt | Tab, Filter und zugeklappte Gruppen liegen in `localStorage` und kommen beim nächsten Besuch zurück. Ein Hash in der URL (geteilter Link) hat Vorrang |
-| Änderungshäufigkeit als Sparkline | Neue Spalte „Letzte 30 Tage“ in der URL-Tabelle: Balken pro Tag mit Änderungen, aus `watchlist_history` (bis 5000 Einträge der letzten 30 Tage) |
-| Statisches `dashboard.py` entfernt | `check.py` erzeugt kein `site/index.html` mehr, das Web-Dashboard ersetzt es vollständig. Tests, Hooks, CI und Docs angepasst |
-| Retry mit Jitter, dauerhafte Fehler | Wartezeit zwischen Wiederholungen bekommt bis zu 25 % Zufall. 404/410 werden sofort als „dauerhafter Fehler“ gemeldet (kein Retry) und lösen die Warn-Mail schon nach 2 statt 3 Läufen aus |
-| CONTRIBUTING.md | Setup, Tests, Stil, Daten und Doku-Pflege in `CONTRIBUTING.md`, in der README verlinkt |
-| Edge Functions abgesichert | `watchlist-trigger-check` und `watchlist-preview` erlauben CORS nur für `https://jhoelzl.github.io` (und `localhost:5173` für die Entwicklung), fremde Origins bekommen 403. Der Start einer Prüfung ist auf einen pro Minute begrenzt (429) |
-| Fehlerserie im Dashboard | Badge „N Läufe in Folge“ bei Fehlern (aus `streak`), ab 6 Läufen „Dauerhaft kaputt“ (gleiche Schwelle wie `STUCK_AFTER` in `check.py`) und neuer Filter „Dauerhaft kaputt“ |
-| Sortierbare Spalten | Klick auf Status, Seite, Zuletzt geprüft oder Zuletzt geändert sortiert innerhalb der Gruppen (aufsteigend, absteigend, Standard). Leere Zeiten bleiben am Ende, die Sortierung steht im URL-Hash (`o=-changed`) und wird gemerkt |
-| Verlauf nachladen | Unter „Letzte Änderungen“ lädt „Ältere Einträge laden“ je 100 weitere Einträge per Keyset (`id < letzte id`), auch im Verlauf einer einzelnen Seite |
-| Diff-Ansicht Alt/Neu | Jeder Eintrag hat Umschalter „Inline“ / „Alt/Neu“ (zwei Spalten, ersetzte Zeilen gepaart, Wortmarkierung) und „nur geänderte Zeilen“. Helfer `sideBySide` |
-| Laufhistorie | `check.py` speichert pro Lauf Dauer, URL-Anzahl, Fehler, Warnungen und Änderungen (`record_run`, Dokument `runs`, letzte `MAX_RUNS=30`). Das Dashboard zeigt im Tab URLs eine aufklappbare Tabelle mit Ø-Dauer und Fehlerquote. Die Anzeige füllt sich ab dem nächsten Lauf |
-| Ignore-Vorschläge | Beim Bearbeiten einer URL sucht `suggestIgnores` im Verlauf (letzte 50 Änderungen) nach Zeilen mit Ziffern, die in mindestens 2 Änderungen nur in den Zahlen abweichen (Datum, Zähler, Zeitstempel), und bietet passende `ignore`-Regex zum Übernehmen an. Bereits abgedeckte Muster fehlen in der Liste |
-| Pro-URL-Intervall | Option `interval: daily\|weekly` (Mindestabstand 20 h bzw. 160 h, `is_due`). Übersprungene URLs behalten Status und Cache. URLs mit Problem, ohne Snapshot oder ohne letzte Prüfung werden immer geprüft. Im Bearbeiten-Formular als „Prüfung“ wählbar, ungültige Werte sind ein Konfigurationsfehler |
-| `check.py` aufgeteilt | `config.py` (Optionen, `config_errors`, `is_due`), `fetch.py` (HTTP, Retry, robots, Playwright, `fetch_all`), `parse.py` (Feed/HTML, `ignore`, `auto_root`), `diffing.py` (`make_diff`, `annotate_diff`, `fragment_url`), `notify.py` (Resend, Mails, `HINTS`, Heartbeat), `errors.py` (`CheckError`, Fehlercodes). `check.py` bleibt Orchestrierung; `run()` läuft in drei Phasen: sammeln (`check_url` liefert pro URL ein `Result`, `apply_result` übernimmt es in `RunState` und Store), senden (`send_change_mail`, `send_problem_mail`), speichern |
-| `run()` entflochten | `check_url(store, st, opts, fetched) -> Result` verändert nichts mehr selbst: Status, Zähler, Snapshot, Cache, Änderung und Warnung stehen im `Result` (Dataclass), `apply_result` führt sie aus |
-| README erweitert | Architekturdiagramm (Mermaid), Einrichtung als Checkliste, Abschnitt „Fehlerbehebung“ (zu wenig Text, robots.txt, Selector, „Jetzt prüfen“), Hinweis zu den UTC-Zeiten des Zeitplans |
-| Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
-| Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
-| Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
-| URLs im Dashboard verwalten | Hinzufügen (mit `selector: auto`), Löschen (kleines „×“ mit Rückfrage), Tab „Gruppen“ zum Anlegen, Umbenennen, Zuordnen und Auflösen |
-| „Jetzt prüfen“ | Edge Function `watchlist-trigger-check` startet `check.yml` (Login und Freigabe werden geprüft), der Fehlertext der Funktion wird angezeigt |
-| Dashboard-Design | Dark Mode, Tabs als Segmented Control, Statusfilter mit Zählern, Gruppen einklappbar und alphabetisch, responsive Tabellen, redundante Kacheln entfernt |
-| Tab „Letzte Änderungen“ | Letzte 100 Diffs aus der Datenbank, nach Tag gruppiert, Zeitraumfilter (Heute/7/30 Tage), Gruppen- und Textsuche, `+N −M`, Link „zur geänderten Stelle“ |
-| Diff-Qualität | Wortgenaue Hervorhebung (Python und TypeScript), 3 Zeilen Kontext, bis zu 500 gespeicherte Zeilen, die Mail zeigt 60 |
-| Mail-Verbesserungen | Zusammenfassung oben mit Sprunglinks, Farben für Hinzugefügt/Entfernt, `+N −M` im Kopf, Hinweis auf das Dashboard bei gekürzten Diffs |
-| `selector: auto` | Wählt `main`, `article`, `[role=main]`, `#main-content`, `#content` oder die ganze Seite. Standard im Dashboard-Formular. Behebt „Selector nicht gefunden“ (z. B. DeepL, S-Bike) |
-| Ein Playwright-Browser pro Lauf | `BrowserPool` startet Chromium lazy beim ersten `js: true`-Aufruf, eine Seite pro URL in einem eigenen Thread, Neustart nach Absturz |
-| Actions per Commit-SHA gepinnt | `checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages` mit SHA und Versionskommentar (Dependabot aktualisiert) |
-| Rechte im Workflow minimiert | `permissions: {}` global, `contents: read` im Job `check`, `pages: write` und `id-token: write` nur im Pages-Workflow |
-| `ignore`-Regex validiert | `config_errors`: ungültig, über 300 Zeichen, verschachtelte Quantifizierer. Betroffene URL steht auf „Fehler“ |
-| Secret-Scan | GitHub Secret Scanning und Push Protection aktiviert, `gitleaks` als Job in `tests.yml` (gesamte Historie) und als pre-commit-Hook |
-| `uv audit` in CI | In `tests.yml` bei Push, Pull Request und wöchentlich |
-| Parallele Abrufe | `fetch_all` mit 6 Threads, 2 pro Host, JS-Seiten nacheinander, ETag/Last-Modified (304) |
-| Warnmails mit Tipp | `hint_for`/`with_hint` nennen Ursache und Abhilfe (robots.txt, 403, 404, Timeout, Selector, zu wenig Text, …) |
-| Lebenszeichen-Mail | Statistik pro Gruppe, letzte Änderungen, Problemseiten und „Dauerhaft kaputt“ (ab `STUCK_AFTER` = 6 Läufen in Folge) |
-| Einheitliche Sprache | Deutsch für Meldungen, Mails, Kommentare, Doku. Englisch für Code-Bezeichner und Commit-Nachrichten |
-| Linting und Typen | Ruff (`E`, `F`, `I`, `UP`, `B`, `SIM`, `C4`, `PTH`), mypy mit den ohne Annotationen erfüllbaren strict-Flags, `oxlint` und `tsc` für `web/`, pre-commit für Python |
-| Copilot-Anweisungen | `.github/copilot-instructions.md`: direkt auf `main` committen und pushen, Sprache, `add.py` nutzen, Prüfungen vor dem Commit |
 
 ## Vorgeschlagene Reihenfolge
 

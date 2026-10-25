@@ -50,4 +50,4 @@ cd web && npx tsc -b && npm run lint && npm test
 
 ## Änderungen einreichen
 
-Kleine, fokussierte Commits mit kurzer englischer Nachricht. Die Doku (README, `docs/IMPROVEMENTS.md`) wird mit der Änderung angepasst: erledigte Punkte aus den offenen Ideen entfernen und in „Erledigt“ eintragen.
+Kleine, fokussierte Commits mit kurzer englischer Nachricht. Die Doku (README, `docs/IMPROVEMENTS.md`) wird mit der Änderung angepasst: erledigte Punkte aus den offenen Ideen entfernen.
