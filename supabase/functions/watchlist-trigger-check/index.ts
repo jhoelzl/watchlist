@@ -37,14 +37,19 @@ Deno.serve(async (req) => {
       },
     });
 
+  const body = await req.json().catch(() => ({}));
   const runs = await gh("runs?per_page=1");
-  if (runs.ok) {
-    const last = (await runs.json()).workflow_runs?.[0];
-    if (last && ["queued", "in_progress", "waiting", "requested", "pending"].includes(last.status)) {
-      return reply({ status: "running" });
-    }
+  if (!runs.ok && body?.action === "status") return reply({ error: `GitHub antwortet mit ${runs.status}.` }, 502);
+  const last = runs.ok ? (await runs.json()).workflow_runs?.[0] : undefined;
+  const run = last && { id: last.id, status: last.status, conclusion: last.conclusion, url: last.html_url };
+
+  // Nur lesen: aktueller Stand des letzten Laufs (für die Live-Anzeige im Dashboard)
+  if (body?.action === "status") return reply({ run: run ?? null });
+
+  if (last && ["queued", "in_progress", "waiting", "requested", "pending"].includes(last.status)) {
+    return reply({ status: "running", baseline: last.id - 1, run });
   }
   const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
   if (res.status !== 204) return reply({ error: `GitHub antwortet mit ${res.status}.` }, 502);
-  return reply({ status: "started" });
+  return reply({ status: "started", baseline: last?.id ?? 0 });
 });

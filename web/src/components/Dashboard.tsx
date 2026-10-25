@@ -3,7 +3,7 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -180,7 +180,8 @@ export function Dashboard() {
   const [query, setQuery] = useState(initial.query)
   const [group, setGroup] = useState(initial.group)
   const [status, setStatus] = useState<StatusFilter>(initial.status)
-  const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
+  const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'waiting' | 'running' | 'success' | 'failed' | 'timeout'; url?: string } | { state: 'error'; message: string }>({ state: 'idle' })
+  const [baseline, setBaseline] = useState<number | null>(null)
   const [period, setPeriod] = useState<Period>(initial.period)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
@@ -233,6 +234,31 @@ export function Dashboard() {
     if (hash !== window.location.hash) history.replaceState(null, '', hash || window.location.pathname + window.location.search)
   }, [tab, group, status, period, query])
 
+  // Lauf-Status alle 5 s abfragen, bis der Lauf fertig ist (max. 10 Minuten)
+  useEffect(() => {
+    if (baseline === null) return
+    let stale = false
+    const started = Date.now()
+    const tick = async () => {
+      if (stale) return
+      if (Date.now() - started > 600_000) { setCheck({ state: 'timeout' }); return setBaseline(null) }
+      const { data: res } = await supabase.functions.invoke('watchlist-trigger-check', { body: { action: 'status' } })
+      if (stale) return
+      const run = (res?.run ?? null) as RunInfo | null
+      const phase = runPhase(run, baseline)
+      if (phase === 'success' || phase === 'failed') {
+        setCheck({ state: phase, url: run?.url })
+        setBaseline(null)
+        void load().then(setResult)
+        return
+      }
+      setCheck({ state: phase, url: run?.url })
+      timer = setTimeout(() => void tick(), 5000)
+    }
+    let timer = setTimeout(() => void tick(), 4000)
+    return () => { stale = true; clearTimeout(timer) }
+  }, [baseline])
+
   const checkNow = async () => {
     setCheck({ state: 'busy' })
     const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check')
@@ -240,8 +266,8 @@ export function Dashboard() {
       const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
       return setCheck({ state: 'error', message: res?.error ?? body?.error ?? error?.message ?? 'Unbekannter Fehler' })
     }
-    setCheck({ state: res?.status === 'running' ? 'running' : 'started' })
-    setTimeout(() => void load().then(setResult), 90_000)
+    setBaseline(res?.baseline ?? 0)
+    setCheck({ state: res?.status === 'running' ? 'running' : 'waiting', url: res?.run?.url })
   }
 
   const download = async (format: 'yaml' | 'json') => {
@@ -302,13 +328,16 @@ export function Dashboard() {
               <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
             </div>
           </details>
-          <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy'}>
-            {check.state === 'busy' ? 'Starte …' : 'Jetzt prüfen'}
+          <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy' || check.state === 'waiting' || check.state === 'running'}>
+            {check.state === 'busy' ? 'Starte …' : check.state === 'waiting' || check.state === 'running' ? 'Prüfung läuft …' : 'Jetzt prüfen'}
           </button>
         </div>
       </div>
-      {check.state === 'started' && <p className="muted">Prüfung gestartet. Sie dauert etwa eine Minute, die Ansicht lädt sich nach 90 Sekunden automatisch neu.</p>}
-      {check.state === 'running' && <p className="muted">Es läuft bereits eine Prüfung.</p>}
+      {check.state === 'waiting' && <p className="muted">Prüfung gestartet, warte auf den Lauf bei GitHub …</p>}
+      {check.state === 'running' && <p className="muted">Prüfung läuft{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">Lauf ansehen</a>)</>}. Die Ansicht aktualisiert sich automatisch.</p>}
+      {check.state === 'success' && <p className="muted">Prüfung fertig, die Ansicht ist aktualisiert.</p>}
+      {check.state === 'failed' && <p className="error">Die Prüfung ist fehlgeschlagen{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">Lauf ansehen</a>)</>}.</p>}
+      {check.state === 'timeout' && <p className="error">Der Lauf dauert ungewöhnlich lange. Bitte bei GitHub nachsehen.</p>}
       {check.state === 'error' && <p className="error">Prüfung konnte nicht gestartet werden: {check.message}</p>}
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>

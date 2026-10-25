@@ -405,3 +405,13 @@ export function moveGroup(order: string[], name: string, delta: -1 | 1): string[
 export function isHexColor(c: string | null | undefined): c is string {
   return !!c && /^#[0-9a-fA-F]{6}$/.test(c)
 }
+
+export type RunInfo = { id: number; status: string; conclusion: string | null; url: string }
+export type RunPhase = 'waiting' | 'running' | 'success' | 'failed'
+
+/** Deutet den letzten Workflow-Lauf. Läufe mit id <= baseline gehören zu einer früheren Prüfung. */
+export function runPhase(run: RunInfo | null | undefined, baseline: number): RunPhase {
+  if (!run || run.id <= baseline) return 'waiting'
+  if (run.status !== 'completed') return 'running'
+  return run.conclusion === 'success' ? 'success' : 'failed'
+}
