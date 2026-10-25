@@ -89,7 +89,7 @@ urls:
     ignore_robots: true        # optional, robots.txt-Sperre übergehen
   - url: https://example.com/feed.xml   # RSS/Atom wird automatisch erkannt
 ```
-- `ignore`-Regex werden beim Start geprüft: ungültige, über 300 Zeichen lange oder zu Backtracking neigende Muster (verschachtelte Quantifizierer wie `(a+)+`) markieren die URL als „Fehler" (Konfigurationsfehler, nicht abgerufen), der Lauf endet mit Fehler und löst die Alarmmail aus.
+- `ignore`-Regex werden beim Start geprüft: ungültige, über 300 Zeichen lange oder zu Backtracking neigende Muster (verschachtelte Quantifizierer wie `(a+)+`) markieren die URL als „Fehler" (Konfigurationsfehler, nicht abgerufen), der Lauf endet mit Fehler und löst die Alarmmail aus. Zusätzlich läuft jedes Muster mit der Bibliothek `regex` und einem Timeout von 2 s pro Seite; wird er überschritten, gilt die URL als Abruffehler (`ignore_timeout`) mit Tipp in der Mail.
 - Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
 - Eine reine Liste von URLs ohne `defaults`/`urls` funktioniert weiterhin.
 - `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn irgendwo `js: true` konfiguriert ist (`check.py --needs-js`).

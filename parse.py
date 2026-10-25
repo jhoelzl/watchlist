@@ -1,10 +1,14 @@
 import re
 import xml.etree.ElementTree as ET
 
+import regex
 from bs4 import BeautifulSoup, Tag
 
 from errors import CheckError
 from models import Options
+
+# Obergrenze pro ignore-Muster; schützt vor katastrophalem Backtracking, das die Heuristik in config.py nicht erkennt.
+IGNORE_TIMEOUT = 2.0
 
 
 def clean(s: str | None) -> str:
@@ -86,5 +90,8 @@ def extract(body: str, opts: Options) -> tuple[str, str, bool]:
     feed = is_feed(body)
     title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
     for pattern in opts.get("ignore", []):
-        text = re.sub(pattern, "", text)
+        try:
+            text = regex.sub(pattern, "", text, timeout=IGNORE_TIMEOUT)
+        except TimeoutError as ex:
+            raise CheckError(f"ignore-Regex braucht zu lange (>{IGNORE_TIMEOUT} s): {pattern[:60]}", "ignore_timeout") from ex
     return title, drop_blank_lines(text), feed
