@@ -10,6 +10,7 @@ import requests
 
 from errors import CheckError, error_code, status_code_name
 from models import Options, Validators
+from netsafe import ensure_public_url, safe_get
 from parse import extract
 from settings import SETTINGS
 
@@ -30,7 +31,7 @@ def robots_allowed(url: str, cache: dict[str, RobotFileParser]) -> bool:
     if base not in cache:
         rp = RobotFileParser()
         try:
-            r = requests.get(f"{base}/robots.txt", headers=HEADERS, timeout=15)
+            r = safe_get(f"{base}/robots.txt", HEADERS, 15)
             if r.status_code == 200:
                 rp.parse(r.text.splitlines())
             else:
@@ -53,7 +54,7 @@ def get_with_retry(url: str, headers: dict[str, str]) -> requests.Response:
             time.sleep(wait)
         delay = RETRY_DELAYS[attempt] if attempt < len(RETRY_DELAYS) else 0
         try:
-            resp = requests.get(url, headers=headers, timeout=30)
+            resp = safe_get(url, headers, 30)
         except (requests.ConnectionError, requests.Timeout) as ex:
             last = type(ex).__name__
             last_code = error_code(ex)
@@ -113,6 +114,7 @@ class BrowserPool:
         if self._browser is None:
             self._start()
         page = self._browser.new_page(user_agent=USER_AGENT)
+        page.route("**/*", _block_internal_navigation)
         try:
             page.goto(url, wait_until="networkidle", timeout=60000)
             return str(page.content())
@@ -120,11 +122,23 @@ class BrowserPool:
             page.close()
 
 
+def _block_internal_navigation(route: Any) -> None:
+    """Aborts page navigations (including redirects) to non-public addresses."""
+    if route.request.is_navigation_request():
+        try:
+            ensure_public_url(route.request.url)
+        except CheckError:
+            route.abort()
+            return
+    route.continue_()
+
+
 _browser_pool: BrowserPool | None = None  # Set by fetch_all for each run.
 
 
 def fetch_body(url: str, js: bool, cond: Validators | None = None) -> tuple[str | None, Validators]:
     """Returns (body, validators). Body is None when the server responds with 304."""
+    ensure_public_url(url)
     if js:
         if _browser_pool is not None:
             return _browser_pool.content(url), Validators()

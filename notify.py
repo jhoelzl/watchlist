@@ -192,6 +192,9 @@ HINT_CONTENT = "Likely a cookie wall, bot block, or JavaScript-loaded content: t
 
 
 HINTS = {
+    "blocked_url": (
+        "Only public http(s) addresses are allowed (no localhost, private networks, or redirects into them): check the URL."
+    ),
     "robots": "The page blocks automated fetches. Only if permitted, set 'ignore_robots: true'.",
     "selector": (
         "The selector no longer matches (was the page redesigned?), or content is loaded with JavaScript: "
