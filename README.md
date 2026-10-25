@@ -5,7 +5,35 @@
 
 Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Änderungen eine gruppierte HTML-Mail mit Diff über Resend.
 
-## Setup
+## Architektur
+
+```mermaid
+flowchart LR
+    A[GitHub Actions<br/>check.yml, 06:00 und 18:00 UTC] -->|Abruf der Seiten| W[(Webseiten)]
+    A -->|Snapshots, Status, Verlauf<br/>service_role| S[(Supabase<br/>watchlist_*)]
+    A -->|Änderungsmail| R[Resend]
+    D[Dashboard<br/>GitHub Pages] -->|Login, Lesen, Bearbeiten<br/>anon-Key + RLS| S
+    D -->|Jetzt prüfen, Vorschau| E[Edge Functions<br/>watchlist-trigger-check<br/>watchlist-preview]
+    E -->|workflow_dispatch<br/>GH_DISPATCH_TOKEN| A
+    E -->|prüft Login und watchlist_admins| S
+```
+
+- Der Prüflauf (`check.py`) ist der einzige Schreiber der Snapshots und des Verlaufs. Er arbeitet mit dem geheimen `service_role`-Key.
+- Das Dashboard kennt nur den öffentlichen Anon-Key. Was es sehen und ändern darf, regeln die RLS-Policies in `supabase/schema.sql` (nur Konten aus `watchlist_admins`).
+- Die Edge Functions sind die einzige Stelle mit dem GitHub-Token. Sie prüfen Login und Admin selbst, erlauben nur `https://jhoelzl.github.io` als Herkunft und starten höchstens einen Lauf pro Minute.
+- Der Zeitplan steht in UTC (`0 6,18 * * *`). In der Sommerzeit (MESZ) kommen die Mails um 08:00 und 20:00, in der Winterzeit um 07:00 und 19:00.
+
+## Einrichtung als Checkliste
+
+- [ ] **Resend:** Account anlegen, Domain verifizieren (oder nur an die eigene Adresse mit `onboarding@resend.dev` senden), API-Key erzeugen.
+- [ ] **Supabase-Schema:** [supabase/schema.sql](supabase/schema.sql) im SQL-Editor ausführen, danach das eigene Konto in `watchlist_admins` eintragen (siehe „Dashboard mit Login“).
+- [ ] **GitHub-Secrets** (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `MAIL_TO`, optional `MAIL_FROM`.
+- [ ] **Pages:** Settings → Pages → Source „GitHub Actions“, Variable `ENABLE_PAGES=true`. Danach läuft `pages.yml` und veröffentlicht das Dashboard.
+- [ ] **Redirect-URL:** In Supabase unter Authentication → URL Configuration die Dashboard-Adresse (`https://jhoelzl.github.io/watchlist/`) als Site URL bzw. erlaubte Redirect-URL eintragen. Sonst führen Links aus Bestätigungs- und Reset-Mails ins Leere.
+- [ ] **„Jetzt prüfen“:** Fine-grained Token (nur dieses Repo, „Actions: Read and write“) als `GH_DISPATCH_TOKEN` in den Supabase-Secrets setzen und beide Edge Functions deployen (Befehle im Abschnitt „Dashboard mit Login“).
+- [ ] **Erster Lauf:** Actions → check → Run workflow. Er legt die Baselines an und schickt keine Mail.
+
+## Setup (Details)
 1. Resend-Account anlegen, Domain verifizieren (oder nur an die eigene Adresse mit `onboarding@resend.dev` senden) und API-Key erzeugen.
 2. Repo → Settings → Secrets and variables → Actions → Secrets:
    - `RESEND_API_KEY`
@@ -95,6 +123,20 @@ Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktio
 - **Dashboard:** Das Web-Dashboard (`web/`) zeigt Status pro URL, letzte Prüfung und Änderungsverlauf mit Suche und Filtern.
 - **Dashboard auf GitHub Pages (optional):** Pages-Seiten sind öffentlich erreichbar, auch bei privatem Repo, und für private Repos braucht es einen bezahlten Plan. Aktivieren: Settings → Pages → Source „GitHub Actions" und Variable `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
 - **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
+
+## Fehlerbehebung
+
+- **„Seite liefert zu wenig Text“ (Status „Zu wenig Text“):** Die Seite lieferte weniger als 30 % des bisherigen Textes, meist wegen Cookie-Wand, Bot-Block oder per JavaScript geladener Inhalte. Der Snapshot bleibt unverändert. `js: true` setzen oder den Selector prüfen. Ist der Rückgang gewollt, `min_ratio` senken (`0` schaltet den Wächter ab).
+- **„robots.txt verbietet den Abruf“:** Die Seite will keine automatischen Abrufe. Nur wenn das für dich erlaubt ist, `ignore_robots: true` in den Optionen der URL setzen.
+- **„Selector nicht gefunden“:** Die Seite wurde umgebaut oder der Inhalt kommt erst per JavaScript. Im Dashboard unter „Bearbeiten“ die Vorschau nutzen, `selector: auto` probieren oder `js: true` setzen.
+- **„Jetzt prüfen“ schlägt fehl:**
+  - *„GH_DISPATCH_TOKEN ist nicht gesetzt“*: Das Secret in Supabase fehlt (`supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>`).
+  - *Meldung von GitHub (401/403/404)*: Token abgelaufen oder ohne „Actions: Read and write“ für dieses Repo. Neues Token anlegen und das Secret ersetzen.
+  - *429*: Der letzte Lauf wurde vor weniger als einer Minute gestartet, kurz warten.
+  - *403 oder CORS-Fehler im Browser*: Die Function erlaubt nur `https://jhoelzl.github.io` (und `http://localhost:5173`). Eine andere Adresse muss in `ALLOWED_ORIGINS` der Function ergänzt und neu deployt werden.
+  - *„nicht freigeschaltet“*: Das Konto steht nicht in `watchlist_admins`.
+- **Änderungen lassen sich nicht speichern („Fehlt die Policy …“):** Die Policies `admins update urls`, `admins add urls` bzw. der Block `watchlist_groups` aus `supabase/schema.sql` wurden noch nicht im SQL-Editor ausgeführt.
+- **Immer wieder Änderungen durch Zähler oder Datum:** Im Bearbeiten-Formular erscheinen Ignore-Vorschläge aus dem Verlauf, die sich mit einem Klick übernehmen lassen.
 
 ## Lokal
 Mitarbeit, Stil und Prüfungen vor dem Commit: [CONTRIBUTING.md](CONTRIBUTING.md).

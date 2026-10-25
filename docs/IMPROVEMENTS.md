@@ -64,7 +64,6 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 - 🟡 **`timeout-minutes`** für den Job `check` setzen, damit ein hängender Playwright-Lauf nicht Stunden blockiert (derzeit nicht gesetzt). (S)
 - 🟡 **Laufdauer beobachten:** 52 URLs, viele auf `learn.microsoft.com` (`MAX_PER_HOST = 2`). Nach einigen Läufen Dauer prüfen, ggf. Limit oder Pause pro Host justieren. (S)
-- 🟡 **Cron in UTC** (`0 6,18 * * *`) in der README dokumentieren oder auf lokale Zeiten abstimmen (Sommer-/Winterzeit verschiebt die Mailzeit). (S)
 - 🟡 **Benachrichtigung bei Workflow-Ausfall:** Scheitert `check.yml` selbst (Supabase down, Secret fehlt), kommt keine Mail. Zweiter Job mit `if: failure()` oder Überwachung „kein Lauf seit 36 h“. (S)
 - 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
@@ -84,7 +83,6 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 ## 8. Dokumentation
 
-- 🟡 **README erweitern:** Architekturdiagramm (Supabase, Actions, Dashboard, Edge Function), Einrichtung als Checkliste (Supabase, Secrets, Pages, Redirect-URL, `GH_DISPATCH_TOKEN`), Fehlerbehebung („Seite liefert zu wenig Text“, „robots.txt verbietet den Abruf“, „Selector nicht gefunden“, „Jetzt prüfen schlägt fehl“). (S)
 - ⚪ **Screenshots** des Dashboards und einer Beispiel-Mail im README. (S)
 - ⚪ **Beispielkonfigurationen** für typische Fälle (Release Notes mit `only_added`, JS-Seite, Feed, Stellenanzeigen mit `ignore`, `selector: auto`). (S)
 - ⚪ **CHANGELOG** und Versionspflege (aktuell `0.1.0`). (S)
@@ -126,6 +124,7 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 | Pro-URL-Intervall | Option `interval: daily\|weekly` (Mindestabstand 20 h bzw. 160 h, `is_due`). Übersprungene URLs behalten Status und Cache. URLs mit Problem, ohne Snapshot oder ohne letzte Prüfung werden immer geprüft. Im Bearbeiten-Formular als „Prüfung“ wählbar, ungültige Werte sind ein Konfigurationsfehler |
 | `check.py` aufgeteilt | `config.py` (Optionen, `config_errors`, `is_due`), `fetch.py` (HTTP, Retry, robots, Playwright, `fetch_all`), `parse.py` (Feed/HTML, `ignore`, `auto_root`), `diffing.py` (`make_diff`, `annotate_diff`, `fragment_url`), `notify.py` (Resend, Mails, `HINTS`, Heartbeat), `errors.py` (`CheckError`, Fehlercodes). `check.py` bleibt Orchestrierung; `run()` läuft in drei Phasen: sammeln (`check_url` liefert pro URL ein `Result`, `apply_result` übernimmt es in `RunState` und Store), senden (`send_change_mail`, `send_problem_mail`), speichern |
 | `run()` entflochten | `check_url(store, st, opts, fetched) -> Result` verändert nichts mehr selbst: Status, Zähler, Snapshot, Cache, Änderung und Warnung stehen im `Result` (Dataclass), `apply_result` führt sie aus |
+| README erweitert | Architekturdiagramm (Mermaid), Einrichtung als Checkliste, Abschnitt „Fehlerbehebung“ (zu wenig Text, robots.txt, Selector, „Jetzt prüfen“), Hinweis zu den UTC-Zeiten des Zeitplans |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
