@@ -96,6 +96,8 @@ Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktio
 - **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
 
 ## Lokal
+Mitarbeit, Stil und Prüfungen vor dem Commit: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ```
 uv run check.py                       # Mails werden nur ausgegeben, wenn RESEND_API_KEY fehlt
 uv run --extra js playwright install chromium   # einmalig, nur für js: true (ein Browser pro Lauf, eine Seite je URL)
