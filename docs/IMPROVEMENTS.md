@@ -96,7 +96,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - ⚪ **Retry mit Jitter** und Unterscheidung dauerhafter Fehler (404/410) von vorübergehenden. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
 - ⚪ **Dependabot gruppieren** (ein PR pro Woche) und Auto-Merge für Patch-Updates bei grünen Tests. (S)
-- ⚪ **Wöchentlicher `tests.yml`-Lauf** führt auch Lint und Tests aus, obwohl nur `uv audit` neue Erkenntnisse liefert. Audit in einen eigenen Job auslagern. (S)
 - ⚪ **Web-Prüfungen in `tests.yml`:** `tsc`, `oxlint` und `vitest` laufen bisher nur lokal, der `pages`-Workflow baut nur. (S)
 
 ## 7. Tests und Qualität
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Plain-Text-Mail | Gleiche Struktur wie HTML: Zusammenfassung, Gruppen, +/−-Zähler, Sprunglink, Dashboard-Link, Varianten |
 | Fehlercodes statt Textsuche | `CheckError(message, code)` und `error_code(ex)`, `HINTS` ist ein Dict nach Code. Der Code steht auch im Status (`code`) |
 | pre-commit für web/ | Hooks `web oxlint` und `web tsc` in `.pre-commit-config.yaml`, mypy deckt alle Module ab. Aktivierung bleibt einmal pro Klon (`uv run pre-commit install`), CI prüft alles ohnehin |
+| Audit-Job | `tests.yml`: `uv audit` und `npm audit` laufen im eigenen Job `audit` (auch wöchentlich). Beim Zeitplan laufen nur dort Schritte, Lint und Tests nur bei Push und PR |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

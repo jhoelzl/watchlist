@@ -5,13 +5,14 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "0 5 * * 1" # wöchentlich, damit neue Schwachstellen auch ohne Push auffallen
+    - cron: "0 5 * * 1" # wöchentlich: nur der Job audit, damit neue Schwachstellen auch ohne Push auffallen
 
 permissions:
   contents: read
 
 jobs:
   gitleaks:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -22,6 +23,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   pytest:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -30,11 +32,11 @@ jobs:
           enable-cache: true
       - run: uv run --frozen ruff check .
       - run: uv run --frozen ruff format --check .
-      - run: uv run --frozen mypy check.py add.py dashboard.py
+      - run: uv run --frozen mypy check.py add.py dashboard.py store.py migrate.py
       - run: uv run --frozen pytest -q
-      - run: uv audit --frozen --preview-features audit-command
 
   web:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,4 +50,14 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: test
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          enable-cache: true
+      - run: uv audit --frozen --preview-features audit-command
       - run: npm audit --omit=dev
+        working-directory: web
