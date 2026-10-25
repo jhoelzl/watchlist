@@ -517,3 +517,18 @@ def test_browser_pool_without_playwright_gives_clear_error(monkeypatch):
             pool.content("https://a/")
     finally:
         pool.close()
+
+
+def test_annotate_diff_marks_changed_words():
+    segs = check.annotate_diff(["@@ -1 +1 @@", "-Preis: 10 Euro", "+Preis: 12 Euro", "-weg"])
+    assert [s for s, changed in segs[1] if changed] == ["10"]
+    assert [s for s, changed in segs[2] if changed] == ["12"]
+    assert segs[3] == [("-weg", False)]
+    assert check.annotate_diff(["-alt komplett", "+ganz anders hier"])[0] == [("-alt komplett", False)]
+
+
+def test_render_html_highlights_words_and_counts():
+    html = check.render_html([{"name": "X", "url": "https://a", "group": "G", "diff": ["-a 1", "+a 2"], "extra": 0}])
+    assert 'font-weight:600">1</span>' in html
+    assert "+1" in html
+    assert check.diff_counts(["+a", "+b", "-c", "+++x"]) == (2, 1)

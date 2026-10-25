@@ -254,6 +254,57 @@ def make_diff(old, new, only_added):
     return diff[:MAX_DIFF_LINES], extra
 
 
+TOKEN = re.compile(r"\s+|\w+|[^\w\s]")
+
+
+def word_segments(old, new):
+    """Teilt zwei ersetzte Zeilen in (Text, geändert)-Stücke, damit nur die tatsächlich geänderten Wörter hervorgehoben werden."""
+    a, b = TOKEN.findall(old), TOKEN.findall(new)
+    out_old: list[tuple[str, bool]] = []
+    out_new: list[tuple[str, bool]] = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == "equal":
+            out_old.append(("".join(a[i1:i2]), False))
+            out_new.append(("".join(b[j1:j2]), False))
+        else:
+            if i2 > i1:
+                out_old.append(("".join(a[i1:i2]), True))
+            if j2 > j1:
+                out_new.append(("".join(b[j1:j2]), True))
+    return out_old, out_new
+
+
+def annotate_diff(diff):
+    """Je Diff-Zeile eine Liste aus (Text, geändert)-Stücken. Aufeinanderfolgende -/+ Blöcke werden zeilenweise verglichen."""
+    result: list[list[tuple[str, bool]] | None] = [None] * len(diff)
+    i = 0
+    while i < len(diff):
+        if diff[i].startswith("-"):
+            j = i
+            while j < len(diff) and diff[j].startswith("-"):
+                j += 1
+            k = j
+            while k < len(diff) and diff[k].startswith("+"):
+                k += 1
+            for n in range(min(j - i, k - j)):
+                old, new = diff[i + n][1:], diff[j + n][1:]
+                if difflib.SequenceMatcher(None, old, new, autojunk=False).quick_ratio() >= 0.5:
+                    o, w = word_segments(old, new)
+                    result[i + n] = [("-", False), *o]
+                    result[j + n] = [("+", False), *w]
+            i = k
+        else:
+            i += 1
+    return [r if r is not None else [(line, False)] for r, line in zip(result, diff, strict=True)]
+
+
+def diff_counts(diff):
+    return (
+        sum(1 for l in diff if l.startswith("+") and not l.startswith("+++")),
+        sum(1 for l in diff if l.startswith("-") and not l.startswith("---")),
+    )
+
+
 def group_changes(changes):
     groups: dict[str, list[dict[str, Any]]] = {}
     for c in changes:
@@ -280,20 +331,28 @@ def render_html(changes):
         parts.append(f'<h2 style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>')
         for c in items:
             parts.append(
-                f'<h3 style="margin:16px 0 4px">{html.escape(c["name"])}</h3>'
+                f'<h3 style="margin:16px 0 4px">{html.escape(c["name"])} '
+                f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{diff_counts(c["diff"])[0]}</span> '
+                f'<span style="color:#82071e">&minus;{diff_counts(c["diff"])[1]}</span></span></h3>'
                 f'<p style="margin:0 0 8px"><a href="{html.escape(c["url"])}">{html.escape(c["url"])}</a></p>'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )
-            for l in c["diff"]:
+            for l, segments in zip(c["diff"], annotate_diff(c["diff"]), strict=True):
                 style = ""
+                mark = ""
                 if l.startswith("+"):
                     style = "background:#e6ffec;color:#116329"
+                    mark = "background:#abf2bc;font-weight:600"
                 elif l.startswith("-"):
                     style = "background:#ffebe9;color:#82071e"
+                    mark = "background:#ffc1ba;font-weight:600"
                 elif l.startswith("@@"):
                     style = "color:#6e7781"
-                parts.append(f'<div style="{style}">{html.escape(l) or "&nbsp;"}</div>')
+                body = "".join(
+                    f'<span style="{mark}">{html.escape(s)}</span>' if changed else html.escape(s) for s, changed in segments
+                )
+                parts.append(f'<div style="{style}">{body or "&nbsp;"}</div>')
             if c["extra"]:
                 parts.append(f'<div style="color:#6e7781">... und {c["extra"]} weitere Zeilen</div>')
             parts.append("</pre>")

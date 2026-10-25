@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import {
-  STATUS_LABEL, buildRow, diffClass, groupEntries, groupOf, matches, summarize, toEntries,
+  STATUS_LABEL, annotateDiff, buildRow, countLines, diffClass, groupEntries, groupOf, matches, summarize, toEntries,
   type Change, type Entry, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -31,10 +31,6 @@ async function load(): Promise<Load> {
       updated: status.data?.updated_at ?? null,
     },
   }
-}
-
-function countLines(diff: string, sign: '+' | '-'): number {
-  return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
 }
 
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'main', js: false }
@@ -222,7 +218,12 @@ export function Dashboard() {
           <summary>{c.time} – {c.name ?? c.url}<span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span></summary>
           <p><a href={c.url} target="_blank" rel="noreferrer noopener">{c.url}</a></p>
           <pre>
-            {c.diff.split('\n').map((line, i) => <div key={i} className={diffClass(line)}>{line || ' '}</div>)}
+            {annotateDiff(c.diff.split('\n')).map((segments, i) => (
+              <div key={i} className={diffClass(segments.map((s) => s.text).join(''))}>
+                {segments.map((s, n) => (s.changed ? <mark key={n}>{s.text}</mark> : s.text))}
+                {segments.length === 0 || segments[0].text === '' ? ' ' : ''}
+              </div>
+            ))}
             {c.extra > 0 && <div className="muted">… und {c.extra} weitere Zeilen</div>}
           </pre>
         </details>

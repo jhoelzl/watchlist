@@ -106,3 +106,65 @@ export function summarize(entries: Entry[]): Summary {
   s.problems = s.error + s.warn
   return s
 }
+
+export type Segment = { text: string; changed: boolean }
+
+const TOKEN = /\s+|\w+|[^\w\s]/gu
+
+function lcsOps(a: string[], b: string[]): { a: boolean[]; b: boolean[] } {
+  const n = a.length
+  const m = b.length
+  const dp = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => 0))
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+  }
+  const ca = Array.from({ length: n }, () => true)
+  const cb = Array.from({ length: m }, () => true)
+  let i = 0
+  let j = 0
+  while (i < n && j < m) {
+    if (a[i] === b[j]) { ca[i++] = false; cb[j++] = false }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) i++
+    else j++
+  }
+  return { a: ca, b: cb }
+}
+
+function toSegments(tokens: string[], changed: boolean[]): Segment[] {
+  const out: Segment[] = []
+  tokens.forEach((text, i) => {
+    const last = out[out.length - 1]
+    if (last && last.changed === changed[i]) last.text += text
+    else out.push({ text, changed: changed[i] })
+  })
+  return out
+}
+
+/** Je Diff-Zeile die Textstücke; in ersetzten Zeilen (-/+ Paare) sind nur die geänderten Wörter markiert. */
+export function annotateDiff(lines: string[]): Segment[][] {
+  const result: (Segment[] | null)[] = lines.map(() => null)
+  let i = 0
+  while (i < lines.length) {
+    if (!lines[i].startsWith('-')) { i++; continue }
+    let j = i
+    while (j < lines.length && lines[j].startsWith('-')) j++
+    let k = j
+    while (k < lines.length && lines[k].startsWith('+')) k++
+    for (let n = 0; n < Math.min(j - i, k - j); n++) {
+      const oldTokens = lines[i + n].slice(1).match(TOKEN) ?? []
+      const newTokens = lines[j + n].slice(1).match(TOKEN) ?? []
+      if (oldTokens.length * newTokens.length > 40000) continue
+      const ops = lcsOps(oldTokens, newTokens)
+      const kept = ops.a.filter((c) => !c).length
+      if (kept / Math.max(oldTokens.length, newTokens.length, 1) < 0.4) continue
+      result[i + n] = [{ text: '-', changed: false }, ...toSegments(oldTokens, ops.a)]
+      result[j + n] = [{ text: '+', changed: false }, ...toSegments(newTokens, ops.b)]
+    }
+    i = k
+  }
+  return lines.map((line, idx) => result[idx] ?? [{ text: line, changed: false }])
+}
+
+export function countLines(diff: string, sign: '+' | '-'): number {
+  return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, type Entry } from './watchlist'
+import { annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -70,5 +70,27 @@ describe('summarize', () => {
     expect(summarize([e('ok'), e('ok'), e('error'), e('warn'), e('pending')])).toEqual({
       total: 5, problems: 2, ok: 2, new: 0, error: 1, warn: 1, pending: 1,
     })
+  })
+})
+
+describe('annotateDiff', () => {
+  it('marks only the changed words in replaced lines', () => {
+    const [header, del, add, plain] = annotateDiff(['@@ -1 +1 @@', '-Preis: 10 Euro', '+Preis: 12 Euro', '-gelöscht'])
+    expect(header).toEqual([{ text: '@@ -1 +1 @@', changed: false }])
+    expect(del.filter((s) => s.changed)).toEqual([{ text: '10', changed: true }])
+    expect(add.filter((s) => s.changed)).toEqual([{ text: '12', changed: true }])
+    expect(del.map((s) => s.text).join('')).toBe('-Preis: 10 Euro')
+    expect(plain).toEqual([{ text: '-gelöscht', changed: false }])
+  })
+
+  it('leaves completely different lines unmarked', () => {
+    const [del, add] = annotateDiff(['-alt komplett', '+ganz anders hier'])
+    expect(del).toEqual([{ text: '-alt komplett', changed: false }])
+    expect(add).toEqual([{ text: '+ganz anders hier', changed: false }])
+  })
+
+  it('counts added and removed lines', () => {
+    expect(countLines('+a\n+b\n-c\n+++x', '+')).toBe(2)
+    expect(countLines('+a\n-c', '-')).toBe(1)
   })
 })

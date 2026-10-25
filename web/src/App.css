@@ -164,3 +164,9 @@ button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--
 .diff-stat { margin-left: 10px; font-size: 12px; font-weight: 600; }
 .diff-stat .plus { color: #116329; }
 .diff-stat .minus { color: #82071e; }
+.change mark { color: inherit; font-weight: 600; background: #abf2bc; border-radius: 2px; }
+.change .del mark { background: #ffc1ba; }
+@media (prefers-color-scheme: dark) {
+  .change .add mark { background: #1f6f3a; }
+  .change .del mark { background: #7a2a2a; }
+}
