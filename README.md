@@ -122,7 +122,7 @@ Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktio
 - **Diffs:** Gespeichert werden bis zu 500 Diff-Zeilen mit 3 Zeilen Kontext (`store_diff_lines`, `diff_context` in `settings.json`), die Mail zeigt die ersten 60 (`mail_diff_lines`) mit wortgenauer Markierung, `+N −M`, einer Zusammenfassung oben und einem Link „zur geänderten Stelle" (Textfragment `#:~:text=`, funktioniert in Chromium und Safari bei einfachem Text). Der Tab „Letzte Änderungen" im Dashboard zeigt den vollen Diff, gruppiert nach Tag, mit Filter für Zeitraum und Gruppe.
 - **Dashboard:** Das Web-Dashboard (`web/`) zeigt Status pro URL, letzte Prüfung und Änderungsverlauf mit Suche und Filtern.
 - **Dashboard auf GitHub Pages (optional):** Pages-Seiten sind öffentlich erreichbar, auch bei privatem Repo, und für private Repos braucht es einen bezahlten Plan. Aktivieren: Settings → Pages → Source „GitHub Actions" und Variable `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
-- **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
+- **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, gruppiert in je einen PR pro Ökosystem für Patch- und für Minor-/Major-Updates (Patch-PRs mergt `dependabot-automerge.yml` automatisch, sobald `tests` grün ist), `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
 
 ## Fehlerbehebung
 

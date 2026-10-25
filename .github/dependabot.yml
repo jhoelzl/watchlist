@@ -4,11 +4,24 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      patch:
+        update-types: [patch]
+      minor-major:
+        update-types: [minor, major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /web
     schedule:
       interval: weekly
+    groups:
+      patch:
+        update-types: [patch]
+      minor-major:
+        update-types: [minor, major]

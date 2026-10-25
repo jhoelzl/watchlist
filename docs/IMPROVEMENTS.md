@@ -62,7 +62,6 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 - 🟡 **Benachrichtigung bei Workflow-Ausfall:** Scheitert `check.yml` selbst (Supabase down, Secret fehlt), kommt keine Mail. Zweiter Job mit `if: failure()` oder Überwachung „kein Lauf seit 36 h“. (S)
 - 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
-- ⚪ **Dependabot gruppieren** (ein PR pro Woche) und Auto-Merge für Patch-Updates bei grünen Tests. (S)
 
 ## 7. Tests und Qualität
 
