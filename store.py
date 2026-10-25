@@ -12,6 +12,8 @@ from typing import Any
 
 import yaml
 
+from models import HistoryEntry
+
 DB_ENV = "SUPABASE_DB_URL"
 URL_ENV = "SUPABASE_URL"
 KEY_ENV = "SUPABASE_SERVICE_KEY"
@@ -56,11 +58,11 @@ class FileStore:
     def set_doc(self, name: str, data: Any) -> None:
         (self.state / f"{name}.json").write_text(json.dumps(data, indent=1, ensure_ascii=False, sort_keys=True) + "\n")
 
-    def history(self, limit: int) -> list[dict[str, Any]]:
-        history: list[dict[str, Any]] = self.doc("history", [])
+    def history(self, limit: int) -> list[HistoryEntry]:
+        history: list[HistoryEntry] = self.doc("history", [])
         return history[-limit:]
 
-    def add_history(self, entries: list[dict[str, Any]], limit: int) -> None:
+    def add_history(self, entries: list[HistoryEntry], limit: int) -> None:
         self.set_doc("history", (self.doc("history", []) + entries)[-limit:])
 
     def close(self) -> None:
@@ -153,7 +155,7 @@ class PgStore:
             (name, json.dumps(data, ensure_ascii=False)),
         )
 
-    def history(self, limit: int) -> list[dict[str, Any]]:
+    def history(self, limit: int) -> list[HistoryEntry]:
         rows = self._all(
             "select name, url, grp, time, diff, extra from "
             "(select * from watchlist_history order by id desc limit %s) latest order by id",
@@ -164,7 +166,7 @@ class PgStore:
             for n, u, g, t, d, x in rows
         ]
 
-    def add_history(self, entries: list[dict[str, Any]], limit: int) -> None:
+    def add_history(self, entries: list[HistoryEntry], limit: int) -> None:
         for e in entries:
             self._run(
                 "insert into watchlist_history (name, url, grp, time, diff, extra) values (%s, %s, %s, %s, %s, %s)",
@@ -272,7 +274,7 @@ class RestStore(PgStore):
     def set_doc(self, name: str, data: Any) -> None:
         self._call("POST", "watchlist_state", body={"key": name, "value": data, "updated_at": _now()}, upsert="key")
 
-    def history(self, limit: int) -> list[dict[str, Any]]:
+    def history(self, limit: int) -> list[HistoryEntry]:
         rows = self._select("watchlist_history", select="name,url,grp,time,diff,extra", order="id.desc", limit=str(limit))
         return [
             {
@@ -286,7 +288,7 @@ class RestStore(PgStore):
             for r in reversed(rows)
         ]
 
-    def add_history(self, entries: list[dict[str, Any]], limit: int) -> None:
+    def add_history(self, entries: list[HistoryEntry], limit: int) -> None:
         rows = [
             {
                 "name": e.get("name"),

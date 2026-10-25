@@ -5,8 +5,10 @@ import urllib.parse
 STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
 DIFF_CONTEXT = 3
 
+Segment = tuple[str, bool]  # (Text, geändert)
 
-def make_diff(old, new, only_added):
+
+def make_diff(old: str, new: str, only_added: bool) -> tuple[list[str], int]:
     old_l, new_l = old.splitlines(), new.splitlines()
     if only_added:
         seen = set(old_l)
@@ -20,7 +22,7 @@ def make_diff(old, new, only_added):
 PLAIN_SNIPPET = re.compile(r"[\w .,'\-]+")
 
 
-def feed_entry_link(line):
+def feed_entry_link(line: str) -> str:
     """Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel."""
     for part in line.split(" | ")[1:]:
         if re.fullmatch(r"https?://\S+", part.strip()):
@@ -28,7 +30,7 @@ def feed_entry_link(line):
     return ""
 
 
-def fragment_url(url, diff):
+def fragment_url(url: str, diff: list[str]) -> str:
     """Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment (#:~:text=).
 
     Gewählt wird die hinzugefügte Zeile mit dem längsten Textanfang ohne Sonderzeichen (die sind für das
@@ -56,11 +58,11 @@ def fragment_url(url, diff):
 TOKEN = re.compile(r"\s+|\w+|[^\w\s]")
 
 
-def word_segments(old, new):
+def word_segments(old: str, new: str) -> tuple[list[Segment], list[Segment]]:
     """Teilt zwei ersetzte Zeilen in (Text, geändert)-Stücke, damit nur die tatsächlich geänderten Wörter hervorgehoben werden."""
     a, b = TOKEN.findall(old), TOKEN.findall(new)
-    out_old: list[tuple[str, bool]] = []
-    out_new: list[tuple[str, bool]] = []
+    out_old: list[Segment] = []
+    out_new: list[Segment] = []
     for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
         if op == "equal":
             out_old.append(("".join(a[i1:i2]), False))
@@ -73,9 +75,9 @@ def word_segments(old, new):
     return out_old, out_new
 
 
-def annotate_diff(diff):
+def annotate_diff(diff: list[str]) -> list[list[Segment]]:
     """Je Diff-Zeile eine Liste aus (Text, geändert)-Stücken. Aufeinanderfolgende -/+ Blöcke werden zeilenweise verglichen."""
-    result: list[list[tuple[str, bool]] | None] = [None] * len(diff)
+    result: list[list[Segment] | None] = [None] * len(diff)
     i = 0
     while i < len(diff):
         if diff[i].startswith("-"):
@@ -97,7 +99,7 @@ def annotate_diff(diff):
     return [r if r is not None else [(line, False)] for r, line in zip(result, diff, strict=True)]
 
 
-def diff_counts(diff):
+def diff_counts(diff: list[str]) -> tuple[int, int]:
     return (
         sum(1 for l in diff if l.startswith("+") and not l.startswith("+++")),
         sum(1 for l in diff if l.startswith("-") and not l.startswith("---")),

@@ -4,17 +4,16 @@ Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunde
 
 Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
-## Nächste Schritte (Top 7)
+## Nächste Schritte (Top 6)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
 | 1 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
-| 2 | Annotationen, mypy `strict` | Refactoring | 🟡 | M |
-| 3 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
-| 4 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
-| 5 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
-| 6 | Toasts statt `window.confirm` | Dashboard | 🟡 | S |
-| 7 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
+| 2 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
+| 3 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
+| 4 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
+| 5 | Toasts statt `window.confirm` | Dashboard | 🟡 | S |
+| 6 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
 
 ---
 
@@ -52,7 +51,6 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 ## 5. Refactoring
 
-- 🟡 **Typisierung abschließen:** Dicts (`entry`, `change`, `opts`) durch `TypedDict` oder `dataclass` ersetzen und Funktionen annotieren. Danach `strict = true`. (M)
 - 🟡 **Python ↔ TypeScript angleichen:** `annotateDiff`, `fragmentUrl`, `countLines` und `groupOf` existieren doppelt. Per Test mit identischen Fällen (gemeinsame Fixture-Datei) abgleichen, damit sie nicht auseinanderlaufen. (S)
 - 🟡 **`Dashboard.tsx` zerlegen** (488 Zeilen; `GroupsPanel` ist schon ausgelagert): `UrlsTab`, `ChangesTab`, `AddUrl`, `useWatchlist` (Laden, Aktionen) in eigene Dateien. (S)
 - ⚪ **Konfigurationsschema** mit klaren Fehlern bei Tippfehlern (`selektor:`), unbekannten Optionen und falschen Typen, auch beim Speichern im Dashboard. (M)
@@ -94,5 +92,4 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 1. URLs im Dashboard bearbeiten und pausieren, Fehlerserie anzeigen, Rückmeldung nach „Jetzt prüfen“.
 2. `timeout-minutes`, Benachrichtigung bei Workflow-Ausfall, Backup und Web-Prüfungen in CI.
 3. Tab-Varianten zusammenfassen, danach ntfy und Digest-Modus.
-4. TypedDict und Annotationen, danach `strict = true`.
-5. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage in CI.
+4. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage in CI.

@@ -18,7 +18,7 @@ Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code o
 
 - `check.py`: Ablauf eines Laufs (`run`, `check_url`, Mails und Speichern)
 - `config.py`: Optionen laden und prüfen, `fetch.py`: Abruf (HTTP, Retry, robots, Playwright), `parse.py`: Feed/HTML zu Text
-- `diffing.py`: Diffs und Sprungziele, `notify.py`: Mails und Heartbeat, `errors.py`: `CheckError` und Fehlercodes
+- `diffing.py`: Diffs und Sprungziele, `notify.py`: Mails und Heartbeat, `errors.py`: `CheckError` und Fehlercodes, `models.py`: `TypedDict`-Typen für Optionen, Status und Änderungen
 - `store.py`: Speicher (Supabase oder Dateien), `add.py` und `migrate.py`: Hilfsskripte
 
 ## Tests und Prüfungen
@@ -37,7 +37,7 @@ cd web && npx tsc -b && npm run lint && npm test
 ## Stil
 
 - Sprache: Meldungen, Mails, Kommentare und Doku auf Deutsch. Code-Bezeichner und Commit-Nachrichten (kurz, Imperativ) auf Englisch.
-- Python: ruff (Lint und Format, Zeilenlänge siehe `pyproject.toml`) und mypy. TypeScript: oxlint und `tsc` im strikten Modus.
+- Python: ruff (Lint und Format, Zeilenlänge siehe `pyproject.toml`) und mypy im `strict`-Modus (alle Funktionen annotiert). TypeScript: oxlint und `tsc` im strikten Modus.
 - Kommentare nur dort, wo etwas nicht offensichtlich ist.
 - Fehler als `CheckError(message, code)` mit stabilem Code modellieren. Der Hinweistext hängt über `HINTS` am Code, nicht am Fehlertext.
 - Abhängigkeiten mit `UV_NO_CONFIG=1 uv add <paket>` bzw. `npm install` hinzufügen, damit die Lock-Dateien nur öffentliche Registry-URLs enthalten.

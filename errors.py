@@ -4,16 +4,16 @@ import requests
 class CheckError(RuntimeError):
     """Abruf- oder Prüffehler mit stabilem Code, über den der Hinweis (HINTS) gewählt wird."""
 
-    def __init__(self, message, code):
+    def __init__(self, message: str, code: str) -> None:
         super().__init__(message)
         self.code = code
 
 
-def status_code_name(status):
+def status_code_name(status: int) -> str:
     return "http_5xx" if status >= 500 else f"http_{status}"
 
 
-def error_code(ex):
+def error_code(ex: BaseException) -> str:
     """Stabiler Fehlercode zu einer Exception, leer wenn unbekannt."""
     if isinstance(ex, CheckError):
         return ex.code

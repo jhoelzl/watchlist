@@ -1,12 +1,13 @@
 import html
 import os
 import urllib.parse
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import requests
 
 from diffing import annotate_diff, diff_counts, fragment_url
+from models import Change, HistoryEntry, Options, UrlStatus
 
 MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
 DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Umgebungsvariable DASHBOARD_URL
@@ -14,7 +15,7 @@ DEFAULT_GROUP = "Allgemein"
 STUCK_AFTER = 6  # Läufe in Folge (bei 2 Läufen pro Tag = 3 Tage), ab denen eine Seite als dauerhaft kaputt gilt
 
 
-def safe_link(url):
+def safe_link(url: str) -> str:
     """Verlinkt nur http(s)-URLs; alles andere (z. B. javascript:) bleibt reiner Text."""
     esc = html.escape(url)
     if urllib.parse.urlsplit(url.strip()).scheme.lower() in ("http", "https"):
@@ -22,43 +23,43 @@ def safe_link(url):
     return esc
 
 
-def mail_view(change):
+def mail_view(change: Change) -> tuple[list[str], int]:
     """Diff für die Mail: gekürzt auf MAIL_DIFF_LINES, der Rest zählt zu "weitere Zeilen"."""
     diff = change["diff"][:MAIL_DIFF_LINES]
     return diff, change["extra"] + len(change["diff"]) - len(diff)
 
 
-def merge_variants(changes):
+def merge_variants(changes: list[Change]) -> list[Change]:
     """Fasst Einträge mit identischem Diff in derselben Gruppe zusammen (z. B. Tab-Varianten ?tabs=stt|tts)."""
-    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
+    merged: dict[tuple[Any, ...], Change] = {}
     for c in changes:
         key = (c.get("group"), tuple(c["diff"]), c["extra"])
         if key in merged:
-            merged[key]["variants"].append(c["url"])
+            merged[key].setdefault("variants", []).append(c["url"])
         else:
             merged[key] = {**c, "variants": []}
     return list(merged.values())
 
 
-def group_changes(changes):
-    groups: dict[str, list[dict[str, Any]]] = {}
+def group_changes(changes: list[Change]) -> dict[str, list[Change]]:
+    groups: dict[str, list[Change]] = {}
     for c in changes:
         groups.setdefault(c.get("group") or DEFAULT_GROUP, []).append(c)
     return groups
 
 
-def summary_line(changes):
+def summary_line(changes: list[Change]) -> str:
     pages, groups = len(changes), len(group_changes(changes))
     return f"{pages} Seite{'n' if pages != 1 else ''} geändert in {groups} Gruppe{'n' if groups != 1 else ''}"
 
 
-def dashboard_link(url=None):
+def dashboard_link(url: str | None = None) -> str:
     """Link auf den Tab "Letzte Änderungen", mit URL direkt zum passenden Eintrag."""
     base = os.environ.get("DASHBOARD_URL") or DASHBOARD_URL
     return f"{base}#changes" + (f":{urllib.parse.quote(url, safe='')}" if url else "")
 
 
-def subject_for(changes):
+def subject_for(changes: list[Change]) -> str:
     shown = merge_variants(changes)
     if len(shown) == 1:
         return f"Watchlist: {shown[0]['name']} geändert"
@@ -69,7 +70,7 @@ def subject_for(changes):
     return f"Watchlist: {len(shown)} Änderungen: {head}{tail}"[:150]
 
 
-def render_text(changes):
+def render_text(changes: list[Change]) -> str:
     changes = merge_variants(changes)
     out = [summary_line(changes), ""] if len(changes) > 1 else []
     for group, items in group_changes(changes).items():
@@ -94,7 +95,7 @@ def render_text(changes):
     return "\n".join(out).strip()
 
 
-def render_html(changes):
+def render_html(changes: list[Change]) -> str:
     changes = merge_variants(changes)
     parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
     grouped = group_changes(changes)
@@ -160,12 +161,12 @@ def render_html(changes):
     return "".join(parts)
 
 
-def send_mail(subject, text, html_body=None):
+def send_mail(subject: str, text: str, html_body: str | None = None) -> None:
     key = os.environ.get("RESEND_API_KEY")
     if not key:
         print("RESEND_API_KEY fehlt, Mail wird nur ausgegeben:\n", subject, "\n", text)
         return
-    payload = {
+    payload: dict[str, Any] = {
         "from": os.environ.get("MAIL_FROM") or "onboarding@resend.dev",
         "to": [os.environ["MAIL_TO"]],
         "subject": subject,
@@ -207,17 +208,19 @@ HINTS = {
 }
 
 
-def hint_for(code):
+def hint_for(code: str | None) -> str:
     """Kurzer Hinweis zu Ursache und Abhilfe passend zum Fehlercode, sonst leer."""
     return HINTS.get(code or "", "")
 
 
-def with_hint(text, code):
+def with_hint(text: str, code: str | None) -> str:
     hint = hint_for(code)
     return f"{text}\n  Tipp: {hint}" if hint else text
 
 
-def send_heartbeat(now, entries, status, history, meta):
+def send_heartbeat(
+    now: datetime, entries: list[Options], status: dict[str, UrlStatus], history: list[HistoryEntry], meta: dict[str, Any]
+) -> None:
     month = now.strftime("%Y-%m")
     if "heartbeat" not in meta:
         meta["heartbeat"] = month

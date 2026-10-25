@@ -13,9 +13,10 @@ import notify
 from config import config_errors, config_hash, is_due, merge_config
 from diffing import make_diff
 from errors import error_code
-from fetch import fetch_all
+from fetch import FetchResult, fetch_all
+from models import Change, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
-from store import open_store
+from store import FileStore, PgStore, open_store
 
 ROOT = Path(__file__).parent
 # Im Workflow liegen state/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
@@ -37,13 +38,13 @@ class RunState:
     """Zwischenstand eines Laufs: wird in „sammeln“ gefüllt und danach für „senden“ und „speichern“ gelesen."""
 
     stamp: str
-    old_status: dict[str, Any]
-    http_cache: dict[str, Any]
-    status: dict[str, Any] = field(default_factory=dict)
-    new_cache: dict[str, Any] = field(default_factory=dict)
-    changes: list[dict[str, Any]] = field(default_factory=list)
-    problems: list[dict[str, Any]] = field(default_factory=list)
-    pending: list[dict[str, Any]] = field(default_factory=list)
+    old_status: dict[str, UrlStatus]
+    http_cache: dict[str, Validators]
+    status: dict[str, UrlStatus] = field(default_factory=dict)
+    new_cache: dict[str, Validators] = field(default_factory=dict)
+    changes: list[Change] = field(default_factory=list)
+    problems: list[Problem] = field(default_factory=list)
+    pending: list[Pending] = field(default_factory=list)
     config_bad: list[str] = field(default_factory=list)
 
 
@@ -51,20 +52,23 @@ class RunState:
 class Result:
     """Ergebnis der Prüfung einer URL. Die Änderungen an Store und Laufzustand führt apply_result aus."""
 
-    entry: dict[str, Any]
-    cache: dict[str, Any] | None = None  # neuer HTTP-Cache-Eintrag
+    entry: UrlStatus
+    cache: Validators | None = None  # neuer HTTP-Cache-Eintrag
     snapshot: str | None = None  # Text, der sofort als Snapshot gespeichert wird
-    pending: dict[str, Any] | None = None  # Änderung, die erst nach dem Mailversand übernommen wird
-    problem: dict[str, Any] | None = None  # Warnung, die per Mail gemeldet wird
+    pending: Pending | None = None  # Änderung, die erst nach dem Mailversand übernommen wird
+    problem: Problem | None = None  # Warnung, die per Mail gemeldet wird
     config_error: str | None = None
     counters: list[tuple[Any, ...]] = field(default_factory=list)  # ("set", key, name, n) oder ("clear", key, name)
 
 
-def url_key(url):
+Store = FileStore | PgStore
+
+
+def url_key(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:16]
 
 
-def run():
+def run() -> bool:
     store = open_store(STATE, ROOT / "urls.yml")
     try:
         return _run(store)
@@ -72,9 +76,11 @@ def run():
         store.close()
 
 
-def record_run(runs, stamp, seconds, status, changes, ok):
+def record_run(
+    runs: list[RunSummary], stamp: str, seconds: float, status: dict[str, UrlStatus], changes: int, ok: bool
+) -> list[RunSummary]:
     """Hängt eine Laufzusammenfassung an (Dauer, Fehlerquote) und behält die letzten MAX_RUNS."""
-    entry = {
+    entry: RunSummary = {
         "time": stamp,
         "seconds": round(seconds, 1),
         "total": len(status),
@@ -86,9 +92,11 @@ def record_run(runs, stamp, seconds, status, changes, ok):
     return [*runs, entry][-MAX_RUNS:]
 
 
-def plan_jobs(store, entries, old_status, http_cache, now):
+def plan_jobs(
+    store: Store, entries: list[Options], old_status: dict[str, UrlStatus], http_cache: dict[str, Validators], now: datetime
+) -> list[tuple[Options, Validators]]:
     """Welche URLs in diesem Lauf abgerufen werden (gültige Konfiguration, Intervall erreicht) und mit welchen Validatoren."""
-    jobs = []
+    jobs: list[tuple[Options, Validators]] = []
     snapshot_keys = store.snapshot_keys()
     for opts in entries:
         if config_errors(opts):
@@ -102,7 +110,7 @@ def plan_jobs(store, entries, old_status, http_cache, now):
     return jobs
 
 
-def _run(store):
+def _run(store: Store) -> bool:
     started = time.monotonic()
     now = datetime.now(UTC)
     st = RunState(
@@ -112,7 +120,7 @@ def _run(store):
     )
     entries = merge_config(store.raw_config())
     history = store.history(MAX_HISTORY)
-    new_history: list[dict[str, Any]] = []
+    new_history: list[HistoryEntry] = []
     meta = store.doc("meta", {})
 
     print(f"Prüfe {len(entries)} URL(s)...")
@@ -140,11 +148,11 @@ def _run(store):
     return ok
 
 
-def check_url(store, st, opts, fetched):
+def check_url(store: Store, st: RunState, opts: Options, fetched: dict[str, FetchResult | Exception]) -> Result:
     """Wertet das Abrufergebnis einer URL aus. Liest nur aus Store und Laufzustand, alle Änderungen stehen im Result."""
     url = opts["url"]
     prev = st.old_status.get(url, {})
-    entry = {
+    entry: UrlStatus = {
         "name": opts.get("name") or prev.get("name") or url,
         "group": opts.get("group") or "",
         "checked": st.stamp,
@@ -163,7 +171,7 @@ def check_url(store, st, opts, fetched):
         return res
     if errors:
         msg = "Konfigurationsfehler: " + "; ".join(errors)
-        entry.update(status="error", error=msg[:300], code="config", checked=prev.get("checked", "-"))
+        entry.update({"status": "error", "error": msg[:300], "code": "config", "checked": prev.get("checked", "-")})
         res.config_error = f"{url}\n  {msg}"
         print(f"[KONFIG]    {url}: {msg}")
         return res
@@ -184,11 +192,11 @@ def check_url(store, st, opts, fetched):
     entry["name"] = name
     kind = "Feed" if feed else "Seite"
     old = store.snapshot(key)
-    if is_too_short(old, text, opts):
+    if old is not None and is_too_short(old, text, opts):
         return short_text_result(store, res, prev, url, name, kind, old, text)
     res.counters.append(("clear", key, "short"))
 
-    new_cache = {**validators, "config": config_hash(opts)} if validators else None
+    new_cache: Validators | None = {**validators, "config": config_hash(opts)} if validators else None
     if old is None:
         entry["status"] = "new"
         hint = " - ACHTUNG: sehr wenig Text, Selector prüfen" if len(text) < 200 else ""
@@ -199,7 +207,7 @@ def check_url(store, st, opts, fetched):
         print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
         diff, extra = make_diff(old, text, opts.get("only_added", feed))
         if diff:
-            change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
+            change: Change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
             # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
             res.pending = {"change": change, "key": key, "text": text, "entry": entry, "cache": new_cache}
             res.cache = cached or None
@@ -210,11 +218,13 @@ def check_url(store, st, opts, fetched):
     return res
 
 
-def failed_result(store, res, prev, url, ex):
+def failed_result(store: Store, res: Result, prev: UrlStatus, url: str, ex: Exception) -> Result:
     key = url_key(url)
     n = store.counter(key, "fail") + 1
     res.counters.append(("set", key, "fail", n))
-    res.entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
+    res.entry.update(
+        {"status": "error", "error": str(ex)[:200], "code": error_code(ex), "checked": prev.get("checked", "-"), "streak": n}
+    )
     print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
     if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
         res.problem = {
@@ -225,17 +235,17 @@ def failed_result(store, res, prev, url, ex):
     return res
 
 
-def is_too_short(old, text, opts):
+def is_too_short(old: str | None, text: str, opts: Options) -> bool:
     min_ratio = float(opts.get("min_ratio", DEFAULT_MIN_RATIO))
     return old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio
 
 
-def short_text_result(store, res, prev, url, name, kind, old, text):
+def short_text_result(store: Store, res: Result, prev: UrlStatus, url: str, name: str, kind: str, old: str, text: str) -> Result:
     key = url_key(url)
     n = store.counter(key, "short") + 1
     res.counters.append(("set", key, "short", n))
     msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
-    res.entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
+    res.entry.update({"status": "warn", "error": msg, "code": "content", "checked": prev.get("checked", "-"), "streak": n})
     print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
     if n == GUARD_ALERT_AFTER:
         res.problem = {
@@ -246,7 +256,7 @@ def short_text_result(store, res, prev, url, name, kind, old, text):
     return res
 
 
-def apply_result(store, st, url, res):
+def apply_result(store: Store, st: RunState, url: str, res: Result) -> None:
     """Phase „sammeln“: übernimmt das Ergebnis einer URL in Store und Laufzustand."""
     st.status[url] = res.entry
     for op in res.counters:
@@ -267,7 +277,7 @@ def apply_result(store, st, url, res):
         st.config_bad.append(res.config_error)
 
 
-def send_change_mail(store, st, history, new_history):
+def send_change_mail(store: Store, st: RunState, history: list[HistoryEntry], new_history: list[HistoryEntry]) -> bool:
     """Versendet die Änderungsmail und übernimmt danach Snapshots, Verlauf und Cache. Liefert False bei Mailfehler."""
     if not st.changes:
         return True
@@ -285,17 +295,17 @@ def send_change_mail(store, st, history, new_history):
         if sent_ok:
             store.set_snapshot(p["key"], p["change"]["url"], p["text"])
             p["entry"]["changed"] = st.stamp
-            record = {**p["change"], "time": st.stamp}
+            record: HistoryEntry = {**p["change"], "time": st.stamp}
             history.append(record)
             new_history.append(record)
             if p["cache"]:
                 st.new_cache[p["change"]["url"]] = p["cache"]
         else:
-            p["entry"].update(status="error", error="Änderung erkannt, Mailversand fehlgeschlagen (wird wiederholt)")
+            p["entry"].update({"status": "error", "error": "Änderung erkannt, Mailversand fehlgeschlagen (wird wiederholt)"})
     return sent_ok
 
 
-def send_problem_mail(store, st):
+def send_problem_mail(store: Store, st: RunState) -> bool:
     if not st.problems:
         return True
     try:
@@ -308,7 +318,7 @@ def send_problem_mail(store, st):
     return True
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     if len(argv) >= 3 and argv[1] == "--alert":
         notify.send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
         return 0

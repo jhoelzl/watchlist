@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -12,10 +13,11 @@ import check
 import config
 import fetch
 import parse
-from store import FileStore, open_store
+from models import Options
+from store import FileStore, PgStore, open_store
 
 
-def suggest_selector(body):
+def suggest_selector(body: str) -> str | None:
     """Erster passender Kandidat als Selector, sonst None (ganze Seite)."""
     soup = BeautifulSoup(body, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):
@@ -29,10 +31,10 @@ def suggest_selector(body):
 FEED_TYPES = ("application/rss+xml", "application/atom+xml")
 
 
-def find_feeds(body, base_url):
+def find_feeds(body: str, base_url: str) -> list[str]:
     """Feed-URLs aus <link rel="alternate" type="application/rss+xml|atom+xml">, absolut und ohne Duplikate."""
     soup = BeautifulSoup(body, "html.parser")
-    feeds = []
+    feeds: list[str] = []
     for link in soup.find_all("link"):
         raw_rel: Any = link.get("rel") or []
         rel = raw_rel.split() if isinstance(raw_rel, str) else list(raw_rel)
@@ -41,13 +43,13 @@ def find_feeds(body, base_url):
         link_type = link.get("type") or ""
         if str(link_type).lower() not in FEED_TYPES or not link.get("href"):
             continue
-        href = urljoin(base_url, link["href"])
+        href = urljoin(base_url, str(link["href"]))
         if href not in feeds:
             feeds.append(href)
     return feeds
 
 
-def suggest_group(url, entries):
+def suggest_group(url: str, entries: list[Options]) -> str:
     """Gleiche Gruppe wie eine vorhandene URL desselben Hosts, sonst leer."""
     host = urlparse(url).netloc
     for e in entries:
@@ -56,7 +58,14 @@ def suggest_group(url, entries):
     return ""
 
 
-def render_entry(url, name=None, group=None, selector=None, js=False, nested=True):
+def render_entry(
+    url: str,
+    name: str | None = None,
+    group: str | None = None,
+    selector: str | None = None,
+    js: bool = False,
+    nested: bool = True,
+) -> str:
     pad = "  " if nested else ""
     lines = [f"{pad}- url: {url}"]
     for key, value in (("name", name), ("group", group), ("selector", selector)):
@@ -67,27 +76,35 @@ def render_entry(url, name=None, group=None, selector=None, js=False, nested=Tru
     return "\n".join(lines) + "\n"
 
 
-def append_entry(path, block):
+def append_entry(path: Path, block: str) -> None:
     text = path.read_text()
     if text and not text.endswith("\n"):
         text += "\n"
     path.write_text(text + block)
 
 
-def ask(prompt, default, assume_yes):
+def ask(prompt: str, default: str, assume_yes: bool) -> str:
     if assume_yes:
         return default
     answer = input(f"{prompt} [{default or '-'}]: ").strip()
     return answer if answer else default
 
 
-def prepare(args, entries):
+def fetch_text(url: str, js: bool) -> str:
+    """Ohne Validatoren antwortet der Server nie mit 304, der Body ist also immer da."""
+    body, _ = fetch.fetch_body(url, js)
+    if body is None:
+        raise RuntimeError("Leere Antwort (304)")
+    return body
+
+
+def prepare(args: argparse.Namespace, entries: list[Options]) -> dict[str, Any]:
     """Seite abrufen, Feed/Selector/Name/Gruppe bestimmen. Beendet das Programm bei Fehlern."""
     print(f"Rufe {args.url} ab...")
     if not args.js and not fetch.robots_allowed(args.url, {}):
         sys.exit("robots.txt verbietet den Abruf. Trage die URL manuell mit 'ignore_robots: true' ein.")
     try:
-        body, _ = fetch.fetch_body(args.url, args.js)
+        body = fetch_text(args.url, args.js)
     except Exception as ex:
         sys.exit(f"Abruf fehlgeschlagen: {ex}")
 
@@ -106,7 +123,7 @@ def prepare(args, entries):
                 if not fetch.robots_allowed(feed_url, {}):
                     sys.exit("robots.txt verbietet den Abruf des Feeds.")
                 try:
-                    feed_body, _ = fetch.fetch_body(feed_url, False)
+                    feed_body = fetch_text(feed_url, False)
                 except Exception as ex:
                     sys.exit(f"Feed-Abruf fehlgeschlagen: {ex}")
                 if not parse.is_feed(feed_body):
@@ -138,13 +155,13 @@ def prepare(args, entries):
     return {"url": args.url, "name": name, "group": group, "selector": selector, "js": args.js}
 
 
-def add_to_database(args, store):
+def add_to_database(args: argparse.Namespace, store: PgStore) -> None:
     """Gleicher Ablauf wie bei urls.yml, nur das Speichern geht in die Datenbank."""
     entries = config.merge_config(store.raw_config())
     if any(e["url"] == args.url for e in entries):
         sys.exit(f"Schon vorhanden: {args.url}")
     prepared = prepare(args, entries)
-    entry = {"url": prepared["url"]}
+    entry: dict[str, Any] = {"url": prepared["url"]}
     for key in ("name", "group", "selector"):
         if prepared[key]:
             entry[key] = prepared[key]
@@ -155,7 +172,7 @@ def add_to_database(args, store):
     print("Baseline erzeugen: uv run check.py (oder beim nächsten geplanten Lauf).")
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="URL zu urls.yml hinzufügen")
     ap.add_argument("url")
     ap.add_argument("--name")

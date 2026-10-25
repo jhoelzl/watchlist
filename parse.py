@@ -4,32 +4,33 @@ import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup, Tag
 
 from errors import CheckError
+from models import Options
 
 
-def clean(s):
+def clean(s: str | None) -> str:
     return re.sub(r"\s+", " ", s or "").strip()
 
 
-def drop_blank_lines(text):
+def drop_blank_lines(text: str) -> str:
     return "\n".join(l for l in (l.strip() for l in text.splitlines()) if l)
 
 
-def is_feed(body):
+def is_feed(body: str) -> bool:
     head = body[:1000].lower()
     return "<rss" in head or "<feed" in head or "<rdf:rdf" in head
 
 
-def parse_feed(body):
+def parse_feed(body: str) -> tuple[str, str]:
     """Liefert (Titel, Text) mit einer Zeile pro Eintrag."""
     root = ET.fromstring(body.encode("utf-8"))
     for el in root.iter():
         el.tag = el.tag.split("}")[-1]
 
-    def txt(el, *names):
+    def txt(el: ET.Element, *names: str) -> str:
         for n in names:
             c = el.find(n)
             if c is not None and (c.text or "").strip():
-                value = c.text
+                value = c.text or ""
                 if "<" in value:
                     value = BeautifulSoup(value, "html.parser").get_text(" ")
                 return clean(value)
@@ -54,7 +55,7 @@ CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#cont
 SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
 
 
-def auto_root(soup):
+def auto_root(soup: BeautifulSoup) -> BeautifulSoup | Tag:
     """Erster Kandidat, der existiert und nicht fast leer ist, sonst die ganze Seite."""
     total = len(clean(soup.get_text(" ")))
     for sel in CANDIDATE_SELECTORS:
@@ -64,7 +65,7 @@ def auto_root(soup):
     return soup
 
 
-def parse_html(body, selector):
+def parse_html(body: str, selector: str | None) -> tuple[str, str]:
     soup = BeautifulSoup(body, "html.parser")
     title = clean(soup.title.get_text()) if soup.title else ""
     for tag in soup(["script", "style", "noscript", "svg"]):
@@ -80,7 +81,7 @@ def parse_html(body, selector):
     return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
 
 
-def extract(body, opts):
+def extract(body: str, opts: Options) -> tuple[str, str, bool]:
     """Body -> (Titel, Text, ist_feed). Entfernt danach die ignore-Muster und leere Zeilen."""
     feed = is_feed(body)
     title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))

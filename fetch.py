@@ -2,13 +2,14 @@ import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
 import requests
 
 from errors import CheckError, error_code, status_code_name
+from models import Options, Validators
 from parse import extract
 
 ROBOTS_AGENT = "watchlist"
@@ -18,10 +19,11 @@ RETRY_JITTER = 0.25  # bis zu +25 % Zufall auf die Wartezeit, damit Wiederholung
 MAX_WORKERS = 6  # parallele Abrufe insgesamt
 MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+FetchResult = tuple[str | None, str | None, bool, Validators]  # (Titel, Text, ist_feed, Validatoren); Text None bei 304
 HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
 
 
-def robots_allowed(url, cache):
+def robots_allowed(url: str, cache: dict[str, RobotFileParser]) -> bool:
     """Prüft robots.txt pro Host (einmal pro Lauf). Fehlt die Datei oder ist sie nicht lesbar, ist alles erlaubt."""
     parts = urlparse(url)
     base = f"{parts.scheme}://{parts.netloc}"
@@ -39,9 +41,9 @@ def robots_allowed(url, cache):
     return cache[base].can_fetch(ROBOTS_AGENT, url)
 
 
-def get_with_retry(url, headers):
+def get_with_retry(url: str, headers: dict[str, str]) -> requests.Response:
     """GET mit Wiederholung bei Netzwerkfehlern, Timeouts, 429 und 5xx. Andere 4xx werden sofort zurückgegeben."""
-    last = None
+    last: str | None = None
     last_code = ""
     delay = 0
     for attempt in range(len(RETRY_DELAYS) + 1):
@@ -121,18 +123,18 @@ class BrowserPool:
 _browser_pool: BrowserPool | None = None  # wird von fetch_all pro Lauf gesetzt
 
 
-def fetch_body(url, js, cond=None):
+def fetch_body(url: str, js: bool, cond: Validators | None = None) -> tuple[str | None, Validators]:
     """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
     if js:
         if _browser_pool is not None:
-            return _browser_pool.content(url), {}
+            return _browser_pool.content(url), Validators()
         pool = BrowserPool()  # Einzelaufruf (z. B. add.py): eigener Browser, danach wieder schließen
         try:
-            return pool.content(url), {}
+            return pool.content(url), Validators()
         finally:
             pool.close()
     headers = dict(HEADERS)
-    cond = cond or {}
+    cond = cond or Validators()
     if cond.get("etag"):
         headers["If-None-Match"] = cond["etag"]
     if cond.get("last_modified"):
@@ -151,10 +153,10 @@ def fetch_body(url, js, cond=None):
         "etag": resp.headers.get("ETag"),
         "last_modified": resp.headers.get("Last-Modified"),
     }
-    return resp.text, {k: v for k, v in validators.items() if v}
+    return resp.text, cast(Validators, {k: v for k, v in validators.items() if v})
 
 
-def fetch(url, opts, cond=None):
+def fetch(url: str, opts: Options, cond: Validators | None = None) -> FetchResult:
     """Liefert (Titel, Text, ist_feed, Validatoren). Text ist None bei 304 Not Modified."""
     body, validators = fetch_body(url, opts.get("js", False), cond)
     if body is None:
@@ -163,7 +165,7 @@ def fetch(url, opts, cond=None):
     return title, text, feed, validators
 
 
-def fetch_all(jobs):
+def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult | Exception]:
     """Ruft alle Seiten parallel ab. jobs: [(opts, cond)]. Liefert {url: Ergebnis-Tupel oder Exception}.
 
     Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
@@ -173,7 +175,7 @@ def fetch_all(jobs):
     robots_lock, js_lock = threading.Lock(), threading.Lock()
     host_limits = {urlparse(o["url"]).netloc: threading.Semaphore(MAX_PER_HOST) for o, _ in jobs}
 
-    def work(opts, cond):
+    def work(opts: Options, cond: Validators) -> tuple[str, FetchResult | Exception]:
         url = opts["url"]
         with host_limits[urlparse(url).netloc]:
             try:
