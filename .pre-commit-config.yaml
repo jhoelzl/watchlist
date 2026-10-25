@@ -20,7 +20,7 @@ repos:
         types: [python]
       - id: mypy
         name: mypy
-        entry: uv run --frozen mypy check.py add.py dashboard.py store.py migrate.py
+        entry: uv run --frozen mypy check.py add.py store.py migrate.py
         language: system
         types: [python]
         pass_filenames: false

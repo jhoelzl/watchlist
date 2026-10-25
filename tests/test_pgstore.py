@@ -72,12 +72,9 @@ def test_store_roundtrip(db):
 
 
 def test_run_uses_database(db, tmp_path, monkeypatch):
-    import dashboard
-
     db.add_url({"url": "https://a", "group": "G"})
     pages = iter(["eins", "zwei"])
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
     monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
     monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
     sent = []

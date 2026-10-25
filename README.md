@@ -91,7 +91,7 @@ Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktio
 - **Warnmails mit Tipp:** Die Mails „Probleme beim Abruf" nennen zur Fehlerart eine mögliche Ursache und Abhilfe (robots.txt → `ignore_robots`, 403/Bot-Block/Timeout → `js: true`, 404 → URL prüfen, Selector nicht gefunden usw.).
 - **Alarm:** Schlägt der Workflow fehl (z. B. Resend-Fehler), versucht ein letzter Schritt eine Alarmmail mit Link zum Lauf zu senden. Zusätzlich meldet GitHub fehlgeschlagene Läufe selbst per Mail.
 - **Diffs:** Gespeichert werden bis zu 500 Diff-Zeilen mit 3 Zeilen Kontext (`STORE_DIFF_LINES`, `DIFF_CONTEXT`), die Mail zeigt die ersten 60 (`MAIL_DIFF_LINES`) mit wortgenauer Markierung, `+N −M`, einer Zusammenfassung oben und einem Link „zur geänderten Stelle" (Textfragment `#:~:text=`, funktioniert in Chromium und Safari bei einfachem Text). Der Tab „Letzte Änderungen" im Dashboard zeigt den vollen Diff, gruppiert nach Tag, mit Filter für Zeitraum und Gruppe.
-- **Dashboard:** Das Web-Dashboard (`web/`) zeigt Status pro URL, letzte Prüfung und Änderungsverlauf mit Suche und Filtern. Im Dateimodus erzeugt `check.py` lokal `site/index.html`.
+- **Dashboard:** Das Web-Dashboard (`web/`) zeigt Status pro URL, letzte Prüfung und Änderungsverlauf mit Suche und Filtern.
 - **Dashboard auf GitHub Pages (optional):** Pages-Seiten sind öffentlich erreichbar, auch bei privatem Repo, und für private Repos braucht es einen bezahlten Plan. Aktivieren: Settings → Pages → Source „GitHub Actions" und Variable `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
 - **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
 
@@ -103,7 +103,7 @@ uv run --extra js check.py            # mit js: true
 uv run pytest                         # Tests
 uv run ruff check .                   # Lint
 uv run ruff format .                  # Formatieren (CI prüft mit --check)
-uv run mypy check.py add.py dashboard.py  # Typcheck
+uv run mypy check.py add.py  # Typcheck
 uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei Änderungen in web/ auch oxlint und tsc
 uv run pre-commit run --all-files     # alle Hooks von Hand
 uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten

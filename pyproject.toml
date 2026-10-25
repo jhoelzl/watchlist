@@ -38,7 +38,6 @@ ignore = ["E741"]  # `l` für Zeilen ist hier gewollt
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["F811"]  # Fixtures werden importiert
-"dashboard.py" = ["E501"]  # eingebettetes JavaScript
 
 [tool.mypy]
 python_version = "3.12"

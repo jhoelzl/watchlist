@@ -20,11 +20,10 @@ import requests
 import yaml
 from bs4 import BeautifulSoup, Tag
 
-import dashboard
 from store import open_store
 
 ROOT = Path(__file__).parent
-# Im Workflow liegen state/ und site/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
+# Im Workflow liegen state/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
 STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
 DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Umgebungsvariable DASHBOARD_URL
@@ -897,7 +896,6 @@ def _run(store):
     store.add_history(new_history, MAX_HISTORY)
     store.set_doc("meta", meta)
     store.set_doc("http", new_cache)
-    dashboard.build([{**v, "url": k} for k, v in status.items()], history, stamp)
     bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
     return ok

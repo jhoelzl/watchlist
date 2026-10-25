@@ -5,7 +5,6 @@ from test_features import FakeResp, env, set_pages, status_of  # noqa: F401
 
 import add
 import check
-import dashboard
 
 
 @pytest.fixture
@@ -110,21 +109,6 @@ def test_main_exit_code(monkeypatch):
     assert check.main(["check.py"]) == 1
     monkeypatch.setattr(check, "run", lambda: True)
     assert check.main(["check.py"]) == 0
-
-
-def test_dashboard_filter_attributes(tmp_path, monkeypatch):
-    monkeypatch.setattr(dashboard, "SITE", tmp_path)
-    entries = [
-        {"url": "https://a", "name": "Alpha", "group": "Azure", "status": "ok", "checked": "x"},
-        {"url": "https://b", "name": "Beta", "status": "error", "error": "kaputt", "checked": "x"},
-    ]
-    hist = [{"time": "t", "name": "Alpha", "url": "https://a", "group": "Azure", "diff": ["+neu"], "extra": 0}]
-    dashboard.build(entries, hist, "now")
-    out = (tmp_path / "index.html").read_text()
-    assert 'data-g="Azure" data-s="ok"' in out
-    assert 'data-g="Allgemein" data-s="error"' in out
-    assert '<details data-t="alpha https://a +neu" data-g="Azure">' in out
-    assert 'id="q"' in out and 'value="problem"' in out
 
 
 def test_find_feeds():

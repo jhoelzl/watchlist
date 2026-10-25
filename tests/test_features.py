@@ -7,7 +7,6 @@ import pytest
 
 import add
 import check
-import dashboard
 
 
 class FakeResp:
@@ -91,7 +90,6 @@ def env(tmp_path, monkeypatch):
     (tmp_path / "urls.yml").write_text("urls:\n  - url: https://a\n    group: G\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
     monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
     sent = []
     monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append((s, t)))

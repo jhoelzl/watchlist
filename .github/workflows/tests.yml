@@ -32,7 +32,7 @@ jobs:
           enable-cache: true
       - run: uv run --frozen ruff check .
       - run: uv run --frozen ruff format --check .
-      - run: uv run --frozen mypy check.py add.py dashboard.py store.py migrate.py
+      - run: uv run --frozen mypy check.py add.py store.py migrate.py
       - run: uv run --frozen pytest -q
 
   web:

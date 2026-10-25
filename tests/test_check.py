@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 import pytest
 
 import check
-import dashboard
 
 HTML = """
 <html><head><title> Meine   Seite </title><style>x{}</style></head>
@@ -142,24 +141,10 @@ def test_heartbeat_sent_once_per_month(monkeypatch):
     assert meta["heartbeat"] == "2026-11"
 
 
-def test_dashboard_build(tmp_path, monkeypatch):
-    monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
-    entries = [
-        {"url": "https://a", "name": "<A>", "group": "Azure", "status": "error", "error": "Boom", "checked": "t1", "changed": ""},
-        {"url": "https://b", "name": "B", "group": "", "status": "ok", "checked": "t2", "changed": "t0"},
-    ]
-    hist = [{"time": "t0", "name": "B", "url": "https://b", "diff": ["+neu"], "extra": 1}]
-    dashboard.build(entries, hist, "jetzt")
-    out = (tmp_path / "site" / "index.html").read_text()
-    assert "&lt;A&gt;" in out and "Boom" in out and "Allgemein" in out
-    assert "und 1 weitere Zeilen" in out
-
-
 def test_run_end_to_end(tmp_path, monkeypatch):
     (tmp_path / "urls.yml").write_text("urls:\n  - url: https://a\n    group: G\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    monkeypatch.setattr(dashboard, "SITE", tmp_path / "site")
     pages = iter(["eins", "eins", "zwei"])
     monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
     monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
@@ -173,7 +158,7 @@ def test_run_end_to_end(tmp_path, monkeypatch):
     assert sent == ["Watchlist: T geändert"]
     hist = json.loads((tmp_path / "state" / "history.json").read_text())
     assert hist[0]["diff"] == ["-eins", "+zwei"] or "+zwei" in hist[0]["diff"]
-    assert (tmp_path / "site" / "index.html").exists()
+    assert not (tmp_path / "site").exists()
 
 
 def test_fragment_url_points_to_first_added_line():

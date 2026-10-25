@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 41 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 93 Python- und 41 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -56,7 +56,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - ⚪ **Accessibility:** `aria-label` für Filter, Tastaturbedienung der Diffs, Status nicht nur über Farbe, Fokusreihenfolge im Formular. (S)
 - ⚪ **Laufhistorie:** Dauer und Fehlerquote der letzten Läufe anzeigen. (M)
 - ⚪ **PWA/Installierbar** mit Offline-Cache der letzten Daten. (M)
-- ⚪ **Statisches `dashboard.py`** entfernen oder auf das Nötigste reduzieren, da das Web-Dashboard es ersetzt (nur noch Datei-Modus). (S)
 
 ## 5. Refactoring
 
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Live-Status nach „Jetzt prüfen“ | Das Dashboard fragt alle 5 s den Lauf über die Edge Function ab (wartet/läuft/fertig/Fehler, Link zum Lauf, max. 10 Minuten) und lädt die Daten nach Ende neu, statt fest 90 Sekunden zu warten |
 | Anzeige-Einstellungen gemerkt | Tab, Filter und zugeklappte Gruppen liegen in `localStorage` und kommen beim nächsten Besuch zurück. Ein Hash in der URL (geteilter Link) hat Vorrang |
 | Änderungshäufigkeit als Sparkline | Neue Spalte „Letzte 30 Tage“ in der URL-Tabelle: Balken pro Tag mit Änderungen, aus `watchlist_history` (bis 5000 Einträge der letzten 30 Tage) |
+| Statisches `dashboard.py` entfernt | `check.py` erzeugt kein `site/index.html` mehr, das Web-Dashboard ersetzt es vollständig. Tests, Hooks, CI und Docs angepasst |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
