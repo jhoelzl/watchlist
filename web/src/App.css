@@ -350,3 +350,7 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .runs summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 .runs table { margin-top: 8px; }
 .run-bar { display: inline-block; height: 6px; border-radius: 3px; background: #6366f1; vertical-align: middle; }
+
+.suggestions { display: grid; gap: 6px; font-size: 13px; }
+.suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.suggestion code { background: var(--subtle); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }

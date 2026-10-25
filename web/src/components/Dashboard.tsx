@@ -3,7 +3,7 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runStats, formatDuration, type RunRecord, sideBySide, nextSort, sortEntries, type Sort, type SortKey, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, suggestIgnores, runStats, formatDuration, type RunRecord, sideBySide, nextSort, sortEntries, type Sort, type SortKey, isStuck, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -197,6 +197,15 @@ function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: () => voi
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const preview = usePreview(entry.url, form.selector, true)
+  const [diffs, setDiffs] = useState<string[]>([])
+  useEffect(() => {
+    let stale = false
+    void supabase.from('watchlist_history').select('diff').eq('url', entry.url).order('id', { ascending: false }).limit(50)
+      .then(({ data: rows }) => { if (!stale) setDiffs((rows ?? []).map((r) => r.diff as string)) })
+    return () => { stale = true }
+  }, [entry.url])
+  const patterns = form.ignore.split('\n').map((l) => l.trim()).filter(Boolean)
+  const suggestions = useMemo(() => suggestIgnores(diffs, patterns), [diffs, form.ignore])
   const set = (patch: Partial<EditForm>) => setForm((f) => ({ ...f, ...patch }))
   const save = async () => {
     const built = applyEdit(entry.options ?? {}, form)
@@ -219,6 +228,18 @@ function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: () => voi
       <label>Gruppe<input value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
       <label className="grow">Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto, CSS-Selector oder leer = ganze Seite" /></label>
       <label className="grow">Ignore (ein Regex pro Zeile)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="z. B. Last updated.*" /></label>
+      {suggestions.length > 0 && (
+        <div className="grow suggestions">
+          <strong>Ignore-Vorschläge</strong> <span className="muted">(wiederkehrende Zeilen, die sich nur in Zahlen unterscheiden)</span>
+          {suggestions.slice(0, 5).map((s) => (
+            <div key={s.pattern} className="suggestion">
+              <code>{s.pattern}</code>
+              <span className="muted">z. B. „{s.example.slice(0, 60)}“, in {s.count} Änderungen</span>
+              <button className="btn" type="button" onClick={() => set({ ignore: [...patterns, s.pattern].join('\n') })}>Übernehmen</button>
+            </div>
+          ))}
+        </div>
+      )}
       <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
       <label className="check"><input type="checkbox" checked={form.onlyAdded} onChange={(e) => set({ onlyAdded: e.target.checked })} />Nur Hinzugefügtes melden</label>
       <label className="check"><input type="checkbox" checked={form.paused} onChange={(e) => set({ paused: e.target.checked })} />Pausiert (wird nicht geprüft)</label>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -250,6 +250,27 @@ describe('Fehlerserie', () => {
   it('Filter stuck', () => {
     expect(matches({ ...e('error', 6), text: '' }, '', '', 'stuck')).toBe(true)
     expect(matches({ ...e('error', 2), text: '' }, '', '', 'stuck')).toBe(false)
+  })
+})
+
+describe('suggestIgnores', () => {
+  const d = (a: string, b: string) => `@@ -1 +1 @@\n-${a}\n+${b}\n Rest`
+  it('erkennt wiederkehrende Zählerzeilen und erzeugt passende Regex', () => {
+    const s = suggestIgnores([d('Besucher: 100', 'Besucher: 101'), d('Besucher: 101', 'Besucher: 105'), d('alt', 'neu')])
+    expect(s).toHaveLength(1)
+    expect(s[0].count).toBe(2)
+    expect(new RegExp(s[0].pattern).test('Besucher: 4711')).toBe(true)
+    expect(new RegExp(s[0].pattern).test('Besucher: abc')).toBe(false)
+  })
+  it('maskiert Sonderzeichen und Datumsformate', () => {
+    const s = suggestIgnores([d('Stand 01.02.2026 (a+b)', 'Stand 02.02.2026 (a+b)'), d('Stand 03.02.2026 (a+b)', 'Stand 04.02.2026 (a+b)')])
+    expect(s[0].pattern).toBe('Stand\\s+\\d+\\.\\d+\\.\\d+\\s+\\(a\\+b\\)')
+  })
+  it('ignoriert einmalige Zeilen und bereits abgedeckte Muster', () => {
+    expect(suggestIgnores([d('Preis 10', 'Preis 11')])).toEqual([])
+    const two = [d('Zähler 1', 'Zähler 2'), d('Zähler 3', 'Zähler 4')]
+    expect(suggestIgnores(two, ['Zähler \\d+'])).toEqual([])
+    expect(suggestIgnores(two, ['(kaputt'])).toHaveLength(1)
   })
 })
 

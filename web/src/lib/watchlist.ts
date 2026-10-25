@@ -375,6 +375,47 @@ export function parseImport(text: string, existing: string[]): ImportResult {
   return { rows, skipped, errors }
 }
 
+export type IgnoreSuggestion = { pattern: string; example: string; count: number }
+
+const MAX_SUGGESTION_LENGTH = 160
+
+/** Regex, die die Zeile trifft und jede Ziffernfolge (Datum, Zähler, Uhrzeit) offen lässt. */
+function lineToPattern(line: string): string {
+  return line
+    .trim()
+    .split(/(\d+|\s+)/)
+    .map((part) => (/^\d+$/.test(part) ? '\\d+' : /^\s+$/.test(part) ? '\\s+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('')
+}
+
+/**
+ * Sucht im Verlauf einer Seite Zeilen mit Ziffern, die sich in mindestens `minCount` Änderungen
+ * nur in den Zahlen unterscheiden (Datum, Besucherzähler, Zeitstempel), und schlägt dafür ignore-Regex vor.
+ */
+export function suggestIgnores(diffs: string[], existing: string[] = [], minCount = 2): IgnoreSuggestion[] {
+  const found = new Map<string, { example: string; entries: number }>()
+  for (const diff of diffs) {
+    const seen = new Set<string>()
+    for (const raw of diff.split('\n')) {
+      if (!/^[+-]/.test(raw) || raw.startsWith('+++') || raw.startsWith('---')) continue
+      const line = raw.slice(1).trim()
+      if (!/\d/.test(line) || line.length < 3) continue
+      const pattern = lineToPattern(line)
+      if (pattern.length > MAX_SUGGESTION_LENGTH || seen.has(pattern)) continue
+      seen.add(pattern)
+      const hit = found.get(pattern)
+      if (hit) hit.entries++
+      else found.set(pattern, { example: line, entries: 1 })
+    }
+  }
+  const compiled = existing.flatMap((p) => { try { return [new RegExp(p)] } catch { return [] } })
+  return [...found.entries()]
+    .filter(([, v]) => v.entries >= minCount)
+    .filter(([pattern, v]) => !existing.includes(pattern) && !compiled.some((re) => re.test(v.example)))
+    .map(([pattern, v]) => ({ pattern, example: v.example, count: v.entries }))
+    .sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern))
+}
+
 export type EditForm = { name: string; group: string; selector: string; js: boolean; ignore: string; onlyAdded: boolean; paused: boolean }
 
 export function toEditForm(e: Entry): EditForm {
