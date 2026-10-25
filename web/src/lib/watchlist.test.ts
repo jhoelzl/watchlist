@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -126,5 +126,22 @@ describe('fragmentUrl', () => {
     )
     expect(fragmentUrl('https://a/x#top', '+Ein langer neuer Satz')).toContain('https://a/x#top:~:text=')
     expect(fragmentUrl('https://a/x', '-nur weg\n+kurz')).toBe('https://a/x')
+  })
+})
+
+describe('groupChange', () => {
+  const e = (url: string, group: string) => ({ url, group }) as Entry
+  const entries = [e('a', 'X'), e('b', 'X'), e('c', 'Allgemein')]
+
+  it('renames and moves members', () => {
+    const r = groupChange(entries, 'X', ' Neu ', new Set(['a', 'c']))
+    expect(r.grp).toBe('Neu')
+    expect(r.assign.sort()).toEqual(['a', 'c'])
+    expect(r.clear).toEqual(['b'])
+  })
+
+  it('maps Allgemein to null and empty selection clears all', () => {
+    expect(groupChange(entries, 'X', 'Allgemein', new Set(['a'])).grp).toBeNull()
+    expect(groupChange(entries, 'X', 'X', new Set()).clear.sort()).toEqual(['a', 'b'])
   })
 })

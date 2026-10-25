@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
+import { GroupsPanel } from './GroupsPanel'
 import {
   HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, fragmentUrl, groupByDay, inPeriod, groupEntries, groupOf, matches, summarize, toEntries,
   type Change, type Entry, type Period, type StatusFilter, type UrlRow,
@@ -79,7 +80,7 @@ export function Dashboard() {
   const [status, setStatus] = useState<StatusFilter>('')
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
   const [period, setPeriod] = useState<Period>('')
-  const [tab, setTab] = useState<'urls' | 'changes'>('urls')
+  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>('urls')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
 
@@ -151,8 +152,10 @@ export function Dashboard() {
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
         <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Letzte Änderungen<span className="count">{data?.changes.length ?? 0}</span></button>
+        <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Gruppen<span className="count">{groups.length}</span></button>
       </div>
-      <div className="toolbar">
+      {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} onChanged={() => void load().then(setResult)} />}
+      {tab !== 'groups' && <div className="toolbar">
         <div className="search-field">
           <span aria-hidden="true">⌕</span>
           <input type="search" placeholder="Suchen (Name, URL, Text)" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -161,7 +164,7 @@ export function Dashboard() {
           <option value="">Alle Gruppen</option>
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
-      </div>
+      </div>}
       {tab === 'urls' && (
         <>
       <AddUrl entries={data?.entries ?? []} onAdded={() => void load().then(setResult)} />

@@ -216,3 +216,15 @@ export function fragmentUrl(url: string, diff: string): string {
   }
   return url
 }
+
+export const DEFAULT_GROUP = 'Allgemein'
+
+/** Welche URLs bekommen die Gruppe, welche verlieren sie (grp = null → "Allgemein")? */
+export function groupChange(entries: Entry[], current: string | null, name: string, selected: Set<string>) {
+  const trimmed = name.trim()
+  const grp = !trimmed || trimmed === DEFAULT_GROUP ? null : trimmed
+  const members = new Set(entries.filter((e) => e.group === current).map((e) => e.url))
+  const assign = [...selected]
+  const clear = [...members].filter((u) => !selected.has(u))
+  return { grp, assign, clear }
+}

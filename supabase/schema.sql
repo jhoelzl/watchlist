@@ -91,3 +91,9 @@ create policy "admins add urls" on watchlist_urls for insert to authenticated
 drop policy if exists "admins delete urls" on watchlist_urls;
 create policy "admins delete urls" on watchlist_urls for delete to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Gruppen im Dashboard bearbeiten (grp der URLs ändern).
+drop policy if exists "admins update urls" on watchlist_urls;
+create policy "admins update urls" on watchlist_urls for update to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()))
+  with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
