@@ -263,3 +263,17 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
   .composer-section td:nth-child(3), .composer-section td:nth-child(4) { grid-column: 2; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Tabellen-Ausrichtung */
+.composer-section table { table-layout: fixed; }
+.composer-section th, .composer-section td { vertical-align: middle; }
+.composer-section th:nth-child(1), .composer-section td:nth-child(1) { width: 160px; }
+.composer-section th:nth-child(3), .composer-section td:nth-child(3),
+.composer-section th:nth-child(4), .composer-section td:nth-child(4) { width: 130px; }
+.composer-section th:last-child, .composer-section td:last-child { width: 56px; padding-left: 0; text-align: center; }
+.composer-section td:nth-child(2) { overflow-wrap: anywhere; }
+.composer-section td .badge { white-space: nowrap; }
+.icon-btn { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; }
+@media (max-width: 720px) {
+  .composer-section th:nth-child(n), .composer-section td:nth-child(n) { width: auto; }
+}
