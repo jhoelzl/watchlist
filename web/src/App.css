@@ -277,3 +277,5 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
 @media (max-width: 720px) {
   .composer-section th:nth-child(n), .composer-section td:nth-child(n) { width: auto; }
 }
+.pill-count { margin-left: 6px; opacity: .65; font-size: 12px; font-variant-numeric: tabular-nums; }
+.filter-pill.active .pill-count { opacity: .85; }

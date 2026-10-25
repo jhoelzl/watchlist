@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, fragmentUrl, groupByDay, inPeriod, groupEntries, groupOf, matches, summarize, toEntries,
+  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, buildRow, countLines, dayLabel, diffClass, fragmentUrl, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
   type Change, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -121,7 +121,6 @@ export function Dashboard() {
   if (result.state === 'error') return <p className="error">Laden fehlgeschlagen: {result.message}</p>
 
   const total = data?.entries.length ?? 0
-  const sum = summarize(data?.entries ?? [])
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
   const toggle = (name: string) => setCollapsed((c) => { const n = new Set(c); if (!n.delete(name)) n.add(name); return n })
   const count = shown.reduce((n, [, items]) => n + items.length, 0)
@@ -141,15 +140,6 @@ export function Dashboard() {
       {check.state === 'started' && <p className="muted">Prüfung gestartet. Sie dauert etwa eine Minute, die Ansicht lädt sich nach 90 Sekunden automatisch neu.</p>}
       {check.state === 'running' && <p className="muted">Es läuft bereits eine Prüfung.</p>}
       {check.state === 'error' && <p className="error">Prüfung konnte nicht gestartet werden: {check.message}</p>}
-      <div className="summary">
-        <div className="stat"><b>{sum.total}</b><span>URLs</span></div>
-        <div className="stat"><b>{sum.ok}</b><span>OK</span></div>
-        <div className={`stat${sum.problems ? ' bad' : ''}`}><b>{sum.problems}</b><span>Probleme</span></div>
-        <div className="stat"><b>{sum.new}</b><span>Neu</span></div>
-        <div className="stat"><b>{sum.pending}</b><span>Offen</span></div>
-        <div className="stat"><b>{data?.changes.length ?? 0}</b><span>Änderungen (letzte {data?.changes.length === HISTORY_LIMIT ? HISTORY_LIMIT : 'alle'})</span></div>
-        <div className="stat"><b>{groups.length}</b><span>Gruppen</span></div>
-      </div>
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
         <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Letzte Änderungen<span className="count">{data?.changes.length ?? 0}</span></button>
@@ -171,7 +161,9 @@ export function Dashboard() {
       <AddUrl entries={data?.entries ?? []} onAdded={() => void load().then(setResult)} />
       <div className="filter-bar">
         {STATUS_FILTERS.map(([value, label]) => (
-          <button key={value} className={`filter-pill${status === value ? ' active' : ''}`} onClick={() => setStatus(value)}>{label}</button>
+          <button key={value} className={`filter-pill${status === value ? ' active' : ''}`} onClick={() => setStatus(value)}>
+            {label}<span className="pill-count">{(data?.entries ?? []).filter((e) => matches({ ...e, text: e.error }, '', '', value)).length}</span>
+          </button>
         ))}
         <button className="filter-pill" onClick={() => setCollapsed(allOpen ? new Set(shown.map(([n]) => n)) : new Set())}>
           {allOpen ? 'Alle zuklappen' : 'Alle aufklappen'}
