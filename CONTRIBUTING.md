@@ -19,6 +19,7 @@ Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code o
 - `check.py`: Ablauf eines Laufs (`run`, `check_url`, Mails und Speichern)
 - `config.py`: Optionen laden und prüfen, `fetch.py`: Abruf (HTTP, Retry, robots, Playwright), `parse.py`: Feed/HTML zu Text
 - `diffing.py`: Diffs und Sprungziele, `notify.py`: Mails und Heartbeat, `errors.py`: `CheckError` und Fehlercodes, `models.py`: `TypedDict`-Typen für Optionen, Status und Änderungen
+- Dashboard (`web/src/`): `useWatchlist.ts` (Laden und Aktionen), `components/Dashboard.tsx` (Rahmen, Filter, Tabs), `UrlsTab`, `ChangesTab`, `GroupsPanel`, `AddUrl`, `EditUrl`, `DiffView`, `RunsPanel`, `PreviewBox`; reine Logik in `lib/watchlist.ts`
 - `store.py`: Speicher (Supabase oder Dateien), `add.py` und `migrate.py`: Hilfsskripte
 
 ## Tests und Prüfungen
