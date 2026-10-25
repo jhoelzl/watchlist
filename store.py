@@ -1,7 +1,7 @@
-"""Speicher für URLs, Snapshots, Zähler, Verlauf und Status: Dateien (Standard) oder Supabase/Postgres.
+"""Storage for URLs, snapshots, counters, history, and status: files (default) or Supabase/Postgres.
 
-Mit gesetzter Umgebungsvariable SUPABASE_DB_URL liegt alles in Tabellen mit dem Präfix watchlist_
-(Schema: supabase/schema.sql), sonst wie bisher in urls.yml und im Ordner state/.
+When SUPABASE_DB_URL is set, everything is stored in tables prefixed with watchlist_.
+(Schema: supabase/schema.sql); otherwise, as before, in urls.yml and the state/ directory.
 """
 
 import json
@@ -21,7 +21,7 @@ COUNTER_KINDS = ("fail", "short")
 
 
 class FileStore:
-    """Bisheriges Verhalten: urls.yml plus Dateien in state/."""
+    """Existing behavior: urls.yml plus files in state/."""
 
     def __init__(self, state: Path, config: Path) -> None:
         self.state = state
@@ -70,12 +70,12 @@ class FileStore:
 
 
 class PgStore:
-    """Supabase/Postgres. Verbindung per Postgres-URL (bei GitHub Actions den Session-Pooler nutzen, IPv4)."""
+    """Supabase/Postgres. Connect with a Postgres URL (use the IPv4 session pooler in GitHub Actions)."""
 
     def __init__(self, dsn: str) -> None:
         import psycopg
 
-        # prepare_threshold=None: kompatibel mit dem Transaction-Pooler von Supabase
+        # prepare_threshold=None: compatible with the Supabase transaction pooler.
         self.conn = psycopg.connect(dsn, autocommit=True, prepare_threshold=None)
 
     def _all(self, sql: str, args: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
@@ -178,9 +178,9 @@ class PgStore:
 
 
 class RestStore(PgStore):
-    """Supabase über die REST-API (Projekt-URL + service_role-Key), ohne Datenbankpasswort.
+    """Supabase via the REST API (project URL + service_role key), without a database password.
 
-    Der service_role-Key umgeht RLS und ist geheim: nur als Secret/.env verwenden, nie im Frontend.
+    The service_role key bypasses RLS and is secret: store it only as a secret or in .env, never in the frontend.
     """
 
     def __init__(self, url: str, key: str) -> None:
@@ -243,7 +243,7 @@ class RestStore(PgStore):
 
     def snapshot_keys(self) -> set[str]:
         keys: set[str] = set()
-        while True:  # PostgREST liefert standardmäßig höchstens 1000 Zeilen
+        while True:  # PostgREST returns at most 1000 rows by default.
             page = self._select("watchlist_snapshots", select="key", order="key", limit="1000", offset=str(len(keys)))
             keys.update(r["key"] for r in page)
             if len(page) < 1000:
@@ -312,7 +312,7 @@ def _now() -> str:
 
 
 def open_store(state: Path, config: Path) -> FileStore | PgStore:
-    """Datenbank (Postgres-URL oder REST mit service_role-Key) oder Dateien. Siehe README."""
+    """Database (Postgres URL or REST with service_role key) or files. See README."""
     dsn = os.environ.get(DB_ENV, "")
     key = os.environ.get(KEY_ENV)
     if dsn.startswith(("postgres://", "postgresql://")):

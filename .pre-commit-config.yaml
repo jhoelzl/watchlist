@@ -1,6 +1,6 @@
-# Einmalig aktivieren: uv run pre-commit install (installiert pre-commit- und pre-push-Hook)
-# Alle Dateien prüfen: uv run pre-commit run --all-files
-# Die Hooks nutzen die in uv.lock fixierten Versionen (gleich wie CI).
+# Install once: uv run pre-commit install (installs the pre-commit and pre-push hooks)
+# Check all files: uv run pre-commit run --all-files
+# Hooks use the versions pinned in uv.lock (same as CI).
 default_install_hook_types: [pre-commit, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -8,7 +8,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: no-commit-to-branch
-        name: kein Commit/Push direkt auf main (Branch + PR verwenden)
+        name: Do not commit/push directly to main (use a branch + PR)
         args: [--branch, main]
         stages: [pre-commit, pre-push]
   - repo: https://github.com/gitleaks/gitleaks

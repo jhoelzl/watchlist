@@ -23,7 +23,7 @@ export function usePreview(url: string, selector: string, enabled: boolean): Pre
       if (stale) return
       if (error || data?.error) {
         const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
-        return setPreview({ state: 'error', message: data?.error ?? body?.error ?? error?.message ?? 'Unbekannter Fehler' })
+        return setPreview({ state: 'error', message: data?.error ?? body?.error ?? error?.message ?? 'Unknown error' })
       }
       setPreview(data?.feed ? { state: 'feed' } : { state: 'ready', data: data as Preview })
     }, 700)
@@ -34,9 +34,9 @@ export function usePreview(url: string, selector: string, enabled: boolean): Pre
 
 export function PreviewBox({ preview, js }: { preview: PreviewState; js: boolean }) {
   if (preview.state === 'idle') return null
-  if (preview.state === 'loading') return <p className="preview muted">Vorschau wird geladen …</p>
-  if (preview.state === 'error') return <p className="preview warn">Vorschau nicht möglich: {preview.message}</p>
-  if (preview.state === 'feed') return <p className="preview ok">Feed erkannt: Einträge werden einzeln verglichen, kein Selector nötig.</p>
+  if (preview.state === 'loading') return <p className="preview muted">Loading preview …</p>
+  if (preview.state === 'error') return <p className="preview warn">Preview not possible: {preview.message}</p>
+  if (preview.state === 'feed') return <p className="preview ok">Feed detected: entries are compared individually, no selector needed.</p>
   const d = preview.data
   const share = d.total ? Math.round((d.chars / d.total) * 100) : 0
   const bad = !d.found || d.chars < 200
@@ -44,15 +44,15 @@ export function PreviewBox({ preview, js }: { preview: PreviewState; js: boolean
     <div className={`preview ${bad ? 'warn' : 'ok'}`}>
       <p>
         {d.mode === 'selector' && !d.found
-          ? <>Selector <code>{d.selector}</code> wurde nicht gefunden.</>
-          : <><strong>{d.title || 'Ohne Titel'}</strong>: {d.selector ? <>erkannter Bereich <code>{d.selector}</code></> : 'ganze Seite'}, {d.chars} Zeichen ({share} % der Seite)</>}
-        {d.found && d.chars < 200 && ' – sehr wenig Text, Selector prüfen.'}
+          ? <>Selector <code>{d.selector}</code> was not found.</>
+          : <><strong>{d.title || 'Untitled'}</strong>: {d.selector ? <>detected area <code>{d.selector}</code></> : 'whole page'}, {d.chars} characters ({share}% of the page)</>}
+        {d.found && d.chars < 200 && ' – very little text, check the selector.'}
       </p>
       {d.sample && <p className="sample">{d.sample}{d.chars > 300 ? ' …' : ''}</p>}
       {d.candidates.length > 0 && (
-        <p className="muted">Kandidaten: {d.candidates.map((c) => `${c.selector} (${c.chars})`).join(', ')}</p>
+        <p className="muted">Candidates: {d.candidates.map((c) => `${c.selector} (${c.chars})`).join(', ')}</p>
       )}
-      {js && <p className="muted">Hinweis: Die Vorschau rendert kein JavaScript, bei „Mit JavaScript rendern“ kann das Ergebnis abweichen.</p>}
+      {js && <p className="muted">Note: the preview does not render JavaScript, so with “Render with JavaScript” the result may differ.</p>}
     </div>
   )
 }

@@ -36,10 +36,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PTH"]
-ignore = ["E741"]  # `l` für Zeilen ist hier gewollt
+ignore = ["E741"]  # `l` is intentional here for lines
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["F811"]  # Fixtures werden importiert
+"tests/*" = ["F811"]  # Fixtures are imported
 
 [tool.mypy]
 python_version = "3.12"

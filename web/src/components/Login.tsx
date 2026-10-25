@@ -10,21 +10,21 @@ export function Login() {
     const { error } = signUp
       ? await supabase.auth.signUp(creds)
       : await supabase.auth.signInWithPassword(creds)
-    setError(error?.message ?? (signUp ? 'Bitte E-Mail prüfen, falls eine Bestätigung nötig ist.' : ''))
+    setError(error?.message ?? (signUp ? 'Please check your email in case a confirmation is required.' : ''))
   }
   return (
     <div className="auth-wrap">
       <form className="panel auth-card" onSubmit={(e) => { e.preventDefault(); void submit(false) }}>
         <div className="auth-head">
           <div>
-            <h2>Willkommen zurück</h2>
-            <p>Melde dich an, um die Watchlist zu sehen.</p>
+            <h2>Welcome back</h2>
+            <p>Sign in to see the watchlist.</p>
           </div>
         </div>
-        <label>E-Mail<input type="email" placeholder="du@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-        <label>Passwort<input type="password" placeholder="Dein Passwort" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
-        <button className="btn primary" type="submit">Anmelden</button>
-        <button className="link" type="button" onClick={() => void submit(true)}>Konto erstellen</button>
+        <label>Email<input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+        <label>Password<input type="password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+        <button className="btn primary" type="submit">Sign in</button>
+        <button className="link" type="button" onClick={() => void submit(true)}>Create account</button>
         {error && <p className="error">{error}</p>}
       </form>
     </div>

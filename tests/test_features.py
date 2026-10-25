@@ -33,7 +33,7 @@ def robots_for(monkeypatch, status, body=""):
 def test_robots_disallow(monkeypatch):
     robots_for(monkeypatch, 200, "User-agent: *\nDisallow: /privat\n")
     cache = {}
-    assert not fetch.robots_allowed("https://x.de/privat/seite", cache)
+    assert not fetch.robots_allowed("https://x.de/privat/page", cache)
     assert fetch.robots_allowed("https://x.de/oeffentlich", cache)
 
 
@@ -114,14 +114,14 @@ def status_of(tmp, url="https://a"):
 
 def test_guard_blocks_short_page_and_alerts_once(env, monkeypatch):
     tmp, sent = env
-    big = ("zeile\n" * 300).strip()
-    set_pages(monkeypatch, [big, "Cookies akzeptieren", "Cookies akzeptieren", "Cookies akzeptieren"])
+    big = ("line\n" * 300).strip()
+    set_pages(monkeypatch, [big, "Accept cookies", "Accept cookies", "Accept cookies"])
     check.run()  # Baseline
-    check.run()  # 1. kurz: keine Mail
+    check.run()  # 1. short: no email
     assert sent == [] and status_of(tmp)["status"] == "warn"
-    check.run()  # 2. kurz: Warnmail
-    assert len(sent) == 1 and "kaum Text" in sent[0][1]
-    check.run()  # 3. kurz: keine weitere Mail
+    check.run()  # 2. short: Warnmail
+    assert len(sent) == 1 and "very little text" in sent[0][1]
+    check.run()  # 3. short: no additional email
     assert len(sent) == 1
     snap = next((tmp / "state").glob("*.txt"))
     assert snap.read_text() == big
@@ -129,7 +129,7 @@ def test_guard_blocks_short_page_and_alerts_once(env, monkeypatch):
 
 def test_guard_recovers_without_change_mail(env, monkeypatch):
     tmp, sent = env
-    big = ("zeile\n" * 300).strip()
+    big = ("line\n" * 300).strip()
     set_pages(monkeypatch, [big, "Cookies", big])
     check.run()
     check.run()
@@ -140,16 +140,16 @@ def test_guard_recovers_without_change_mail(env, monkeypatch):
 
 def test_guard_ignores_small_pages(env, monkeypatch):
     tmp, sent = env
-    set_pages(monkeypatch, ["kurze seite", "x"])
+    set_pages(monkeypatch, ["kurze page", "x"])
     check.run()
     check.run()
     assert status_of(tmp)["status"] == "ok"
-    assert [s for s, _ in sent] == ["Watchlist: T geändert"]
+    assert [s for s, _ in sent] == ["Watchlist: T changed"]
 
 
 def test_not_modified_keeps_snapshot_and_validators(env, monkeypatch):
     tmp, sent = env
-    set_pages(monkeypatch, ["inhalt"])
+    set_pages(monkeypatch, ["content"])
     check.run()
     assert json.loads((tmp / "state" / "http.json").read_text())["https://a"]["etag"] == '"v"'
     monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: (None, None, False, cond))
@@ -170,7 +170,7 @@ def test_ignore_robots_option(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    ignore_robots: true\n")
     monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: False)
-    set_pages(monkeypatch, ["inhalt"])
+    set_pages(monkeypatch, ["content"])
     check.run()
     assert status_of(tmp)["status"] == "new"
 
@@ -187,7 +187,7 @@ def test_suggest_selector():
 
 def test_suggest_group_by_host():
     entries = [{"url": "https://learn.microsoft.com/a", "group": "Azure"}, {"url": "https://g.com/b"}]
-    assert add.suggest_group("https://learn.microsoft.com/neu", entries) == "Azure"
+    assert add.suggest_group("https://learn.microsoft.com/new", entries) == "Azure"
     assert add.suggest_group("https://andere.de/x", entries) == ""
 
 
@@ -201,19 +201,19 @@ def test_render_entry_quotes_special_values():
 
 def test_add_main_appends_and_keeps_comments(tmp_path, monkeypatch):
     f = tmp_path / "urls.yml"
-    f.write_text("# Kommentar\ndefaults:\n  ignore: ['x']\n\nurls:\n  - url: https://a\n    group: Azure\n")
+    f.write_text("# Comment\ndefaults:\n  ignore: ['x']\n\nurls:\n  - url: https://a\n    group: Azure\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     page = "<html><title>T</title><body><main>" + "wort " * 100 + "</main></body></html>"
     monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: (page, {}))
-    add.main(["https://a/neu", "-y"])
+    add.main(["https://a/new", "-y"])
     text = f.read_text()
-    assert text.startswith("# Kommentar")
+    assert text.startswith("# Comment")
     entries = config.load_config(f)
-    assert [e["url"] for e in entries] == ["https://a", "https://a/neu"]
+    assert [e["url"] for e in entries] == ["https://a", "https://a/new"]
     assert entries[1]["selector"] == "main"
     with pytest.raises(SystemExit):
-        add.main(["https://a/neu", "-y"])
+        add.main(["https://a/new", "-y"])
 
 
 def test_add_main_list_format_and_rollback(tmp_path, monkeypatch):
@@ -245,7 +245,7 @@ def test_add_blocked_by_robots(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "pattern",
-    [r"Last updated on\s*\S+", r"\d{2}:\d{2}", r"(Stand|Update): \d+", r"(a)?b"],
+    [r"Last updated on\s*\S+", r"\d{2}:\d{2}", r"(Status|Update): \d+", r"(a)?b"],
 )
 def test_config_errors_accepts_normal_patterns(pattern):
     assert config.config_errors({"ignore": [pattern]}) == []
@@ -281,7 +281,7 @@ def test_invalid_ignore_marks_url_and_fails_run(env, monkeypatch):
     assert fetched == ["https://b"]
     status = json.loads((tmp / "state" / "status.json").read_text())
     assert status["https://a"]["status"] == "error"
-    assert "Konfigurationsfehler" in status["https://a"]["error"]
+    assert "Configuration error" in status["https://a"]["error"]
     assert status["https://b"]["status"] == "new"
 
 
@@ -322,7 +322,7 @@ def test_fetch_all_runs_in_parallel_and_respects_host_limit(monkeypatch):
 def test_fetch_all_returns_exceptions_per_url(monkeypatch):
     def fake_fetch(url, opts, cond=None):
         if url.endswith("bad"):
-            raise RuntimeError("kaputt")
+            raise RuntimeError("broken")
         return "T", "ok", False, {}
 
     monkeypatch.setattr(fetch, "fetch", fake_fetch)
@@ -330,7 +330,7 @@ def test_fetch_all_returns_exceptions_per_url(monkeypatch):
     jobs = [({"url": u}, {}) for u in ("https://a/good", "https://a/bad", "https://r/blocked")]
     result = fetch.fetch_all(jobs)
     assert result["https://a/good"][1] == "ok"
-    assert str(result["https://a/bad"]) == "kaputt"
+    assert str(result["https://a/bad"]) == "broken"
     assert "robots.txt" in str(result["https://r/blocked"])
 
 
@@ -366,11 +366,11 @@ def test_fetch_all_empty():
         ("robots", "ignore_robots"),
         ("http_403", "js: true"),
         ("http_404", "URL"),
-        ("timeout", "zu langsam"),
-        ("http_429", "Rate-Limit"),
-        ("http_5xx", "Serverfehler"),
-        ("connection", "Verbindung"),
-        ("selector", "Selector"),
+        ("timeout", "too slowly"),
+        ("http_429", "Rate limit"),
+        ("http_5xx", "Server error"),
+        ("connection", "Connection"),
+        ("selector", "selector"),
         ("content", "min_ratio"),
         ("config", "urls.yml"),
     ],
@@ -381,8 +381,8 @@ def test_hint_for_known_codes(code, expected):
 
 def test_hint_for_unknown_code_is_empty():
     assert notify.hint_for("") == "" and notify.hint_for(None) == ""
-    assert notify.with_hint("Text", "unbekannt") == "Text"
-    assert notify.with_hint("Text", "timeout").startswith("Text\n  Tipp: ")
+    assert notify.with_hint("Text", "unknown") == "Text"
+    assert notify.with_hint("Text", "timeout").startswith("Text\n  Tip: ")
 
 
 def test_error_code_classifies_exceptions():
@@ -401,14 +401,14 @@ def test_repeated_failure_mail_contains_hint(env, monkeypatch):
     tmp, sent = env
 
     def boom(url, opts, cond=None):
-        raise errors.CheckError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "timeout")
+        raise errors.CheckError("Fetch failed after 3 attempts (Timeout)", "timeout")
 
     monkeypatch.setattr(fetch, "fetch", boom)
     for _ in range(check.FAIL_ALERT_AFTER):
         check.run()
     subject, body = sent[-1]
-    assert subject == "Watchlist: Probleme beim Abruf"
-    assert "Tipp:" in body and "zu langsam" in body
+    assert subject == "Watchlist: 1 fetch problem"
+    assert "Tip:" in body and "too slowly" in body
     status = json.loads((tmp / "state" / "status.json").read_text())
     assert status["https://a"]["streak"] == check.FAIL_ALERT_AFTER
 
@@ -434,9 +434,9 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
     notify.send_heartbeat(datetime(2026, 11, 3, tzinfo=UTC), [1, 2, 3], status, hist, {"heartbeat": "2026-10"})
     body = sent[0]
     assert "- Azure: 2 / 1 / 1" in body
-    assert "- Allgemein: 1 / 0 / 1" in body
-    assert "Dauerhaft kaputt" in body and "B (https://b)" in body and "Tipp:" in body
-    assert "C (https://c)" not in body.split("Dauerhaft kaputt")[1]
+    assert "- General: 1 / 0 / 1" in body
+    assert "Persistently failing" in body and "B (https://b)" in body and "Tip:" in body
+    assert "C (https://c)" not in body.split("Persistently failing")[1]
 
 
 class FakePage:
@@ -502,7 +502,7 @@ def test_browser_started_once_per_run_and_closed(monkeypatch):
     result = fetch.fetch_all(jobs)
     assert [result[o["url"]][1] for o, _ in jobs] == [f"https://h{i}.example/" for i in range(4)]
     assert log["launched"] == 1 and log["closed"] == 1 and log["stopped"] == 1
-    assert len(log["threads"]) == 1  # alle Seiten im selben Thread (Playwright ist thread-gebunden)
+    assert len(log["threads"]) == 1  # all pages use the same thread (Playwright is thread-bound)
     assert fetch._browser_pool is None
 
 
@@ -544,11 +544,11 @@ def test_browser_pool_without_playwright_gives_clear_error(monkeypatch):
 
 
 def test_annotate_diff_marks_changed_words():
-    segs = diffing.annotate_diff(["@@ -1 +1 @@", "-Preis: 10 Euro", "+Preis: 12 Euro", "-weg"])
+    segs = diffing.annotate_diff(["@@ -1 +1 @@", "-Preis: 10 Euro", "+Preis: 12 Euro", "-gone"])
     assert [s for s, changed in segs[1] if changed] == ["10"]
     assert [s for s, changed in segs[2] if changed] == ["12"]
-    assert segs[3] == [("-weg", False)]
-    assert diffing.annotate_diff(["-alt komplett", "+ganz anders hier"])[0] == [("-alt komplett", False)]
+    assert segs[3] == [("-gone", False)]
+    assert diffing.annotate_diff(["-Old price", "+Totally unrelated"])[0] == [("-Old price", False)]
 
 
 def test_render_html_highlights_words_and_counts():
@@ -642,7 +642,7 @@ def test_run_single_url_only_touches_that_url(env, monkeypatch):
     runs_before = json.loads((tmp / "state" / "runs.json").read_text()) if (tmp / "state" / "runs.json").exists() else None
 
     calls.clear()
-    monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://b")  # interval weekly: wird trotzdem geprüft
+    monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://b")  # interval weekly: is still checked
     assert check.run() is True
     assert calls == ["https://b"]
     after = json.loads(status_file.read_text())

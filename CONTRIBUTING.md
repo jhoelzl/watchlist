@@ -1,70 +1,70 @@
-# Mitarbeit
+# Contributing
 
-Kurzanleitung für Setup, Tests und Stil. Funktionsübersicht und Betrieb stehen in der [README](README.md), offene Ideen in [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md).
+A short guide to setup, tests, and style. See the [README](README.md) for features and operations, and [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for open ideas.
 
 ## Setup
 
-Voraussetzungen: [uv](https://docs.astral.sh/uv/) (Python 3.12) und Node.js für das Web-Dashboard.
+Requirements: [uv](https://docs.astral.sh/uv/) (Python 3.12) and Node.js for the web dashboard.
 
 ```
-uv sync                               # Python-Abhängigkeiten
-uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei web/-Änderungen oxlint und tsc; sperrt außerdem Commits und Pushes auf main
-cd web && npm ci                      # Abhängigkeiten des Dashboards
+uv sync                               # Python dependencies
+uv run pre-commit install             # once per clone: gitleaks, ruff, mypy, plus oxlint and tsc for web/ changes; also blocks commits and pushes to main
+cd web && npm ci                      # dashboard dependencies
 ```
 
-Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code oder ins Repo. Für `check.py` mit Datenbank: `op run --env-file=.env -- uv run check.py`. Ohne `RESEND_API_KEY` werden Mails nur ausgegeben. Für das Dashboard `web/.env.example` nach `web/.env` kopieren (nur der Publishable/Anon-Key, nie der Secret-Key).
+Keep secrets (Supabase, Resend) only in a local `.env`, never in code or the repository. To run `check.py` with a database: `op run --env-file=.env -- uv run check.py`. Without `RESEND_API_KEY`, emails are only printed. For the dashboard, copy `web/.env.example` to `web/.env` (use only the Publishable/Anon key, never the Secret key).
 
-## Aufbau
+## Structure
 
-- `check.py`: Ablauf eines Laufs (`run`, `check_url`, Mails und Speichern)
-- `config.py`: Optionen laden und prüfen, `fetch.py`: Abruf (HTTP, Retry, robots, Playwright), `parse.py`: Feed/HTML zu Text
-- `diffing.py`: Diffs und Sprungziele, `notify.py`: Mails und Heartbeat, `errors.py`: `CheckError` und Fehlercodes, `settings.json`/`settings.py`: gemeinsame Konstanten für Python und Dashboard, `models.py`: `TypedDict`-Typen für Optionen, Status und Änderungen
-- Dashboard (`web/src/`): `useWatchlist.ts` (Laden und Aktionen), `components/Dashboard.tsx` (Rahmen, Filter, Tabs), `UrlsTab`, `ChangesTab`, `GroupsPanel`, `AddUrl`, `EditUrl`, `DiffView`, `RunsPanel`, `PreviewBox`, `Heatmap`; reine Logik in `lib/watchlist.ts`
-- `store.py`: Speicher (Supabase oder Dateien), `add.py` und `migrate.py`: Hilfsskripte
+- `check.py`: run flow (`run`, `check_url`, emails, and storage)
+- `config.py`: load and validate options; `fetch.py`: fetching (HTTP, retry, robots, Playwright); `parse.py`: feed/HTML to text
+- `diffing.py`: diffs and anchors; `notify.py`: emails and heartbeat; `errors.py`: `CheckError` and error codes; `settings.json`/`settings.py`: shared constants for Python and the dashboard; `models.py`: `TypedDict` types for options, status, and changes
+- Dashboard (`web/src/`): `useWatchlist.ts` (loading and actions), `components/Dashboard.tsx` (shell, filters, tabs), `UrlsTab`, `ChangesTab`, `GroupsPanel`, `AddUrl`, `EditUrl`, `DiffView`, `RunsPanel`, `PreviewBox`, `Heatmap`; pure logic in `lib/watchlist.ts`
+- `store.py`: storage (Supabase or files); `add.py` and `migrate.py`: helper scripts
 
-## Tests und Prüfungen
+## Tests and checks
 
-Vor jedem Commit:
+Before each commit:
 
 ```
 uv run ruff check . && uv run ruff format --check . && uv run mypy check.py add.py store.py migrate.py && uv run pytest -q
 cd web && npx tsc -b && npm run lint && npm test
 ```
 
-- Python-Tests liegen in `tests/`, Web-Tests (Vitest, ohne DOM) neben dem Code in `web/src/lib/`. Reine Logik gehört in Funktionen, die ohne Browser testbar sind.
-- Was es in Python und TypeScript doppelt gibt (`annotate_diff`/`annotateDiff`, `fragment_url`/`fragmentUrl`, `diff_counts`/`countLines`, `group_of`/`groupOf`), prüfen beide Seiten gegen `fixtures/shared_cases.json` (`tests/test_shared_cases.py`, `web/src/lib/shared.test.ts`). Neuer Fall: in die JSON-Datei eintragen, beide Tests müssen grün bleiben.
-- Neue Funktionen und Fehlerfälle bekommen einen Test. Netzwerk und Mails werden in Tests gemockt.
-- `uv run pre-commit run --all-files` führt alle Hooks von Hand aus. CI (`tests.yml`) prüft dasselbe plus `uv audit` und `npm audit`.
+- Python tests are in `tests/`; web tests (Vitest, no DOM) are next to the code in `web/src/lib/`. Pure logic should live in functions that can be tested without a browser.
+- Logic implemented in both Python and TypeScript (`annotate_diff`/`annotateDiff`, `fragment_url`/`fragmentUrl`, `diff_counts`/`countLines`, `group_of`/`groupOf`) is tested in both languages against `fixtures/shared_cases.json` (`tests/test_shared_cases.py`, `web/src/lib/shared.test.ts`). Add new cases to the JSON file; both tests must pass.
+- Add tests for new functions and error cases. Mock network and email access in tests.
+- `uv run pre-commit run --all-files` runs all hooks manually. CI (`tests.yml`) runs the same checks plus `uv audit` and `npm audit`.
 
 ## Workflow
 
-`main` ist geschützt: Direkte Pushes sind für alle gesperrt (auch für Admins), Änderungen laufen immer über Branch und Pull Request. Gemergt wird erst, wenn die Status-Checks `pytest`, `web` und `gitleaks` grün sind (Squash-Merge, der Branch wird danach gelöscht).
+`main` is protected: direct pushes are blocked for everyone (including admins); all changes go through a branch and pull request. Merge only when the `pytest`, `web`, and `gitleaks` status checks pass (squash merge; the branch is deleted afterward).
 
 ```bash
-git switch -c feat/kurzname
-# ... ändern, committen ...
+git switch -c feat/short-name
+# ... make changes and commit ...
 git push -u origin HEAD
 gh pr create --fill
-gh pr merge --squash --auto      # merged automatisch, sobald die Checks grün sind
+gh pr merge --squash --auto      # merges automatically once checks pass
 git switch main && git pull
 ```
 
-Lokal sperrt der `pre-commit`-/`pre-push`-Hook (`no-commit-to-branch`) Commits und Pushes auf `main`.
+Locally, the `pre-commit`/`pre-push` hook (`no-commit-to-branch`) blocks commits and pushes to `main`.
 
-## Stil
+## Style
 
-- Sprache: Meldungen, Mails, Kommentare und Doku auf Deutsch. Code-Bezeichner und Commit-Nachrichten (kurz, Imperativ) auf Englisch.
-- Python: ruff (Lint und Format, Zeilenlänge siehe `pyproject.toml`) und mypy im `strict`-Modus (alle Funktionen annotiert). TypeScript: oxlint und `tsc` im strikten Modus.
-- Kommentare nur dort, wo etwas nicht offensichtlich ist.
-- Fehler als `CheckError(message, code)` mit stabilem Code modellieren. Der Hinweistext hängt über `HINTS` am Code, nicht am Fehlertext.
-- Abhängigkeiten mit `UV_NO_CONFIG=1 uv add <paket>` bzw. `npm install` hinzufügen, damit die Lock-Dateien nur öffentliche Registry-URLs enthalten.
+- Language: all text (messages, emails, comments, docs, commit messages, PR titles, and descriptions) must be in English.
+- Python: ruff (lint and format, line length in `pyproject.toml`) and mypy in `strict` mode (annotate every function). TypeScript: oxlint and `tsc` in strict mode.
+- Add comments only where something is not obvious.
+- Represent errors as `CheckError(message, code)` with a stable code. The hint text is attached to the code through `HINTS`, not to the error text.
+- Add dependencies with `UV_NO_CONFIG=1 uv add <package>` or `npm install` so lockfiles contain only public registry URLs.
 
-## Daten und URLs
+## Data and URLs
 
-- Die URL-Liste liegt in Supabase, nicht im Repo. URLs mit `op run --env-file=.env -- uv run add.py <url> --group <Gruppe> -y` hinzufügen oder im Dashboard pflegen.
-- Schemaänderungen kommen in `supabase/schema.sql` (mehrfach ausführbar) und werden im Supabase-SQL-Editor ausgeführt.
-- Edge Functions: `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (die Funktionen prüfen die Anmeldung selbst).
+- The URL list lives in Supabase, not in the repository. Add URLs with `op run --env-file=.env -- uv run add.py <url> --group <group> -y` or manage them in the dashboard. The default group is `General`.
+- Put schema changes in `supabase/schema.sql` (safe to run repeatedly) and execute them in the Supabase SQL Editor.
+- Edge Functions: `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (the functions validate authentication themselves).
 
-## Änderungen einreichen
+## Submitting changes
 
-Kleine, fokussierte Commits mit kurzer englischer Nachricht. Die Doku (README, `docs/IMPROVEMENTS.md`) wird mit der Änderung angepasst: erledigte Punkte aus den offenen Ideen entfernen.
+Keep commits small and focused, with a short English message. Update the documentation (README, `docs/IMPROVEMENTS.md`) alongside changes, and remove completed items from the open-ideas list.

@@ -17,8 +17,8 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
 
   const apply = async (current: string | null, name: string, selected: Set<string>) => {
     const { grp, assign, clear } = groupChange(entries, current, name, selected)
-    if (current === null && !name.trim()) return setError('Bitte einen Namen angeben.')
-    if (grp && groups.some(([g]) => g === grp) && grp !== current) return setError(`Die Gruppe „${grp}“ gibt es schon.`)
+    if (current === null && !name.trim()) return setError('Please enter a name.')
+    if (grp && groups.some(([g]) => g === grp) && grp !== current) return setError(`The group “${grp}” already exists.`)
     setBusy(true)
     const steps = [
       assign.length ? supabase.from('watchlist_urls').update({ grp }).in('url', assign) : null,
@@ -43,18 +43,18 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
     onChanged()
   }
 
-  // Ohne Bestätigungsdialog: „Rückgängig“ stellt Zuordnung und Gruppenstil wieder her.
+  // No confirmation dialog: “Undo” restores the assignment and group style.
   const dissolve = async (name: string) => {
     const urls = entries.filter((e) => e.group === name).map((e) => e.url)
     const meta = metaOf(name)
     await apply(name, name, new Set())
     if (groupsReady) await supabase.from('watchlist_groups').delete().eq('name', name)
     onChanged()
-    notify(`Gruppe „${name}“ aufgelöst, ${urls.length} URLs liegen jetzt in „${DEFAULT_GROUP}“.`, { action: { label: 'Rückgängig', run: async () => {
+    notify(`Group “${name}” dissolved, ${urls.length} ${urls.length === 1 ? 'URL is' : 'URLs are'} now in “${DEFAULT_GROUP}”.`, { action: { label: 'Undo', run: async () => {
       const back = await supabase.from('watchlist_urls').update({ grp: name }).in('url', urls)
       const metaBack = meta && groupsReady ? await supabase.from('watchlist_groups').upsert(meta) : null
       const failed = back.error ?? metaBack?.error
-      if (failed) notify(`Rückgängig fehlgeschlagen: ${failed.message}`, { kind: 'error' })
+      if (failed) notify(`Undo failed: ${failed.message}`, { kind: 'error' })
       onChanged()
     } } })
   }
@@ -94,14 +94,14 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
 
   return (
     <>
-      <p className="muted">Gruppen sind Bezeichnungen an den URLs. Beim Umbenennen oder Auflösen bleiben alle URLs erhalten.</p>
-      {!groupsReady && <p className="muted">Reihenfolge, Farbe, Icon und leere Gruppen brauchen die Tabelle <code>watchlist_groups</code> (Block am Ende von <code>supabase/schema.sql</code> im SQL-Editor ausführen).</p>}
-      {!editing && <button className="btn primary" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}>Neue Gruppe</button>}
+      <p className="muted">Groups are labels on the URLs. All URLs are kept when renaming or dissolving a group.</p>
+      {!groupsReady && <p className="muted">Order, colour, icon and empty groups need the <code>watchlist_groups</code> table (run the block at the end of <code>supabase/schema.sql</code> in the SQL editor).</p>}
+      {!editing && <button className="btn primary" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}>New group</button>}
       {editing && (
         <form className="panel add-panel" onSubmit={(e) => { e.preventDefault(); void apply(editing.current, editing.name, editing.selected) }}>
           <label className="grow">Name<input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} autoFocus required /></label>
           <fieldset className="grow">
-            <legend>URLs in dieser Gruppe</legend>
+            <legend>URLs in this group</legend>
             {entries.map((e) => (
               <label className="check" key={e.url}>
                 <input type="checkbox" checked={editing.selected.has(e.url)} onChange={() => toggle(e.url)} />
@@ -110,36 +110,36 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
             ))}
           </fieldset>
           <div className="add-actions">
-            <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
-            <button className="btn" type="button" onClick={() => { setEditing(null); setError('') }}>Abbrechen</button>
+            <button className="btn primary" type="submit" disabled={busy}>Save</button>
+            <button className="btn" type="button" onClick={() => { setEditing(null); setError('') }}>Cancel</button>
           </div>
         </form>
       )}
       {error && <p className="error">{error}</p>}
       <table>
-        <thead><tr><th>Gruppe</th><th>URLs</th><th>Aussehen</th><th></th></tr></thead>
+        <thead><tr><th>Group</th><th>URLs</th><th>Appearance</th><th></th></tr></thead>
         <tbody>
           {groups.map(([name, items]) => (
             <tr key={name}>
               <td>
-                {groupsReady && <><button className="icon-btn" title="Nach oben" aria-label={`${name} nach oben`} disabled={busy} onClick={() => move(name, -1)}>↑</button><button className="icon-btn" title="Nach unten" aria-label={`${name} nach unten`} disabled={busy} onClick={() => move(name, 1)}>↓</button></>}{' '}
+                {groupsReady && <><button className="icon-btn" title="Move up" aria-label={`Move ${name} up`} disabled={busy} onClick={() => move(name, -1)}>↑</button><button className="icon-btn" title="Move down" aria-label={`Move ${name} down`} disabled={busy} onClick={() => move(name, 1)}>↓</button></>}{' '}
                 <span style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}`, paddingLeft: 8 } : undefined}>{metaOf(name)?.icon} {name}</span>
               </td>
-              <td>{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} pausiert)</span>}</td>
+              <td>{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} paused)</span>}</td>
               <td>
                 {groupsReady && <>
-                  <select aria-label={`Farbe von ${name}`} value={metaOf(name)?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })} style={{ width: 'auto' }}>
+                  <select aria-label={`Colour of ${name}`} value={metaOf(name)?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })} style={{ width: 'auto' }}>
                     {GROUP_COLORS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>{' '}
-                  <input aria-label={`Icon von ${name}`} className="icon-input" maxLength={4} placeholder="Icon" defaultValue={metaOf(name)?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (metaOf(name)?.icon ?? '')) style(name, { icon: v || null }) }} />
+                  <input aria-label={`Icon of ${name}`} className="icon-input" maxLength={4} placeholder="Icon" defaultValue={metaOf(name)?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (metaOf(name)?.icon ?? '')) style(name, { icon: v || null }) }} />
                 </>}
               </td>
               <td>
                 {items.length > 0 && (items.some((e) => e.active !== false)
-                  ? <button className="btn" disabled={busy} onClick={() => void setActive(items, false)}>Alle pausieren</button>
-                  : <button className="btn" disabled={busy} onClick={() => void setActive(items, true)}>Alle fortsetzen</button>)}{' '}
-                <button className="btn" onClick={() => setEditing({ current: name, name, selected: new Set(items.map((e) => e.url)) })}>Bearbeiten</button>{' '}
-                {name !== DEFAULT_GROUP && <button className="btn" onClick={() => void dissolve(name)}>Auflösen</button>}
+                  ? <button className="btn" disabled={busy} onClick={() => void setActive(items, false)}>Pause all</button>
+                  : <button className="btn" disabled={busy} onClick={() => void setActive(items, true)}>Resume all</button>)}{' '}
+                <button className="btn" onClick={() => setEditing({ current: name, name, selected: new Set(items.map((e) => e.url)) })}>Edit</button>{' '}
+                {name !== DEFAULT_GROUP && <button className="btn" onClick={() => void dissolve(name)}>Dissolve</button>}
               </td>
             </tr>
           ))}

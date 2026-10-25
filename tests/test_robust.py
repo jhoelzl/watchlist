@@ -53,7 +53,7 @@ def test_no_retry_on_404_or_304(monkeypatch, sleeps):
 
 def test_retry_gives_up(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(500), FakeResp(502), FakeResp(503)])
-    with pytest.raises(RuntimeError, match="3 Versuchen"):
+    with pytest.raises(RuntimeError, match="3 attempts"):
         fetch.get_with_retry("https://a", {})
 
 
@@ -63,8 +63,8 @@ def test_retry_after_header_capped(monkeypatch, sleeps):
     assert sleeps == [30]
 
 
-BIG = "\n".join(f"zeile {i}" for i in range(300))
-CHANGED = BIG + "\nneue zeile"
+BIG = "\n".join(f"line {i}" for i in range(300))
+CHANGED = BIG + "\nnew line"
 
 
 def failing_mail(monkeypatch, fail_count):
@@ -90,7 +90,7 @@ def test_mail_failure_keeps_snapshot_and_retries(env, monkeypatch):
     assert snap.read_text() == BIG
     assert status_of(tmp)["status"] == "error"
     assert not (tmp / "state" / "history.json").read_text().strip("[]\n ")
-    assert check.run() is True  # nächster Lauf erkennt die Änderung erneut
+    assert check.run() is True  # the next run detects the change again
     assert snap.read_text() == CHANGED
     assert len(sent) == 2 and sent[1].startswith("Watchlist:")
     assert len(json.loads((tmp / "state" / "history.json").read_text())) == 1
@@ -106,7 +106,7 @@ def test_problem_alert_repeats_after_mail_failure(env, monkeypatch):
     monkeypatch.setattr(fetch, "fetch", boom)
     results = [check.run() for _ in range(check.FAIL_ALERT_AFTER + 1)]
     assert results == [True] * (check.FAIL_ALERT_AFTER - 1) + [False, True]
-    assert len(sent) == 2 and sent[1] == "Watchlist: Probleme beim Abruf"
+    assert len(sent) == 2 and sent[1] == "Watchlist: 1 fetch problem"
 
 
 def test_main_exit_code(monkeypatch):
@@ -149,7 +149,7 @@ def test_retry_wait_has_jitter(monkeypatch, sleeps):
 
 def test_404_is_permanent_error(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(404)])
-    with pytest.raises(errors.CheckError, match="dauerhafter Fehler") as ei:
+    with pytest.raises(errors.CheckError, match="persistent error") as ei:
         fetch.fetch_body("https://a", False)
     assert ei.value.code == "http_404" and sleeps == []
 
@@ -158,10 +158,10 @@ def test_permanent_error_alerts_earlier(env, monkeypatch):
     tmp, sent = env
 
     def boom(url, opts, cond=None):
-        raise errors.CheckError("Seite nicht mehr vorhanden (HTTP 404), dauerhafter Fehler", "http_404")
+        raise errors.CheckError("Page no longer exists (HTTP 404), persistent error", "http_404")
 
     monkeypatch.setattr(fetch, "fetch", boom)
     check.run()
     assert sent == []
     check.run()
-    assert len(sent) == 1 and "2x in Folge" in sent[0][1]
+    assert len(sent) == 1 and "2 times in a row" in sent[0][1]

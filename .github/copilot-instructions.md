@@ -1,7 +1,7 @@
-# Anweisungen für Copilot
+# Copilot instructions
 
-- Nie direkt auf `main` committen oder pushen (Branch Protection und Hook verbieten es). Immer: Branch anlegen (`git switch -c <typ>/<kurzname>`), committen, pushen, PR mit `gh pr create` öffnen, nach grünem Status-Check `tests` mit `gh pr merge --squash` mergen (der Branch wird automatisch gelöscht), danach `git switch main && git pull`. Ohne Rückfrage selbst ausführen.
-- Falls der Push abgelehnt wird, den Branch mit `git pull --rebase origin main` aktualisieren (der Workflow committet nichts).
-- Sprache: Meldungen, Mails, Kommentare und Doku auf Deutsch. Code-Bezeichner und Commit-Nachrichten (kurz) auf Englisch.
-- URLs mit `uv run add.py <url> --group <Gruppe> -y` hinzufügen, nicht von Hand in `urls.yml` schreiben.
-- Vor dem Commit: `uv run ruff check . && uv run ruff format --check . && uv run mypy check.py add.py && uv run pytest -q`.
+- Never commit or push directly to `main` (branch protection and hooks prohibit it). Always create a branch (`git switch -c <type>/<short-name>`), commit, push, open a PR with `gh pr create`, and squash-merge with `gh pr merge --squash` after the `tests` status check passes (the branch is deleted automatically); then run `git switch main && git pull`. Do this without asking for confirmation.
+- If a push is rejected, update the branch with `git pull --rebase origin main` (the workflow does not create commits).
+- All text (messages, emails, comments, docs, commit messages, PR titles, and descriptions) must be in English. Keep code identifiers and option names unchanged.
+- Add URLs with `uv run add.py <url> --group <group> -y`; do not edit `urls.yml` by hand.
+- Before committing, run: `uv run ruff check . && uv run ruff format --check . && uv run mypy check.py add.py && uv run pytest -q`.

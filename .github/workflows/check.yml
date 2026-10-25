@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: "Nur diese URL prüfen (leer = alle)"
+        description: "Check only this URL (leave blank for all)"
         required: false
         default: ""
 
@@ -21,7 +21,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      # URLs, Snapshots und Verlauf liegen in Supabase; die Zugangsdaten kommen aus dem 1Password-Tresor "watchlist"
+      # URLs, snapshots, and history are stored in Supabase; credentials come from the "watchlist" 1Password vault
       - uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
         with:
           export-env: true
@@ -35,7 +35,7 @@ jobs:
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
-      - name: Chromium installieren (nur wenn js true genutzt wird)
+      - name: Install Chromium (only when js: true is used)
         run: |
           if uv run --frozen --no-dev check.py --needs-js; then
             uv run --frozen --no-dev --extra js playwright install --with-deps chromium
@@ -43,7 +43,7 @@ jobs:
       - run: uv run --frozen --no-dev --extra js check.py
         env:
           WATCHLIST_ONLY_URL: ${{ inputs.url }}
-      - name: Alarm bei Fehler
+      - name: Alert on failure
         if: failure()
         run: |
-          uv run --frozen --no-dev check.py --alert "Der Workflow ist fehlgeschlagen: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          uv run --frozen --no-dev check.py --alert "The workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

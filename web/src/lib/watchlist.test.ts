@@ -7,28 +7,28 @@ const entry = (over: Partial<Entry>): Entry => ({
 
 describe('watchlist helpers', () => {
   it('uses a default group', () => {
-    expect(groupOf('')).toBe('Allgemein')
-    expect(groupOf(null)).toBe('Allgemein')
+    expect(groupOf('')).toBe('General')
+    expect(groupOf(null)).toBe('General')
     expect(groupOf('Azure')).toBe('Azure')
   })
 
   it('lists configured urls and merges the status', () => {
     const entries = toEntries(
       [{ url: 'https://a', name: null, grp: '' }, { url: 'https://b', name: 'B', grp: 'G' }],
-      { 'https://a': { name: 'Titel A', checked: 'x', status: 'ok' } },
+      { 'https://a': { name: 'Title A', checked: 'x', status: 'ok' } },
     )
-    expect(entries[0]).toMatchObject({ url: 'https://a', name: 'Titel A', group: 'Allgemein', status: 'ok', checked: 'x' })
+    expect(entries[0]).toMatchObject({ url: 'https://a', name: 'Title A', group: 'General', status: 'ok', checked: 'x' })
     expect(entries[1]).toMatchObject({ name: 'B', group: 'G', status: 'pending', checked: '' })
   })
 
-  it('gesetzter Name hat Vorrang vor dem Seitentitel aus dem Status', () => {
-    const e = toEntries([{ url: 'https://a', name: 'Mein Name', grp: '' }], { 'https://a': { name: 'Seitentitel', status: 'ok' } })
-    expect(e[0].name).toBe('Mein Name')
+  it('a set name takes precedence over the page title from the status', () => {
+    const e = toEntries([{ url: 'https://a', name: 'My name', grp: '' }], { 'https://a': { name: 'Page title', status: 'ok' } })
+    expect(e[0].name).toBe('My name')
   })
 
   it('filters by text, group and status', () => {
-    const e = entry({ status: 'warn', error: 'wenig' })
-    expect(matches({ ...e, text: e.error }, 'WENIG', '', '')).toBe(true)
+    const e = entry({ status: 'warn', error: 'little' })
+    expect(matches({ ...e, text: e.error }, 'LITTLE', '', '')).toBe(true)
     expect(matches(e, 'zzz', '', '')).toBe(false)
     expect(matches(e, '', 'Other', '')).toBe(false)
     expect(matches(e, '', 'G', 'problem')).toBe(true)
@@ -65,7 +65,7 @@ describe('buildRow', () => {
   it('rejects invalid, non-http and duplicate urls', () => {
     expect(buildRow({ ...form, url: 'abc' }, [], 1)).toHaveProperty('error')
     expect(buildRow({ ...form, url: 'ftp://a/b' }, [], 1)).toHaveProperty('error')
-    expect(buildRow(form, ['https://a.example/x'], 1)).toEqual({ error: 'Diese URL ist schon vorhanden.' })
+    expect(buildRow(form, ['https://a.example/x'], 1)).toEqual({ error: 'This URL already exists.' })
   })
 })
 
@@ -80,18 +80,18 @@ describe('summarize', () => {
 
 describe('annotateDiff', () => {
   it('marks only the changed words in replaced lines', () => {
-    const [header, del, add, plain] = annotateDiff(['@@ -1 +1 @@', '-Preis: 10 Euro', '+Preis: 12 Euro', '-gelöscht'])
+    const [header, del, add, plain] = annotateDiff(['@@ -1 +1 @@', '-Price: 10 Euro', '+Price: 12 Euro', '-deleted'])
     expect(header).toEqual([{ text: '@@ -1 +1 @@', changed: false }])
     expect(del.filter((s) => s.changed)).toEqual([{ text: '10', changed: true }])
     expect(add.filter((s) => s.changed)).toEqual([{ text: '12', changed: true }])
-    expect(del.map((s) => s.text).join('')).toBe('-Preis: 10 Euro')
-    expect(plain).toEqual([{ text: '-gelöscht', changed: false }])
+    expect(del.map((s) => s.text).join('')).toBe('-Price: 10 Euro')
+    expect(plain).toEqual([{ text: '-deleted', changed: false }])
   })
 
   it('leaves completely different lines unmarked', () => {
-    const [del, add] = annotateDiff(['-alt komplett', '+ganz anders hier'])
-    expect(del).toEqual([{ text: '-alt komplett', changed: false }])
-    expect(add).toEqual([{ text: '+ganz anders hier', changed: false }])
+    const [del, add] = annotateDiff(['-old completely', '+totally different here'])
+    expect(del).toEqual([{ text: '-old completely', changed: false }])
+    expect(add).toEqual([{ text: '+totally different here', changed: false }])
   })
 
   it('counts added and removed lines', () => {
@@ -105,7 +105,7 @@ describe('period and days', () => {
 
   it('parses stamps', () => {
     expect(parseStamp('2026-10-23 06:00 UTC')?.toISOString()).toBe('2026-10-23T06:00:00.000Z')
-    expect(parseStamp('kaputt')).toBeNull()
+    expect(parseStamp('broken')).toBeNull()
   })
 
   it('filters by period', () => {
@@ -126,37 +126,37 @@ describe('period and days', () => {
 
 describe('fragmentUrl', () => {
   it('points to the first added line', () => {
-    expect(fragmentUrl('https://a/x', '@@\n-alt\n+Neue Preise ab 12-Euro, sofort & jetzt')).toBe(
-      'https://a/x#:~:text=Neue%20Preise%20ab%2012%2DEuro%2C%20sofort%20%26%20jetzt',
+    expect(fragmentUrl('https://a/x', '@@\n-old\n+New prices from 12-Euro, now & today')).toBe(
+      'https://a/x#:~:text=New%20prices%20from%2012%2DEuro%2C%20now%20%26%20today',
     )
-    expect(fragmentUrl('https://a/x#top', '+Ein langer neuer Satz')).toContain('https://a/x#top:~:text=')
-    expect(fragmentUrl('https://a/x', '-nur weg\n+kurz')).toBe('https://a/x')
+    expect(fragmentUrl('https://a/x#top', '+A long new sentence')).toContain('https://a/x#top:~:text=')
+    expect(fragmentUrl('https://a/x', '-just gone\n+short')).toBe('https://a/x')
   })
 })
 
 describe('groupChange', () => {
   const e = (url: string, group: string) => ({ url, group }) as Entry
-  const entries = [e('a', 'X'), e('b', 'X'), e('c', 'Allgemein')]
+  const entries = [e('a', 'X'), e('b', 'X'), e('c', 'General')]
 
   it('renames and moves members', () => {
-    const r = groupChange(entries, 'X', ' Neu ', new Set(['a', 'c']))
-    expect(r.grp).toBe('Neu')
+    const r = groupChange(entries, 'X', ' New ', new Set(['a', 'c']))
+    expect(r.grp).toBe('New')
     expect(r.assign.sort()).toEqual(['a', 'c'])
     expect(r.clear).toEqual(['b'])
   })
 
-  it('maps Allgemein to null and empty selection clears all', () => {
-    expect(groupChange(entries, 'X', 'Allgemein', new Set(['a'])).grp).toBeNull()
+  it('maps General to null and empty selection clears all', () => {
+    expect(groupChange(entries, 'X', 'General', new Set(['a'])).grp).toBeNull()
     expect(groupChange(entries, 'X', 'X', new Set()).clear.sort()).toEqual(['a', 'b'])
   })
 })
 
-describe('fragmentUrl Auswahl', () => {
-  it('bevorzugt die längste schlichte Zeile und bei Feeds den Eintragslink', () => {
-    expect(fragmentUrl('https://a', '+Kurz & knapp <b>\n+Eine schlichte Zeile mit Text\n+Noch eine deutlich längere schlichte Zeile hier'))
-      .toBe('https://a#:~:text=Noch%20eine%20deutlich%20l%C3%A4ngere%20schlichte%20Zeile%20hier')
-    expect(fragmentUrl('https://a', '+Ganz langer Satz mit & vielen <Sonderzeichen> hier\n+Schlicht aber kurz')).toContain('text=Schlicht%20aber%20kurz')
-    expect(fragmentUrl('https://a/feed', '+2026-01-01 | Neuer Beitrag | https://a/post/1 | Zusammenfassung')).toBe('https://a/post/1')
+describe('fragmentUrl selection', () => {
+  it('prefers the longest plain line and the entry link for feeds', () => {
+    expect(fragmentUrl('https://a', '+Short & brief <b>\n+A plain line with text\n+Another clearly longer plain line here'))
+      .toBe('https://a#:~:text=Another%20clearly%20longer%20plain%20line%20here')
+    expect(fragmentUrl('https://a', '+Very long sentence with & many <special chars> here\n+Plain but short')).toContain('text=Plain%20but%20short')
+    expect(fragmentUrl('https://a/feed', '+2026-01-01 | New post | https://a/post/1 | Summary')).toBe('https://a/post/1')
   })
 })
 
@@ -165,7 +165,7 @@ describe('Export/Import', () => {
     { url: 'https://a/x', name: 'A', grp: 'Azure', options: { selector: 'main', js: true } },
     { url: 'https://b', name: null, grp: null, options: null },
   ]
-  it('exportiert im urls.yml-Format und liest es wieder ein', () => {
+  it('exports in the urls.yml format and reads it back', () => {
     for (const format of ['yaml', 'json'] as const) {
       const out = parseImport(exportUrls(rows, format), [])
       expect(out.errors).toEqual([])
@@ -175,33 +175,33 @@ describe('Export/Import', () => {
       ])
     }
   })
-  it('überspringt vorhandene URLs und meldet Fehler', () => {
-    const out = parseImport('- https://a/x\n- ftp://c\n- {name: ohne}\n- https://neu', ['https://a/x'])
+  it('skips existing URLs and reports errors', () => {
+    const out = parseImport('- https://a/x\n- ftp://c\n- {name: without}\n- https://new', ['https://a/x'])
     expect(out.skipped).toBe(1)
-    expect(out.rows.map((r) => r.url)).toEqual(['https://neu'])
+    expect(out.rows.map((r) => r.url)).toEqual(['https://new'])
     expect(out.errors).toHaveLength(2)
   })
-  it('akzeptiert Listen, lehnt Unbrauchbares ab', () => {
-    expect(parseImport('[', []).errors[0]).toContain('nicht lesbar')
+  it('accepts lists, rejects unusable input', () => {
+    expect(parseImport('[', []).errors[0]).toContain('not readable')
     expect(parseImport('foo: 1', []).errors).toHaveLength(1)
   })
 })
 
-describe('URLs bearbeiten', () => {
+describe('editing URLs', () => {
   const entry = toEntries([{ url: 'https://a', name: 'A', grp: 'G', active: true, options: { selector: 'main', ignore: ['x.*'], min_ratio: 0.5 } }], {})[0]
-  it('füllt das Formular aus den Optionen', () => {
+  it('fills the form from the options', () => {
     expect(toEditForm(entry)).toMatchObject({ name: 'A', group: 'G', selector: 'main', ignore: 'x.*', js: false, paused: false })
   })
-  it('übernimmt Änderungen und behält unbekannte Optionen', () => {
+  it('applies changes and keeps unknown options', () => {
     const form = { ...toEditForm(entry), selector: '', js: true, onlyAdded: true, ignore: ' a+ \n\nb' }
     expect(applyEdit(entry.options ?? {}, form)).toEqual({ options: { ignore: ['a+', 'b'], min_ratio: 0.5, js: true, only_added: true } })
   })
-  it('lehnt ungültige Regex ab', () => {
+  it('rejects invalid regex', () => {
     expect('error' in applyEdit({}, { ...toEditForm(entry), ignore: '(' })).toBe(true)
     expect(applyEdit({}, { ...toEditForm(entry), selector: '', ignore: '', interval: 'weekly' })).toEqual({ options: { interval: 'weekly' } })
     expect(applyEdit({ interval: 'daily' }, { ...toEditForm(entry), selector: '', ignore: '', interval: '' })).toEqual({ options: {} })
   })
-  it('pausierte URLs bekommen den Status "paused"', () => {
+  it('paused URLs get the status "paused"', () => {
     expect(toEntries([{ url: 'https://a', name: null, grp: null, active: false }], { 'https://a': { status: 'ok' } })[0].status).toBe('paused')
   })
 })
@@ -211,10 +211,10 @@ describe('view hash', () => {
     const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b', sort: { key: 'changed' as const, desc: true } }
     expect(parseView(buildHash(v))).toEqual(v)
   })
-  it('default ist leer', () => {
+  it('default is empty', () => {
     expect(buildHash(parseView(''))).toBe('')
   })
-  it('ungültige Werte und altes Mail-Format', () => {
+  it('invalid values and old mail format', () => {
     expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('urls')
     expect(parseView('#s=zzz').status).toBe('')
     expect(parseView('#changes:https%3A%2F%2Fa.de').tab).toBe('changes')
@@ -224,16 +224,16 @@ describe('view hash', () => {
 describe('group order', () => {
   const e = (url: string, group: string) => ({ url, group }) as Entry
   const entries = [e('1', 'B'), e('2', 'A'), e('3', 'C')]
-  it('nutzt gespeicherte Reihenfolge, Rest alphabetisch', () => {
+  it('uses the stored order, the rest alphabetically', () => {
     const metas = [{ name: 'C', position: 0, color: null, icon: null }]
     expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['C', 'A', 'B'])
   })
-  it('leere Gruppen optional', () => {
-    const metas = [{ name: 'Leer', position: 0, color: null, icon: null }]
-    expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['Leer', 'A', 'B', 'C'])
+  it('empty groups are optional', () => {
+    const metas = [{ name: 'Empty', position: 0, color: null, icon: null }]
+    expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['Empty', 'A', 'B', 'C'])
     expect(orderGroups(entries, metas, false).map(([n]) => n)).toEqual(['A', 'B', 'C'])
   })
-  it('moveGroup und Farbprüfung', () => {
+  it('moveGroup and colour validation', () => {
     expect(moveGroup(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c'])
     expect(moveGroup(['a', 'b'], 'a', -1)).toEqual(['a', 'b'])
     expect(isHexColor('#2563eb')).toBe(true)
@@ -241,15 +241,15 @@ describe('group order', () => {
   })
 })
 
-describe('Fehlerserie', () => {
+describe('error streak', () => {
   const e = (status: Entry['status'], streak?: number) => ({ url: 'u', name: 'n', group: 'G', checked: '', changed: '', error: '', status, streak }) as Entry
-  it('dauerhaft kaputt ab 6 Läufen', () => {
+  it('permanently broken from 6 runs', () => {
     expect(isStuck(e('error', 6))).toBe(true)
     expect(isStuck(e('warn', 7))).toBe(true)
     expect(isStuck(e('error', 5))).toBe(false)
     expect(isStuck(e('ok', 9))).toBe(false)
   })
-  it('Filter stuck', () => {
+  it('stuck filter', () => {
     expect(matches({ ...e('error', 6), text: '' }, '', '', 'stuck')).toBe(true)
     expect(matches({ ...e('error', 2), text: '' }, '', '', 'stuck')).toBe(false)
   })
@@ -257,33 +257,33 @@ describe('Fehlerserie', () => {
 
 describe('suggestIgnores', () => {
   const d = (a: string, b: string) => `@@ -1 +1 @@\n-${a}\n+${b}\n Rest`
-  it('erkennt wiederkehrende Zählerzeilen und erzeugt passende Regex', () => {
-    const s = suggestIgnores([d('Besucher: 100', 'Besucher: 101'), d('Besucher: 101', 'Besucher: 105'), d('alt', 'neu')])
+  it('detects recurring counter lines and creates a matching regex', () => {
+    const s = suggestIgnores([d('Visitors: 100', 'Visitors: 101'), d('Visitors: 101', 'Visitors: 105'), d('old', 'new')])
     expect(s).toHaveLength(1)
     expect(s[0].count).toBe(2)
-    expect(new RegExp(s[0].pattern).test('Besucher: 4711')).toBe(true)
-    expect(new RegExp(s[0].pattern).test('Besucher: abc')).toBe(false)
+    expect(new RegExp(s[0].pattern).test('Visitors: 4711')).toBe(true)
+    expect(new RegExp(s[0].pattern).test('Visitors: abc')).toBe(false)
   })
-  it('maskiert Sonderzeichen und Datumsformate', () => {
-    const s = suggestIgnores([d('Stand 01.02.2026 (a+b)', 'Stand 02.02.2026 (a+b)'), d('Stand 03.02.2026 (a+b)', 'Stand 04.02.2026 (a+b)')])
-    expect(s[0].pattern).toBe('Stand\\s+\\d+\\.\\d+\\.\\d+\\s+\\(a\\+b\\)')
+  it('escapes special characters and date formats', () => {
+    const s = suggestIgnores([d('As of 01.02.2026 (a+b)', 'As of 02.02.2026 (a+b)'), d('As of 03.02.2026 (a+b)', 'As of 04.02.2026 (a+b)')])
+    expect(s[0].pattern).toBe('As\\s+of\\s+\\d+\\.\\d+\\.\\d+\\s+\\(a\\+b\\)')
   })
-  it('ignoriert einmalige Zeilen und bereits abgedeckte Muster', () => {
-    expect(suggestIgnores([d('Preis 10', 'Preis 11')])).toEqual([])
-    const two = [d('Zähler 1', 'Zähler 2'), d('Zähler 3', 'Zähler 4')]
-    expect(suggestIgnores(two, ['Zähler \\d+'])).toEqual([])
-    expect(suggestIgnores(two, ['(kaputt'])).toHaveLength(1)
+  it('ignores one-off lines and already covered patterns', () => {
+    expect(suggestIgnores([d('Price 10', 'Price 11')])).toEqual([])
+    const two = [d('Counter 1', 'Counter 2'), d('Counter 3', 'Counter 4')]
+    expect(suggestIgnores(two, ['Counter \\d+'])).toEqual([])
+    expect(suggestIgnores(two, ['(broken'])).toHaveLength(1)
   })
 })
 
-describe('Laufhistorie', () => {
+describe('run history', () => {
   const run = (seconds: number, total: number, errors: number, warns: number, ok = true) => ({ time: 't', seconds, total, errors, warns, changes: 0, ok })
-  it('Durchschnitt und Fehlerquote', () => {
+  it('average and error rate', () => {
     const s = runStats([run(10, 10, 1, 0), run(30, 10, 0, 1, false)])
     expect(s).toEqual({ avgSeconds: 20, errorRate: 0.1, failedRuns: 1 })
     expect(runStats([])).toEqual({ avgSeconds: 0, errorRate: 0, failedRuns: 0 })
   })
-  it('Dauer formatieren', () => {
+  it('formats durations', () => {
     expect(formatDuration(42.4)).toBe('42 s')
     expect(formatDuration(125)).toBe('2 min 5 s')
   })
@@ -291,32 +291,32 @@ describe('Laufhistorie', () => {
 
 describe('sideBySide', () => {
   const txt = (r: { left: { text: string }[] | null; right: { text: string }[] | null }) => [r.left?.map((x) => x.text).join('') ?? null, r.right?.map((x) => x.text).join('') ?? null]
-  it('paart ersetzte Zeilen und lässt Rest leer', () => {
-    const rows = sideBySide(['@@ -1,3 +1,4 @@', ' gleich', '-alt eins', '-alt zwei', '+neu eins'])
+  it('pairs replaced lines and leaves the rest empty', () => {
+    const rows = sideBySide(['@@ -1,3 +1,4 @@', ' same', '-old one', '-old two', '+new one'])
     expect(rows.map((r) => r.kind)).toEqual(['hunk', 'ctx', 'chg', 'chg'])
-    expect(txt(rows[1])).toEqual(['gleich', 'gleich'])
-    expect(txt(rows[2])).toEqual(['alt eins', 'neu eins'])
-    expect(txt(rows[3])).toEqual(['alt zwei', null])
+    expect(txt(rows[1])).toEqual(['same', 'same'])
+    expect(txt(rows[2])).toEqual(['old one', 'new one'])
+    expect(txt(rows[3])).toEqual(['old two', null])
   })
-  it('reine Einfügungen stehen rechts', () => {
+  it('pure insertions appear on the right', () => {
     const rows = sideBySide(['+a', '+b'])
     expect(rows.map(txt)).toEqual([[null, 'a'], [null, 'b']])
   })
 })
 
-describe('Sortierung', () => {
+describe('sorting', () => {
   const e = (name: string, status: Entry['status'], changed = '', checked = '') => ({ url: name, name, group: 'G', checked, changed, error: '', status }) as Entry
   const items = [e('B', 'ok', '2026-10-24 06:00 UTC'), e('A', 'error'), e('C', 'ok', '2026-10-25 06:00 UTC')]
   const names = (s: Parameters<typeof sortEntries>[1]) => sortEntries(items, s).map((x) => x.name)
-  it('nach Name und Status', () => {
+  it('by name and status', () => {
     expect(names({ key: 'name', desc: true })).toEqual(['C', 'B', 'A'])
     expect(names({ key: 'status', desc: false })).toEqual(['A', 'B', 'C'])
   })
-  it('Zeit: leere Werte immer am Ende', () => {
+  it('time: empty values always last', () => {
     expect(names({ key: 'changed', desc: false })).toEqual(['B', 'C', 'A'])
     expect(names({ key: 'changed', desc: true })).toEqual(['C', 'B', 'A'])
   })
-  it('Standard ohne Schlüssel und Klick-Reihenfolge', () => {
+  it('default without key and click order', () => {
     expect(names({ key: '', desc: false })).toEqual(['B', 'A', 'C'])
     const s1 = nextSort({ key: '', desc: false }, 'name')
     const s2 = nextSort(s1, 'name')
@@ -326,11 +326,11 @@ describe('Sortierung', () => {
 
 describe('runPhase', () => {
   const run = (id: number, status: string, conclusion: string | null = null) => ({ id, status, conclusion, url: '' })
-  it('wartet auf neuen Lauf', () => {
+  it('waits for a new run', () => {
     expect(runPhase(null, 5)).toBe('waiting')
     expect(runPhase(run(5, 'completed', 'success'), 5)).toBe('waiting')
   })
-  it('läuft, fertig, Fehler', () => {
+  it('running, done, failed', () => {
     expect(runPhase(run(6, 'in_progress'), 5)).toBe('running')
     expect(runPhase(run(6, 'completed', 'success'), 5)).toBe('success')
     expect(runPhase(run(6, 'completed', 'failure'), 5)).toBe('failed')
@@ -339,7 +339,7 @@ describe('runPhase', () => {
 
 describe('pickView', () => {
   const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '', sort: { key: '' as const, desc: false } }, collapsed: [] }
-  it('Hash hat Vorrang, sonst gespeicherte Ansicht', () => {
+  it('the hash takes precedence, otherwise the stored view', () => {
     expect(pickView('#t=changes', stored).tab).toBe('changes')
     expect(pickView('', stored).tab).toBe('groups')
     expect(pickView('', null).tab).toBe('urls')
@@ -348,20 +348,20 @@ describe('pickView', () => {
 
 describe('sparkline', () => {
   const now = new Date('2026-10-25T12:00:00Z')
-  it('zählt Änderungen pro Tag', () => {
-    const c = dailyCounts(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-01-01 06:00 UTC', 'kaputt'], now, 7)
+  it('counts changes per day', () => {
+    const c = dailyCounts(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-01-01 06:00 UTC', 'broken'], now, 7)
     expect(c).toEqual([0, 0, 0, 0, 0, 1, 2])
   })
-  it('Balken nur für Tage mit Änderungen', () => {
+  it('bars only for days with changes', () => {
     expect(sparkBars([0, 2, 1], 30, 10)).toHaveLength(2)
     expect(sparkBars([0, 0], 30, 10)).toEqual([])
   })
 })
 
 describe('heatmap', () => {
-  const now = new Date('2026-10-25T12:00:00Z') // Sonntag
-  it('endet mit der aktuellen Woche, zählt pro Tag und stuft Stufen', () => {
-    const h = heatmap(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-10-24 07:00 UTC', '2026-10-23 06:00 UTC', '2026-10-22 06:00 UTC', '2026-10-21 06:00 UTC', 'kaputt'], now, 4)
+  const now = new Date('2026-10-25T12:00:00Z') // Sunday
+  it('ends with the current week, counts per day and assigns levels', () => {
+    const h = heatmap(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-10-24 07:00 UTC', '2026-10-23 06:00 UTC', '2026-10-22 06:00 UTC', '2026-10-21 06:00 UTC', 'broken'], now, 4)
     expect(h.columns).toHaveLength(4)
     const last = h.columns[3]
     expect(last[6]).toMatchObject({ day: '2026-10-25', count: 2 })
@@ -371,7 +371,7 @@ describe('heatmap', () => {
     expect(h.columns[0][0]?.day).toBe('2026-09-28')
     expect(h.total).toBe(7)
   })
-  it('lässt Tage nach heute und alte Einträge aus', () => {
+  it('omits days after today and old entries', () => {
     const h = heatmap(['2026-01-01 06:00 UTC'], new Date('2026-10-21T12:00:00Z'), 2)
     expect(h.columns[1].slice(3)).toEqual([null, null, null, null])
     expect(h.total).toBe(0)

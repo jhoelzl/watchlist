@@ -1,6 +1,6 @@
 name: dependabot-automerge
 
-# Merged Dependabot-PRs der Gruppe "patch", sobald der Workflow "tests" grün durchgelaufen ist.
+# Automatically merge Dependabot PRs in the "patch" group once the "tests" workflow succeeds.
 on:
   workflow_run:
     workflows: [tests]
@@ -19,11 +19,11 @@ jobs:
       contains(github.event.workflow_run.head_branch, '/patch-')
     runs-on: ubuntu-latest
     steps:
-      - name: Squash-merge
+      - name: Squash merge
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.workflow_run.pull_requests[0].number }}
         run: |
-          if [ -z "$PR" ]; then echo "Kein PR gefunden"; exit 0; fi
+          if [ -z "$PR" ]; then echo "No PR found"; exit 0; fi
           gh pr merge "$PR" --squash --delete-branch

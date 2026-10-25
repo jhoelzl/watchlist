@@ -1,8 +1,8 @@
-"""Einmalige Migration nach Supabase: uv run migrate.py [--state-dir DIR] [--config urls.yml]
+"""One-time migration to Supabase: uv run migrate.py [--state-dir DIR] [--config urls.yml]
 
-Braucht SUPABASE_URL + SUPABASE_SERVICE_KEY (oder SUPABASE_DB_URL) und das angelegte Schema (supabase/schema.sql).
-Übernimmt URLs, Defaults, Snapshots, Zähler, Status, Meta, HTTP-Cache und Verlauf. Mehrfaches Ausführen ist unkritisch.
-Den Ordner mit den Snapshots liefert der Branch state: git worktree add /tmp/wl-state state, dann --state-dir /tmp/wl-state/state
+Requires SUPABASE_URL + SUPABASE_SERVICE_KEY (or SUPABASE_DB_URL) and the schema (supabase/schema.sql).
+Migrates URLs, defaults, snapshots, counters, status, metadata, HTTP cache, and history. Safe to run multiple times.
+The state branch provides the snapshot directory: git worktree add /tmp/wl-state state, then use --state-dir /tmp/wl-state/state.
 """
 
 import argparse
@@ -59,18 +59,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, default=check.ROOT / "urls.yml")
     args = ap.parse_args(argv)
     if not args.config.exists():
-        sys.exit(f"{args.config} nicht gefunden.")
+        sys.exit(f"{args.config} not found.")
     if not args.state_dir.exists():
-        print(f"Hinweis: {args.state_dir} fehlt, es werden nur die URLs übernommen.")
+        print(f"Note: {args.state_dir} is missing; only URLs will be migrated.")
     db = open_store(args.state_dir, args.config)
     if isinstance(db, FileStore):
-        sys.exit("Keine Datenbank konfiguriert: SUPABASE_URL und SUPABASE_SERVICE_KEY setzen (oder SUPABASE_DB_URL).")
+        sys.exit("No database configured: set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_DB_URL).")
     try:
         files = FileStore(args.state_dir, args.config)
         result = migrate(files, db)
     finally:
         db.close()
-    print("Migriert: " + ", ".join(f"{v} {k}" for k, v in result.items()))
+    print("Migrated: " + ", ".join(f"{v} {k}" for k, v in result.items()))
     return 0
 
 

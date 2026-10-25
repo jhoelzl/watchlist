@@ -37,7 +37,7 @@ async function load(): Promise<Load> {
   }
 }
 
-/** Laden der Daten und alle Aktionen mit Seiteneffekt (Prüflauf starten, Export, Import, Löschen). */
+/** Loads the data and provides all actions with side effects (start check run, export, import, delete). */
 export function useWatchlist() {
   const notify = useToast()
   const [result, setResult] = useState<Load>({ state: 'loading' })
@@ -46,7 +46,7 @@ export function useWatchlist() {
   const reload = () => { void load().then(setResult) }
   useEffect(reload, [])
 
-  // Lauf-Status alle 5 s abfragen, bis der Lauf fertig ist (max. 10 Minuten)
+  // Poll the run status every 5 s until the run is done (max. 10 minutes)
   useEffect(() => {
     if (baseline === null) return
     let stale = false
@@ -76,7 +76,7 @@ export function useWatchlist() {
     const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check', { body: url ? { url } : {} })
     if (error || res?.error) {
       const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
-      return setCheck({ state: 'error', message: res?.error ?? body?.error ?? error?.message ?? 'Unbekannter Fehler' })
+      return setCheck({ state: 'error', message: res?.error ?? body?.error ?? error?.message ?? 'Unknown error' })
     }
     setBaseline(res?.baseline ?? 0)
     setCheck({ state: res?.status === 'running' ? 'running' : 'waiting', url: res?.run?.url })
@@ -84,7 +84,7 @@ export function useWatchlist() {
 
   const download = async (format: 'yaml' | 'json') => {
     const { data: rows, error } = await supabase.from('watchlist_urls').select('url, name, grp, options').order('position').order('id')
-    if (error) return notify(`Export fehlgeschlagen: ${error.message}`, { kind: 'error' })
+    if (error) return notify(`Export failed: ${error.message}`, { kind: 'error' })
     const blob = new Blob([exportUrls((rows ?? []) as DbUrl[], format)], { type: 'text/plain;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -96,30 +96,30 @@ export function useWatchlist() {
   const upload = async (file: File | undefined) => {
     if (!file) return
     const { data: have, error } = await supabase.from('watchlist_urls').select('url')
-    if (error) return notify(`Import fehlgeschlagen: ${error.message}`, { kind: 'error' })
+    if (error) return notify(`Import failed: ${error.message}`, { kind: 'error' })
     const parsed = parseImport(await file.text(), (have ?? []).map((r) => r.url as string))
-    const note = [`${parsed.rows.length} neu, ${parsed.skipped} schon vorhanden.`, ...parsed.errors.slice(0, 5)].join(' ')
-    if (parsed.rows.length === 0) return notify(`Nichts zu importieren. ${note}`)
+    const note = [`${parsed.rows.length} new, ${parsed.skipped} already present.`, ...parsed.errors.slice(0, 5)].join(' ')
+    if (parsed.rows.length === 0) return notify(`Nothing to import. ${note}`)
     const { error: failed } = await supabase.from('watchlist_urls').insert(parsed.rows)
-    if (failed) return notify(`Import fehlgeschlagen: ${failed.message}`, { kind: 'error' })
+    if (failed) return notify(`Import failed: ${failed.message}`, { kind: 'error' })
     const urls = parsed.rows.map((r) => r.url)
-    notify(`Importiert: ${note}`, { action: { label: 'Rückgängig', run: async () => {
+    notify(`Imported: ${note}`, { action: { label: 'Undo', run: async () => {
       const { error: e } = await supabase.from('watchlist_urls').delete().in('url', urls)
-      if (e) notify(`Rückgängig fehlgeschlagen: ${e.message}`, { kind: 'error' })
+      if (e) notify(`Undo failed: ${e.message}`, { kind: 'error' })
       setResult(await load())
     } } })
     setResult(await load())
   }
 
-  // Kein Bestätigungsdialog: Die Zeile wird vorher gesichert und lässt sich über „Rückgängig“ wieder anlegen.
+  // No confirmation dialog: the row is saved beforehand and can be restored via “Undo”.
   const remove = async (e: Entry) => {
     const { data: saved, error: readError } = await supabase.from('watchlist_urls').select('url, name, grp, active, position, options').eq('url', e.url).maybeSingle()
-    if (readError || !saved) return notify(`Löschen fehlgeschlagen: ${readError?.message ?? 'URL nicht gefunden'}`, { kind: 'error' })
+    if (readError || !saved) return notify(`Delete failed: ${readError?.message ?? 'URL not found'}`, { kind: 'error' })
     const { error } = await supabase.from('watchlist_urls').delete().eq('url', e.url)
-    if (error) return notify(`Löschen fehlgeschlagen: ${error.message}`, { kind: 'error' })
-    notify(`„${e.name}“ gelöscht.`, { action: { label: 'Rückgängig', run: async () => {
+    if (error) return notify(`Delete failed: ${error.message}`, { kind: 'error' })
+    notify(`“${e.name}” deleted.`, { action: { label: 'Undo', run: async () => {
       const { error: restoreError } = await supabase.from('watchlist_urls').insert(saved)
-      if (restoreError) notify(`Wiederherstellen fehlgeschlagen: ${restoreError.message}`, { kind: 'error' })
+      if (restoreError) notify(`Restore failed: ${restoreError.message}`, { kind: 'error' })
       setResult(await load())
     } } })
     setResult(await load())

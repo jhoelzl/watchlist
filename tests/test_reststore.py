@@ -1,4 +1,4 @@
-"""RestStore gegen eine In-Memory-Nachbildung der Supabase-REST-API (PostgREST)."""
+"""RestStore against an in-memory mock of the Supabase REST API (PostgREST)."""
 
 import json
 
@@ -88,9 +88,9 @@ def test_roundtrip():
     assert entries[0]["group"] == "G" and entries[0]["selector"] == "main" and entries[0]["ignore"] == ["d"]
     assert entries[1]["js"] is True
 
-    db.set_snapshot("k", "https://a", "eins")
-    db.set_snapshot("k", "https://a", "zwei")
-    assert db.snapshot("k") == "zwei" and db.snapshot_keys() == {"k"} and db.snapshot("x") is None
+    db.set_snapshot("k", "https://a", "One")
+    db.set_snapshot("k", "https://a", "Two")
+    assert db.snapshot("k") == "Two" and db.snapshot_keys() == {"k"} and db.snapshot("x") is None
     db.set_counter("k", "fail", 1)
     db.set_counter("k", "fail", 2)
     assert db.counter("k", "fail") == 2
@@ -110,7 +110,7 @@ def test_open_store_picks_rest_and_accepts_url_in_db_var(monkeypatch, tmp_path):
         monkeypatch.delenv(name, raising=False)
     assert isinstance(open_store(tmp_path / "s", tmp_path / "u.yml"), FileStore)
     monkeypatch.setenv("SUPABASE_URL", "https://x.supabase.co")
-    assert isinstance(open_store(tmp_path / "s", tmp_path / "u.yml"), FileStore)  # Key fehlt
+    assert isinstance(open_store(tmp_path / "s", tmp_path / "u.yml"), FileStore)  # Missing key.
     monkeypatch.setenv("SUPABASE_SERVICE_KEY", "k")
     assert isinstance(open_store(tmp_path / "s", tmp_path / "u.yml"), RestStore)
 

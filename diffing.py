@@ -4,7 +4,7 @@ import urllib.parse
 
 from settings import SETTINGS
 
-Segment = tuple[str, bool]  # (Text, geändert)
+Segment = tuple[str, bool]  # (Text, changed)
 
 
 def make_diff(old: str, new: str, only_added: bool) -> tuple[list[str], int]:
@@ -26,7 +26,7 @@ PLAIN_SNIPPET = re.compile(r"[\w .,'\-]+")
 
 
 def feed_entry_link(line: str) -> str:
-    """Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel."""
+    """Feed lines use "date | title | link | summary"; the entry link is the better target."""
     for part in line.split(" | ")[1:]:
         if re.fullmatch(r"https?://\S+", part.strip()):
             return part.strip()
@@ -34,10 +34,10 @@ def feed_entry_link(line: str) -> str:
 
 
 def fragment_url(url: str, diff: list[str]) -> str:
-    """Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment (#:~:text=).
+    """Link target for the changed section: the entry link for feeds, otherwise a text fragment (#:~:text=).
 
-    Gewählt wird die hinzugefügte Zeile mit dem längsten Textanfang ohne Sonderzeichen (die sind für das
-    Textfragment fehleranfällig), sonst die längste überhaupt.
+    Selects the added line with the longest opening text without special characters (they are
+    error-prone in text fragments); otherwise selects the longest line.
     """
     added = [line[1:] for line in diff if line.startswith("+") and not line.startswith("+++")]
     for line in added:
@@ -62,7 +62,7 @@ TOKEN = re.compile(r"\s+|\w+|[^\w\s]")
 
 
 def word_segments(old: str, new: str) -> tuple[list[Segment], list[Segment]]:
-    """Teilt zwei ersetzte Zeilen in (Text, geändert)-Stücke, damit nur die tatsächlich geänderten Wörter hervorgehoben werden."""
+    """Splits two replaced lines into (text, changed) segments so only the words that actually changed are highlighted."""
     a, b = TOKEN.findall(old), TOKEN.findall(new)
     out_old: list[Segment] = []
     out_new: list[Segment] = []
@@ -79,7 +79,7 @@ def word_segments(old: str, new: str) -> tuple[list[Segment], list[Segment]]:
 
 
 def annotate_diff(diff: list[str]) -> list[list[Segment]]:
-    """Je Diff-Zeile eine Liste aus (Text, geändert)-Stücken. Aufeinanderfolgende -/+ Blöcke werden zeilenweise verglichen."""
+    """Returns (text, changed) segments for each diff line. Consecutive -/+ blocks are compared line by line."""
     result: list[list[Segment] | None] = [None] * len(diff)
     i = 0
     while i < len(diff):

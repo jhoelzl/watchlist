@@ -17,13 +17,13 @@ export function DiffView({ diff, extra }: { diff: string; extra: number }) {
     <>
       <div className="diff-tools">
         <button className={`filter-pill${side ? '' : ' active'}`} onClick={() => setSide(false)}>Inline</button>
-        <button className={`filter-pill${side ? ' active' : ''}`} onClick={() => setSide(true)}>Alt/Neu</button>
-        <label className="check"><input type="checkbox" checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} /> nur geänderte Zeilen</label>
+        <button className={`filter-pill${side ? ' active' : ''}`} onClick={() => setSide(true)}>Old/New</button>
+        <label className="check"><input type="checkbox" checked={onlyChanged} onChange={(e) => setOnlyChanged(e.target.checked)} /> changed lines only</label>
       </div>
       {side ? (
         <div className="side-diff">
-          <div className="side-head">Alt</div>
-          <div className="side-head">Neu</div>
+          <div className="side-head">Old</div>
+          <div className="side-head">New</div>
           {visibleRows.map((r, i) =>
             r.kind === 'hunk' ? (
               <div key={i} className="side-hunk">{r.left?.map((x) => x.text).join('')}</div>
@@ -34,7 +34,7 @@ export function DiffView({ diff, extra }: { diff: string; extra: number }) {
               </Fragment>
             ),
           )}
-          {extra > 0 && <div className="side-hunk">… und {extra} weitere Zeilen</div>}
+          {extra > 0 && <div className="side-hunk">… and {extra} more lines</div>}
         </div>
       ) : (
         <pre>
@@ -44,7 +44,7 @@ export function DiffView({ diff, extra }: { diff: string; extra: number }) {
               {segs.length === 0 || segs[0].text === '' ? ' ' : ''}
             </div>
           ))}
-          {extra > 0 && <div className="muted">… und {extra} weitere Zeilen</div>}
+          {extra > 0 && <div className="muted">… and {extra} more lines</div>}
         </pre>
       )}
     </>

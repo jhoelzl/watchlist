@@ -1,10 +1,10 @@
-"""Typen für die Daten, die zwischen den Modulen wandern. Zur Laufzeit sind alle einfache dicts (JSON in Supabase)."""
+"""Types for data passed between modules. At runtime, all values are plain dicts (JSON in Supabase)."""
 
 from typing import NotRequired, TypedDict
 
 
 class Options(TypedDict, total=False):
-    """Ein Eintrag aus urls.yml bzw. watchlist_urls (nach merge_config mit den Defaults)."""
+    """An entry from urls.yml or watchlist_urls (after merge_config applies defaults)."""
 
     url: str
     name: str
@@ -19,7 +19,7 @@ class Options(TypedDict, total=False):
 
 
 class Validators(TypedDict, total=False):
-    """HTTP-Cache-Werte (ETag, Last-Modified) und der Hash der Optionen, mit denen sie gelten."""
+    """HTTP cache values (ETag, Last-Modified) and the hash of the options they apply to."""
 
     etag: str
     last_modified: str
@@ -27,7 +27,7 @@ class Validators(TypedDict, total=False):
 
 
 class UrlStatus(TypedDict, total=False):
-    """Status einer URL im Dokument "status"."""
+    """Status of a URL in the "status" document."""
 
     name: str
     group: str
@@ -40,7 +40,7 @@ class UrlStatus(TypedDict, total=False):
 
 
 class Change(TypedDict):
-    """Eine erkannte Änderung mit gekürztem Diff."""
+    """A detected change with a truncated diff."""
 
     name: str
     url: str
@@ -55,7 +55,7 @@ class HistoryEntry(Change):
 
 
 class Pending(TypedDict):
-    """Änderung, die erst nach erfolgreichem Mailversand übernommen wird."""
+    """A change to apply only after the email is sent successfully."""
 
     change: Change
     key: str
@@ -65,7 +65,7 @@ class Pending(TypedDict):
 
 
 class Problem(TypedDict):
-    """Warnung für die Problem-Mail. Counter und value setzen den Zähler zurück, falls der Versand scheitert."""
+    """Warning for the problem email. counter and value restore the counter if delivery fails."""
 
     text: str
     counter: tuple[str, str]

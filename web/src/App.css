@@ -174,7 +174,7 @@ button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--
 .icon-btn { border: 0; background: none; color: var(--muted, #888); font-size: 20px; line-height: 1; padding: 2px 8px; border-radius: 6px; cursor: pointer; }
 .icon-btn:hover { background: rgba(200, 0, 0, 0.12); color: #c00; }
 
-/* Design-Feinschliff */
+/* Design polish */
 :root { --shadow: 0 1px 2px rgba(20, 18, 15, .05), 0 4px 14px rgba(20, 18, 15, .05); --ok: #16a34a; --warn: #ca8a04; --bad: #dc2626; }
 @media (prefers-color-scheme: dark) { :root { --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3); } }
 .app-shell { background: radial-gradient(1200px 400px at 50% -120px, var(--accent-soft), transparent 70%), var(--bg); }
@@ -186,7 +186,7 @@ main { padding-top: 28px; }
 .btn.primary { box-shadow: 0 1px 2px rgba(0, 0, 0, .15), 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); }
 .library-intro h2 { font-size: 30px; }
 
-/* Kennzahlen */
+/* Key figures */
 .summary { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin: 20px 0 8px; }
 .stat { position: relative; padding: 14px 16px 14px 18px; border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
 .stat::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--line-strong); }
@@ -198,13 +198,13 @@ main { padding-top: 28px; }
 .stat b { font-size: 26px; letter-spacing: -.02em; line-height: 1.1; }
 .stat span { margin-top: 2px; }
 
-/* Tabs als Segmented Control */
+/* Tabs as segmented control */
 .tabs { display: inline-flex; gap: 2px; margin: 20px 0 16px; padding: 4px; background: var(--sunken); border: 1px solid var(--line); border-radius: 12px; max-width: 100%; overflow-x: auto; }
 .tab { padding: 7px 14px; border: 0; border-radius: 9px; white-space: nowrap; }
 .tab.active { color: var(--text); background: var(--surface); box-shadow: var(--shadow); }
 .tab .count { margin-left: 8px; }
 
-/* Listen */
+/* Lists */
 .composer-section, .panel, .change { box-shadow: var(--shadow); }
 .composer-section { border-radius: 14px; }
 .section-heading { transition: background .15s; }
@@ -222,7 +222,7 @@ td a { font-weight: 600; }
 tr:hover .icon-btn { opacity: 1; }
 .icon-btn:hover { background: var(--danger-soft); color: var(--danger-text); }
 
-/* Änderungen */
+/* Changes */
 .day-heading { display: flex; align-items: center; margin: 26px 0 10px; font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .day-heading::after { content: ""; flex: 1; height: 1px; margin-left: 12px; background: var(--line); }
 .day-heading .count { order: 1; margin-left: 8px; }
@@ -238,7 +238,7 @@ tr:hover .icon-btn { opacity: 1; }
 .change pre div { padding: 0 12px; }
 .diff-stat { margin-left: auto; }
 
-/* Formulare & Leerzustände */
+/* Forms & empty states */
 .add-panel { align-items: flex-end; border-radius: 14px; }
 .panel fieldset { max-height: 240px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .panel fieldset legend { padding: 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
@@ -264,7 +264,7 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* Tabellen-Ausrichtung */
+/* Table alignment */
 .composer-section table { table-layout: fixed; }
 .composer-section th, .composer-section td { vertical-align: middle; }
 .composer-section th:nth-child(1), .composer-section td:nth-child(1) { width: 160px; }
@@ -280,7 +280,7 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
 .pill-count { margin-left: 6px; opacity: .65; font-size: 12px; font-variant-numeric: tabular-nums; }
 .filter-pill.active .pill-count { opacity: .85; }
 
-/* Selector-Vorschau im Formular */
+/* Selector preview in the form */
 .preview { flex: 1 1 100%; margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }
 .preview p { margin: 0 0 4px; }
 .preview p:last-child { margin-bottom: 0; }
@@ -288,14 +288,14 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
 .preview.warn { border-left: 4px solid #bf8700; }
 .preview .sample { color: #57606a; font-style: italic; overflow-wrap: anywhere; }
 
-/* Import/Export-Menü */
+/* Import/Export menu */
 .menu { position: relative; }
 .menu > summary { list-style: none; cursor: pointer; }
 .menu > summary::-webkit-details-marker { display: none; }
 .menu-items { position: absolute; right: 0; top: calc(100% + 6px); z-index: 5; display: flex; flex-direction: column; gap: 6px; min-width: 200px; padding: 8px; background: #fff; border: 1px solid var(--border, #d8dee4); border-radius: 10px; box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, .12)); }
 .menu-items .btn { width: 100%; text-align: left; cursor: pointer; }
 
-/* URLs bearbeiten */
+/* Edit URLs */
 .row-actions { white-space: nowrap; text-align: right; }
 tr.paused td { opacity: .55; }
 tr.edit-row td { opacity: 1; padding: 0; }
@@ -304,7 +304,7 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .edit-panel textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--border, #d8dee4); border-radius: 8px; resize: vertical; }
 .badge.paused { background: #eaeef2; color: #57606a; }
 
-/* Verlauf pro Seite */
+/* History per page */
 .page-filter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }
 
 .group-icon { margin-right: 6px; }
@@ -312,7 +312,7 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .spark { display: block; fill: var(--accent, #2563eb); }
 
-/* Spalten: Sparkline und vier Icon-Buttons brauchen Platz */
+/* Columns: sparkline and four icon buttons need space */
 .composer-section th:nth-child(5), .composer-section td:nth-child(5) { width: 110px; }
 .composer-section th:last-child, .composer-section td:last-child { width: 156px; padding: 0 14px 0 0; text-align: right; }
 .menu > summary.btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
@@ -355,7 +355,7 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .suggestion code { background: var(--subtle); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
 
-/* Kalender-Heatmap */
+/* Calendar heatmap */
 .heatmap { margin: 0 0 16px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
 .heatmap-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
 .heatmap-head strong { color: var(--text); }

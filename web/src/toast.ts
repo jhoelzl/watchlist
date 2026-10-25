@@ -6,5 +6,5 @@ export type Notify = (text: string, options?: ToastOptions) => void
 
 export const ToastContext = createContext<Notify>(() => undefined)
 
-/** Zeigt eine Hinweisleiste unten rechts; mit `action` z. B. „Rückgängig“. */
+/** Shows a notice bar at the bottom right; with `action` e.g. "Undo". */
 export const useToast = () => useContext(ToastContext)

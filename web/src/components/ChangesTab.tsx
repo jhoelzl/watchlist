@@ -24,7 +24,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [day, setDay] = useState<string | null>(null)
   const scrolled = useRef(false)
-  // Verlauf einer einzelnen Seite: komplett aus der Datenbank statt nur aus den letzten 100 insgesamt
+  // History of a single page: loaded in full from the database instead of only the latest 100 overall
   useEffect(() => {
     if (!pageUrl) return setPageHistory(null)
     let stale = false
@@ -35,7 +35,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   }, [pageUrl])
   const base = pageUrl ? (Array.isArray(pageHistory) ? pageHistory : []) : data.changes
   const baseLimit = pageUrl ? PAGE_HISTORY_LIMIT : HISTORY_LIMIT
-  // Nachgeladene Einträge gehören zur aktuellen Basisliste und werden bei neuen Daten verworfen
+  // Entries loaded later belong to the current base list and are discarded when new data arrives
   useEffect(() => { setExtra([]); setNoMore(false); setMoreError('') }, [pageUrl, data])
   const source = useMemo(() => [...base, ...extra], [base, extra])
   const canLoadMore = !noMore && base.length >= baseLimit
@@ -66,7 +66,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   }, [data, pageUrl, group])
   const days = useMemo(() => groupByDay(changes), [changes])
 
-  // Mail-Link #changes:<URL> öffnet den passenden Eintrag (einmalig, sobald er in der Liste steht)
+  // Mail link #changes:<URL> opens the matching entry (once, as soon as it is in the list)
   useEffect(() => {
     if (!mailTarget || scrolled.current) return
     const url = decodeURIComponent(mailTarget[1])
@@ -82,20 +82,20 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     <>
   {pageUrl && (
     <div className="page-filter">
-      <span>Verlauf von <strong>{pageName}</strong></span>
-      <button className="btn" onClick={() => setPageUrl(null)}>Alle Seiten anzeigen</button>
+      <span>History of <strong>{pageName}</strong></span>
+      <button className="btn" onClick={() => setPageUrl(null)}>Show all pages</button>
     </div>
   )}
-  {pageUrl && !pageHistory && <p className="muted">Lade Verlauf …</p>}
-  {pageUrl && pageHistory && !Array.isArray(pageHistory) && <p className="error">Verlauf konnte nicht geladen werden: {pageHistory.error}</p>}
+  {pageUrl && !pageHistory && <p className="muted">Loading history …</p>}
+  {pageUrl && pageHistory && !Array.isArray(pageHistory) && <p className="error">History could not be loaded: {pageHistory.error}</p>}
   <Heatmap times={heatTimes} selected={day} onSelect={setDay} />
   <div className="filter-bar">
     {PERIODS.map(([value, label]) => (
       <button key={value} className={`filter-pill${period === value ? ' active' : ''}`} onClick={() => setPeriod(value)}>{label}</button>
     ))}
-    <span className="muted count-text">{changes.length} von {source.length}{canLoadMore ? '+' : ''}</span>
+    <span className="muted count-text">{changes.length} of {source.length}{canLoadMore ? '+' : ''}</span>
   </div>
-  {changes.length === 0 && <p className="muted">{source.length ? 'Keine Treffer.' : pageUrl ? 'Für diese Seite wurde noch keine Änderung erkannt.' : 'Noch keine Änderungen erkannt.'}</p>}
+  {changes.length === 0 && <p className="muted">{source.length ? 'No matches.' : pageUrl ? 'No change has been detected for this page yet.' : 'No changes detected yet.'}</p>}
   {days.map(([day, items]) => (
     <section key={day}>
       <h3 className="day-heading">{dayLabel(day)}<span className="count">{items.length}</span></h3>
@@ -108,7 +108,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
           <p>
             <a href={c.url} target="_blank" rel="noreferrer noopener">{c.url}</a>
             {fragmentUrl(c.url, c.diff) !== c.url && (
-              <> · <a href={fragmentUrl(c.url, c.diff)} target="_blank" rel="noreferrer noopener">zur geänderten Stelle</a></>
+              <> · <a href={fragmentUrl(c.url, c.diff)} target="_blank" rel="noreferrer noopener">to the changed spot</a></>
             )}
           </p>
           <DiffView diff={c.diff} extra={c.extra} />
@@ -117,9 +117,9 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     </section>
   ))}
   {canLoadMore && (
-    <p><button className="btn" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Lade …' : 'Ältere Einträge laden'}</button></p>
+    <p><button className="btn" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? 'Loading …' : 'Load older entries'}</button></p>
   )}
-  {moreError && <p className="error">Weitere Einträge konnten nicht geladen werden: {moreError}</p>}
+  {moreError && <p className="error">More entries could not be loaded: {moreError}</p>}
     </>
   )
 }

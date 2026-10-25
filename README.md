@@ -3,160 +3,160 @@
 [![check](https://github.com/jhoelzl/watchlist/actions/workflows/check.yml/badge.svg)](https://github.com/jhoelzl/watchlist/actions/workflows/check.yml)
 [![tests](https://github.com/jhoelzl/watchlist/actions/workflows/tests.yml/badge.svg)](https://github.com/jhoelzl/watchlist/actions/workflows/tests.yml)
 
-Prüft die Seiten aus `urls.yml` 2x täglich (GitHub Actions) und schickt bei Änderungen eine gruppierte HTML-Mail mit Diff über Resend.
+Checks the pages in `urls.yml` twice daily (GitHub Actions) and sends a grouped HTML email with a diff through Resend when changes are detected.
 
-## Architektur
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[GitHub Actions<br/>check.yml, 06:00 und 18:00 UTC] -->|Abruf der Seiten| W[(Webseiten)]
-    A -->|Snapshots, Status, Verlauf<br/>service_role| S[(Supabase<br/>watchlist_*)]
-    A -->|Änderungsmail| R[Resend]
-    D[Dashboard<br/>GitHub Pages] -->|Login, Lesen, Bearbeiten<br/>anon-Key + RLS| S
-    D -->|Jetzt prüfen, Vorschau| E[Edge Functions<br/>watchlist-trigger-check<br/>watchlist-preview]
+    A[GitHub Actions<br/>check.yml, 06:00 and 18:00 UTC] -->|Fetch pages| W[(Websites)]
+    A -->|Snapshots, status, history<br/>service_role| S[(Supabase<br/>watchlist_*)]
+    A -->|Change email| R[Resend]
+    D[Dashboard<br/>GitHub Pages] -->|Login, read, edit<br/>anon key + RLS| S
+    D -->|Check now, preview| E[Edge Functions<br/>watchlist-trigger-check<br/>watchlist-preview]
     E -->|workflow_dispatch<br/>GH_DISPATCH_TOKEN| A
-    E -->|prüft Login und watchlist_admins| S
+    E -->|Check login and watchlist_admins| S
 ```
 
-- Der Prüflauf (`check.py`) ist der einzige Schreiber der Snapshots und des Verlaufs. Er arbeitet mit dem geheimen `service_role`-Key.
-- Das Dashboard kennt nur den öffentlichen Anon-Key. Was es sehen und ändern darf, regeln die RLS-Policies in `supabase/schema.sql` (nur Konten aus `watchlist_admins`).
-- Die Edge Functions sind die einzige Stelle mit dem GitHub-Token. Sie prüfen Login und Admin selbst, erlauben nur `https://jhoelzl.github.io` als Herkunft und starten höchstens einen Lauf pro Minute.
-- Der Zeitplan steht in UTC (`0 6,18 * * *`). In der Sommerzeit (MESZ) kommen die Mails um 08:00 und 20:00, in der Winterzeit um 07:00 und 19:00.
+- The check run (`check.py`) is the only writer of snapshots and history. It uses the secret `service_role` key.
+- The dashboard only knows the public anon key. RLS policies in `supabase/schema.sql` control what it can view and change (admin accounts in `watchlist_admins` only).
+- The Edge Functions are the only place that holds the GitHub token. They validate login and admin access, allow only `https://jhoelzl.github.io` as an origin, and start at most one run per minute.
+- The schedule is in UTC (`0 6,18 * * *`). During daylight saving time (CEST), emails arrive at 08:00 and 20:00; during standard time, at 07:00 and 19:00.
 
-## Einrichtung als Checkliste
+## Setup checklist
 
-- [ ] **Resend:** Account anlegen, Domain verifizieren (oder nur an die eigene Adresse mit `onboarding@resend.dev` senden), API-Key erzeugen.
-- [ ] **Supabase-Schema:** [supabase/schema.sql](supabase/schema.sql) im SQL-Editor ausführen, danach das eigene Konto in `watchlist_admins` eintragen (siehe „Dashboard mit Login“).
-- [ ] **Secrets:** Supabase-Zugangsdaten liegen im 1Password-Tresor `watchlist` (Item `Supabase` mit den Feldern `url`, `anon-key`, `service-token`). In GitHub (Settings → Secrets and variables → Actions) steht dafür nur `OP_SERVICE_ACCOUNT_TOKEN`, ein Service-Account mit Leserecht auf diesen Tresor; die Workflows laden die Werte per `1password/load-secrets-action` (`op://watchlist/Supabase/url` usw.). Lokal liest `op run --env-file=.env -- …` dieselben Referenzen. Noch als GitHub-Secrets: `RESEND_API_KEY`, `MAIL_TO`, optional `MAIL_FROM`.
-- [ ] **Pages:** Settings → Pages → Source „GitHub Actions“, Variable `ENABLE_PAGES=true`. Danach läuft `pages.yml` und veröffentlicht das Dashboard.
-- [ ] **Redirect-URL:** In Supabase unter Authentication → URL Configuration die Dashboard-Adresse (`https://jhoelzl.github.io/watchlist/`) als Site URL bzw. erlaubte Redirect-URL eintragen. Sonst führen Links aus Bestätigungs- und Reset-Mails ins Leere.
-- [ ] **„Jetzt prüfen“:** Fine-grained Token (nur dieses Repo, „Actions: Read and write“) als `GH_DISPATCH_TOKEN` in den Supabase-Secrets setzen und beide Edge Functions deployen (Befehle im Abschnitt „Dashboard mit Login“).
-- [ ] **Erster Lauf:** Actions → check → Run workflow. Er legt die Baselines an und schickt keine Mail.
+- [ ] **Resend:** Create an account, verify a domain (or send only to your own address using `onboarding@resend.dev`), and create an API key.
+- [ ] **Supabase schema:** Run [supabase/schema.sql](supabase/schema.sql) in the SQL Editor, then add your account to `watchlist_admins` (see “Dashboard login”).
+- [ ] **Secrets:** Supabase credentials are stored in the `watchlist` 1Password vault (the `Supabase` item with the `url`, `anon-key`, and `service-token` fields). In GitHub (Settings → Secrets and variables → Actions), only `OP_SERVICE_ACCOUNT_TOKEN` is stored: a service account with read access to that vault. Workflows load the values through `1password/load-secrets-action` (`op://watchlist/Supabase/url`, etc.). Locally, `op run --env-file=.env -- …` reads the same references. These remain GitHub secrets: `RESEND_API_KEY`, `MAIL_TO`, and optionally `MAIL_FROM`.
+- [ ] **Pages:** Set Settings → Pages → Source to “GitHub Actions” and set the `ENABLE_PAGES=true` variable. The `pages.yml` workflow will then publish the dashboard.
+- [ ] **Redirect URL:** In Supabase, under Authentication → URL Configuration, add the dashboard address (`https://jhoelzl.github.io/watchlist/`) as the Site URL or an allowed redirect URL. Otherwise, links in confirmation and reset emails will not work.
+- [ ] **Check now:** Create a fine-grained token (this repository only, “Actions: Read and write”) and set it as `GH_DISPATCH_TOKEN` in Supabase Secrets, then deploy both Edge Functions (commands in “Dashboard login”).
+- [ ] **First run:** Actions → check → Run workflow. It creates the baselines and sends no email.
 
-## Setup (Details)
-1. Resend-Account anlegen, Domain verifizieren (oder nur an die eigene Adresse mit `onboarding@resend.dev` senden) und API-Key erzeugen.
+## Setup (details)
+1. Create a Resend account, verify a domain (or send only to your own address using `onboarding@resend.dev`), and create an API key.
 2. Repo → Settings → Secrets and variables → Actions → Secrets:
    - `RESEND_API_KEY`
    - `MAIL_TO`
-   - `MAIL_FROM` (optional, Standard `onboarding@resend.dev`, sonst z. B. `watchlist@deine-domain.at`)
-3. `urls.example.yml` nach `urls.yml` kopieren und pflegen (`urls.yml` ist in `.gitignore`, damit keine persönlichen URLs im Repo landen; mit Supabase pflegst du die URLs im Dashboard), dann Actions → check → Run workflow (erzeugt die Baselines, keine Mail).
+   - `MAIL_FROM` (optional, default `onboarding@resend.dev`, or for example `watchlist@your-domain.at`)
+3. Copy `urls.example.yml` to `urls.yml` and edit it (`urls.yml` is in `.gitignore` so personal URLs are not committed; when using Supabase, manage URLs in the dashboard), then run Actions → check → Run workflow (creates baselines, no email).
 
-## Supabase statt Dateien (URLs, Snapshots, Diffs, Status)
+## Supabase instead of files (URLs, snapshots, diffs, status)
 
-Mit `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` (Umgebungsvariablen bzw. Repo-Secrets) liegen URLs, Snapshots, Fehlerzähler, Status, HTTP-Cache und der Änderungsverlauf (inkl. Diffs) in Supabase-Tabellen mit dem Präfix `watchlist_`. Ohne sie läuft `check.py` lokal im Dateimodus (`urls.yml`, `state/`).
+With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` (environment variables or repository secrets), URLs, snapshots, failure counters, status, HTTP cache, and change history (including diffs) are stored in Supabase tables prefixed with `watchlist_`. Without them, `check.py` runs locally in file mode (`urls.yml`, `state/`).
 
-1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (RLS ist aktiv, keine öffentlichen Policies).
-2. Project Settings → API Keys: **Project URL** als `SUPABASE_URL` und den **service_role**-Key als `SUPABASE_SERVICE_KEY` verwenden. Der Anon-Key reicht nicht, er darf wegen RLS nichts lesen oder schreiben. Der service_role-Key ist geheim (umgeht RLS): nur in `.env` und als Secret, nie im Frontend.
-3. Lokal migrieren (einmalig, wiederholbar): `op run --env-file=.env -- uv run migrate.py --state-dir state` (Ordner mit den bisherigen Snapshots; nicht nötig, wenn du bei null anfängst).
-4. Beide Werte als Repo-Secrets eintragen. Der Workflow arbeitet nur noch mit Supabase und kennt `urls.yml` nicht. `urls.yml` ist nicht im Repo.
-5. Neue URLs: `op run --env-file=.env -- uv run add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector` (`auto` = Bereich automatisch erkennen), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+1. Run [supabase/schema.sql](supabase/schema.sql) in the Supabase SQL Editor (RLS is enabled, with no public policies).
+2. Project Settings → API Keys: use the **Project URL** as `SUPABASE_URL` and the **service_role** key as `SUPABASE_SERVICE_KEY`. The anon key is insufficient because RLS prevents it from reading or writing. The service_role key is secret (it bypasses RLS): keep it only in `.env` and as a secret, never in the frontend.
+3. Migrate locally (once; safe to repeat): `op run --env-file=.env -- uv run migrate.py --state-dir state` (the folder containing existing snapshots; not needed when starting from scratch).
+4. Add both values as repository secrets. The workflow now uses only Supabase and does not access `urls.yml`. `urls.yml` is not in the repository.
+5. New URLs: `op run --env-file=.env -- uv run add.py <url>` writes directly to `watchlist_urls`. You can also manage entries in the Supabase Table Editor (`options` includes `selector` (`auto` = detect the area automatically), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, and `ignore_robots`; `active = false` pauses a URL; shared options go in `watchlist_settings` under the `defaults` key). The default group is `General`.
 
-### Dashboard mit Login (`web/`)
+### Dashboard login (`web/`)
 
-Vite + React + `supabase-js`, Anmeldung per E-Mail und Passwort wie in der App sheet-music (gleiches Supabase-Projekt, gleiche Konten). Es liest Status und Änderungsverlauf direkt aus Supabase. Ohne Anmeldung sieht man nichts.
+Vite + React + `supabase-js`, with email-and-password authentication as in the sheet-music app (same Supabase project and accounts). It reads status and change history directly from Supabase. Nothing is visible without signing in.
 
-- Die Registrierung im Projekt ist offen, deshalb schaltet `supabase/schema.sql` nur Konten aus `watchlist_admins` frei (Policies, kein Zugriff auf Snapshots). Nach dem Ausführen des Schemas das eigene Konto freischalten (SQL-Editor): `insert into watchlist_admins (user_id) select id from auth.users where email = 'du@example.com' on conflict do nothing;`. Ein Konto, das noch nicht freigeschaltet ist, sieht „nicht freigeschaltet".
-- Lokal: `cd web`, `.env.example` nach `.env` kopieren und `VITE_SUPABASE_URL` sowie `VITE_SUPABASE_ANON_KEY` (Publishable/Anon-Key, **nicht** der Secret-Key) eintragen, dann `npm ci && npm run dev`. Prüfen mit `npm run lint`, `npm test`, `npm run build`.
-- GitHub Pages: Secret `SUPABASE_ANON_KEY` (Publishable-Key) anlegen und die Variable `ENABLE_PAGES=true` setzen. Der eigene Workflow `pages.yml` baut dann `web/` und veröffentlicht `web/dist` (bei jedem Push auf `web/**` und manuell). Er ist unabhängig vom Prüflauf. Die Seite ist öffentlich erreichbar, zeigt aber ohne Anmeldung keine Daten. Der statische Export im Dateimodus wird nicht mehr veröffentlicht.
-- Tab „Gruppen“: Gruppen anlegen, umbenennen, URLs zuordnen und auflösen. Das ändert `grp` an den URLs und braucht die Policy `admins update urls` aus `supabase/schema.sql` (einmal im SQL-Editor ausführen).
-- Hinweisleisten (Toasts): Löschen von URLs, Import und Auflösen von Gruppen fragen nicht mehr nach, sondern zeigen unten rechts einen Hinweis mit „Rückgängig“ (8 s). Fehler erscheinen ebenfalls dort statt als Browser-Dialog.
-- URLs bearbeiten: Der Stift in der URL-Tabelle öffnet ein Formular für Name, Gruppe, Selector, JavaScript, Prüfintervall, `ignore`, `only_added` und Pausieren. Pausierte URLs werden nicht geprüft und erscheinen als „Pausiert“. Auch das braucht die Policy `admins update urls`.
-- Verlauf pro Seite: Der Uhr-Button (⏱) in der URL-Tabelle zeigt nur die Änderungen dieser Seite (bis zu 500 aus der Datenbank).
-- Der Filterzustand (Tab, Gruppe, Status, Zeitraum, Suche) steht im URL-Hash, die Ansicht ist teilbar und bleibt beim Neuladen.
-- Gruppen-Tab: Reihenfolge, Farbe, Icon, leere Gruppen und Sammelaktion „Alle pausieren/fortsetzen“. Dafür einmal den Block `watchlist_groups` aus `supabase/schema.sql` im SQL-Editor ausführen.
-- „Jetzt prüfen“: Der Button ruft die Edge Function `watchlist-trigger-check` (`supabase/functions/`) auf. Sie prüft die Anmeldung und `watchlist_admins` und startet dann den Workflow `check`. Mit dem Symbol ↻ in einer Zeile wird nur diese URL geprüft (Workflow-Eingabe `url`, in `check.py` als `WATCHLIST_ONLY_URL`; Intervall wird ignoriert, übrige URLs, Lebenszeichen und Laufhistorie bleiben unberührt). Die Function muss dafür neu deployt werden. Einrichten: Fine-grained Token auf GitHub anlegen (nur dieses Repo, Berechtigung „Actions: Read and write“), dann `supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>` und `supabase functions deploy watchlist-trigger-check --project-ref <ref> --no-verify-jwt`.
-- Selector-Vorschau: Im Formular „URL hinzufügen“ ruft die Edge Function `watchlist-preview` die Seite ab und zeigt den erkannten Bereich samt Textmenge. Deployen: `supabase functions deploy watchlist-preview --project-ref <ref> --no-verify-jwt`. Sie prüft wie der Button Anmeldung und `watchlist_admins`, blockt interne Adressen und rendert kein JavaScript.
-- Import / Export: Das Menü „Import / Export“ sichert die URL-Liste als YAML oder JSON (Format wie `urls.yml`) und liest solche Dateien wieder ein. Vorhandene URLs bleiben unberührt. Der Import braucht die Insert-Policy `admins add urls`.
+- Registration is open in the project, so `supabase/schema.sql` grants access only to accounts in `watchlist_admins` (policies; no access to snapshots). After running the schema, authorize your own account in the SQL Editor: `insert into watchlist_admins (user_id) select id from auth.users where email = 'you@example.com' on conflict do nothing;`. An account that has not been authorized sees “Not authorized”.
+- Locally: run `cd web`, copy `.env.example` to `.env`, and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the Publishable/Anon key, **not** the Secret key), then run `npm ci && npm run dev`. Validate with `npm run lint`, `npm test`, and `npm run build`.
+- GitHub Pages: create the `SUPABASE_ANON_KEY` secret (Publishable key) and set `ENABLE_PAGES=true`. The `pages.yml` workflow builds `web/` and publishes `web/dist` (on every push to `web/**` and manually). It is independent of the check run. The page is publicly accessible but shows no data without login. The static export in file mode is no longer published.
+- **Groups tab:** Create and rename groups, assign URLs, and dissolve groups. This updates `grp` on the URLs and requires the `admins update urls` policy from `supabase/schema.sql` (run it once in the SQL Editor).
+- **Toasts:** Deleting URLs, importing, and dissolving groups no longer prompt for confirmation; instead, a toast appears in the lower-right corner with “Undo” (8 seconds). Errors also appear there instead of in browser dialogs.
+- **Edit URLs:** The pencil in the URL table opens a form for the name, group, selector, JavaScript, check interval, `ignore`, `only_added`, and pausing. Paused URLs are not checked and show as “Paused”. This also requires the `admins update urls` policy.
+- **Per-page history:** The clock button (⏱) in the URL table shows changes for that page only (up to 500 from the database).
+- The filter state (tab, group, status, date range, search) is stored in the URL hash, so the view can be shared and is preserved on reload.
+- **Groups tab:** Configure order, color, icon, empty groups, and the bulk action “Pause/resume all”. Run the `watchlist_groups` block from `supabase/schema.sql` once in the SQL Editor.
+- **Check now:** The button calls the `watchlist-trigger-check` Edge Function (`supabase/functions/`). It checks login and `watchlist_admins`, then starts the `check` workflow. The ↻ icon on a row checks only that URL (workflow input `url`, exposed in `check.py` as `WATCHLIST_ONLY_URL`; the interval is ignored, and other URLs, heartbeats, and run history remain untouched). The Function must be redeployed for this. Setup: create a fine-grained GitHub token (this repository only, “Actions: Read and write”), then run `supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>` and `supabase functions deploy watchlist-trigger-check --project-ref <ref> --no-verify-jwt`.
+- **Selector preview:** In the “Add URL” form, the `watchlist-preview` Edge Function fetches the page and shows the detected area and text size. Deploy it with `supabase functions deploy watchlist-preview --project-ref <ref> --no-verify-jwt`. Like the button, it checks login and `watchlist_admins`, blocks internal addresses, and does not render JavaScript.
+- **Import / Export:** The “Import / Export” menu saves the URL list as YAML or JSON (same format as `urls.yml`) and imports those files. Existing URLs remain untouched. Import requires the `admins add urls` insert policy.
 
-Alternativ geht eine direkte Postgres-Verbindung mit `SUPABASE_DB_URL` (Session-Pooler-URL mit Datenbankpasswort), sie hat Vorrang.
+A direct Postgres connection using `SUPABASE_DB_URL` (Session Pooler URL with database password) is also supported and takes precedence.
 
-Tests gegen echtes Postgres (`tests/test_pgstore.py`) laufen mit `WATCHLIST_TEST_DSN=...` oder mit installiertem `pgserver` (Python 3.12), sonst werden sie übersprungen.
+Tests against real Postgres (`tests/test_pgstore.py`) run with `WATCHLIST_TEST_DSN=...` or with `pgserver` installed (Python 3.12); otherwise, they are skipped.
 
 ## urls.yml
 ```yaml
-defaults:                      # gilt für alle URLs, ignore-Listen werden zusammengeführt
+defaults:                      # applies to all URLs; ignore lists are merged
   ignore: ['Last updated on\s*\S+']
 
 urls:
   - url: https://example.com/releases
-    name: "Mein Name"          # optional, sonst der Seitentitel
-    group: Azure               # optional, gruppiert Mail und Dashboard
-    selector: main             # optional, nur dieser CSS-Bereich; "auto" wählt main/article/[role=main] selbst, sonst ganze Seite
-    ignore: ['\d{2}:\d{2}']    # optional, Regex wird vor dem Vergleich entfernt
-    only_added: true           # optional, Mail zeigt nur neue Zeilen
-    interval: weekly           # optional, daily oder weekly: seltener prüfen (Standard: bei jedem Lauf); Probleme werden trotzdem jedes Mal geprüft
-    js: true                   # optional, Seite mit Playwright (Chromium) rendern
-    min_ratio: 0.3             # optional, Textwächter (0 = aus), siehe unten
-    ignore_robots: true        # optional, robots.txt-Sperre übergehen
-  - url: https://example.com/feed.xml   # RSS/Atom wird automatisch erkannt
+    name: "My name"            # optional, otherwise the page title
+    group: Azure               # optional, groups email and dashboard views
+    selector: main             # optional, this CSS area only; "auto" chooses main/article/[role=main], otherwise the whole page
+    ignore: ['\d{2}:\d{2}']    # optional, regex removed before comparison
+    only_added: true           # optional, email shows only new lines
+    interval: weekly           # optional, daily or weekly: check less often (default: every run); failures are still checked every time
+    js: true                   # optional, render page with Playwright (Chromium)
+    min_ratio: 0.3             # optional, text guard (0 = off), see below
+    ignore_robots: true        # optional, bypass robots.txt blocking
+  - url: https://example.com/feed.xml   # RSS/Atom is detected automatically
 ```
-- `ignore`-Regex werden beim Start geprüft: ungültige, über 300 Zeichen lange oder zu Backtracking neigende Muster (verschachtelte Quantifizierer wie `(a+)+`) markieren die URL als „Fehler" (Konfigurationsfehler, nicht abgerufen), der Lauf endet mit Fehler und löst die Alarmmail aus. Zusätzlich läuft jedes Muster mit der Bibliothek `regex` und einem Timeout von 2 s pro Seite; wird er überschritten, gilt die URL als Abruffehler (`ignore_timeout`) mit Tipp in der Mail.
-- Bei Feeds ist `only_added` standardmäßig an (ein Eintrag pro Zeile, entfernte Einträge lösen keine Mail aus).
-- Eine reine Liste von URLs ohne `defaults`/`urls` funktioniert weiterhin.
-- `js: true` ist langsamer. Der Workflow installiert Chromium nur, wenn irgendwo `js: true` konfiguriert ist (`check.py --needs-js`).
+- `ignore` regexes are validated at startup: invalid patterns, patterns over 300 characters, or patterns prone to backtracking (nested quantifiers such as `(a+)+`) mark the URL as “Error” (configuration error; not fetched), fail the run, and trigger the alert email. In addition, each pattern runs with the `regex` library and a 2-second timeout per page; if exceeded, the URL is a fetch failure (`ignore_timeout`) with a tip in the email.
+- For feeds, `only_added` is enabled by default (one entry per line; removed entries do not trigger an email).
+- A plain list of URLs without `defaults`/`urls` still works.
+- `js: true` is slower. The workflow installs Chromium only if `js: true` is configured somewhere (`check.py --needs-js`).
 
-## URL hinzufügen
+## Add a URL
 ```
-uv run add.py https://example.com/seite          # fragt Name, Gruppe und Selector ab
-uv run add.py https://example.com/seite -y       # Vorschläge ohne Rückfrage übernehmen
+uv run add.py https://example.com/seite          # prompts for name, group, and selector
+uv run add.py https://example.com/seite -y       # accept suggestions without prompting
 uv run add.py <url> --group Azure --selector main --js
 ```
-Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) und die Gruppe vorhandener URLs desselben Hosts vor und hängt den Eintrag an `urls.yml` an (Kommentare bleiben erhalten). Findet es im HTML `<link rel="alternate" type="application/rss+xml">` (oder Atom), werden die Feeds aufgelistet und du wählst einen (`--feed` nimmt den ersten, mit `-y` nur ein Hinweis). Die Baseline entsteht beim nächsten Lauf (`uv run check.py`).
+The script fetches the page, suggests a selector (`main`, `article`, ...) and the group used by existing URLs on the same host, then appends the entry to `urls.yml` (preserving comments). If it finds `<link rel="alternate" type="application/rss+xml">` (or Atom) in the HTML, it lists the feeds and lets you choose one (`--feed` takes the first; with `-y`, it only shows a hint). The baseline is created on the next run (`uv run check.py`).
 
-## Sprache
-Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktionen, Variablen, Konstanten, Optionsnamen in `urls.yml`) und Commit-Nachrichten sind auf Englisch.
+## Language
+Messages, emails, comments, and documentation are in English. Code identifiers (functions, variables, constants, and option names in `urls.yml`) and commit messages are also in English.
 
-## Rücksicht auf Server und Fehlabrufe
-- **Parallele Abrufe:** Die Seiten werden mit bis zu 6 Threads geladen, pro Host höchstens 2 gleichzeitig (`max_workers` in `settings.json`, `MAX_PER_HOST` in `fetch.py`). Seiten mit `js: true` laufen nacheinander. Die Auswertung, Mails und Snapshots bleiben seriell und in der Reihenfolge von `urls.yml`.
-- **robots.txt** wird pro Host einmal je Lauf geprüft. Verbietet sie eine URL, zählt das als Abruffehler (Override: `ignore_robots: true`). Fehlt die Datei oder ist sie nicht erreichbar, ist alles erlaubt.
-- **ETag / Last-Modified:** Antwortet der Server mit `304 Not Modified`, wird die Seite nicht neu geladen. Die Werte stehen in `state/http.json` (bzw. in Supabase). Ändert sich `selector`, `ignore` oder `js`, wird wieder voll geladen. Nicht alle Server unterstützen das (z. B. Google nur eingeschränkt).
-- **Textwächter:** Liefert eine Seite plötzlich unter 30 % des bisherigen Textes (nur bei Snapshots ab 500 Zeichen), gilt das als Fehlabruf (Cookie-Wand, Bot-Block). Der Snapshot bleibt unverändert, es gibt keine Änderungsmail, das Dashboard zeigt „Zu wenig Text", und nach dem 2. Lauf in Folge kommt eine Warnmail. Mit `min_ratio` anpassbar, `0` schaltet den Wächter für diese URL aus.
-- **Retry:** Bei Netzwerkfehlern, Timeouts, HTTP 5xx und 429 gibt es bis zu 3 Versuche (Pause 2 s, 5 s, `Retry-After` bis max. 30 s). Andere 4xx werden nicht wiederholt. Erst danach zählt es als Fehlabruf.
-- **Fehlerfester Mailversand:** Snapshot und Verlauf einer geänderten Seite werden erst nach erfolgreichem Versand gespeichert. Schlägt Resend fehl, bleibt der alte Snapshot, die Änderung wird im nächsten Lauf erneut erkannt, der Lauf endet mit Fehler (Alarm) und die Seite steht im Dashboard auf „Fehler".
-- **only_added:** Für Release-Notes-Seiten mit viel Text empfohlen (in `urls.yml` bereits gesetzt), die Mail zeigt dann nur neue Zeilen.
+## Be considerate of servers and failed fetches
+- **Parallel fetches:** Pages are fetched with up to 6 threads, with at most 2 per host (`max_workers` in `settings.json`, `MAX_PER_HOST` in `fetch.py`). Pages with `js: true` run sequentially. Processing, emails, and snapshots remain serial and follow the order in `urls.yml`.
+- **robots.txt** is checked once per host per run. If it disallows a URL, that counts as a fetch failure (override: `ignore_robots: true`). If the file is missing or unavailable, everything is allowed.
+- **ETag / Last-Modified:** If a server responds with `304 Not Modified`, the page is not fetched again. Values are stored in `state/http.json` (or in Supabase). If `selector`, `ignore`, or `js` changes, a full fetch is performed again. Not all servers support this (for example, Google has limited support).
+- **Text guard:** If a page suddenly returns less than 30% of its previous text (only for snapshots of at least 500 characters), it counts as a failed fetch (cookie wall, bot block). The snapshot remains unchanged, no change email is sent, the dashboard shows “Too little text”, and a warning email is sent after two consecutive runs. Adjust with `min_ratio`; `0` disables the guard for that URL.
+- **Retries:** Network errors, timeouts, HTTP 5xx, and 429 receive up to 3 attempts (delays of 2 s, 5 s, and `Retry-After` up to 30 s). Other 4xx errors are not retried. Only then is it counted as a fetch failure.
+- **Failure-safe email delivery:** The snapshot and history for a changed page are saved only after successful delivery. If Resend fails, the old snapshot remains, the change is detected again on the next run, the run fails (alert), and the page shows “Error” in the dashboard.
+- **only_added:** Recommended for release notes pages with lots of text (already set in `urls.yml`); email then shows only new lines.
 
-## Betrieb
-- **Badge:** Die Badges oben zeigen den Status des letzten Laufs. Bei einem privaten Repo siehst du sie nur, wenn du bei GitHub eingeloggt bist.
-- **Lebenszeichen:** Im ersten Lauf eines neuen Monats kommt eine Mail mit Anzahl der Seiten, Änderungen und Problemen pro Gruppe, den letzten Änderungen und den dauerhaft kaputten Seiten (6 Läufe in Folge, `STUCK_AFTER`) mit Hinweis zur Abhilfe. Bleibt sie aus, läuft der Zeitplan nicht mehr (GitHub deaktiviert ihn nach 60 Tagen ohne Repo-Aktivität).
-- **Warnmails mit Tipp:** Die Mails „Probleme beim Abruf" nennen zur Fehlerart eine mögliche Ursache und Abhilfe (robots.txt → `ignore_robots`, 403/Bot-Block/Timeout → `js: true`, 404 → URL prüfen, Selector nicht gefunden usw.).
-- **Alarm:** Schlägt der Workflow fehl (z. B. Resend-Fehler), versucht ein letzter Schritt eine Alarmmail mit Link zum Lauf zu senden. Zusätzlich meldet GitHub fehlgeschlagene Läufe selbst per Mail.
-- **Diffs:** Gespeichert werden bis zu 500 Diff-Zeilen mit 3 Zeilen Kontext (`store_diff_lines`, `diff_context` in `settings.json`), die Mail zeigt die ersten 60 (`mail_diff_lines`) mit wortgenauer Markierung, `+N −M`, einer Zusammenfassung oben und einem Link „zur geänderten Stelle" (Textfragment `#:~:text=`, funktioniert in Chromium und Safari bei einfachem Text). Der Tab „Letzte Änderungen" im Dashboard zeigt oben eine Kalender-Heatmap der letzten 26 Wochen (Klick auf einen Tag filtert die Liste, sie folgt Gruppen- und Seitenfilter) und darunter den vollen Diff, gruppiert nach Tag, mit Filter für Zeitraum und Gruppe.
-- **Dashboard:** Das Web-Dashboard (`web/`) zeigt Status pro URL, letzte Prüfung und Änderungsverlauf mit Suche und Filtern.
-- **Dashboard auf GitHub Pages (optional):** Pages-Seiten sind öffentlich erreichbar, auch bei privatem Repo, und für private Repos braucht es einen bezahlten Plan. Aktivieren: Settings → Pages → Source „GitHub Actions" und Variable `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
-- **Dependabot** aktualisiert Abhängigkeiten und Actions wöchentlich, gruppiert in je einen PR pro Ökosystem für Patch- und für Minor-/Major-Updates (Patch-PRs mergt `dependabot-automerge.yml` automatisch, sobald `tests` grün ist), `tests.yml` führt Lint, Typcheck, Tests und `uv audit` (Schwachstellenprüfung der Abhängigkeiten) bei Push, Pull Request und wöchentlich aus.
+## Operations
+- **Badge:** The badges above show the status of the latest run. For a private repository, you can see them only when signed in to GitHub.
+- **Heartbeat:** The first run of each new month sends an email with the number of pages, changes, and issues per group, recent changes, and pages that have been consistently failing (6 consecutive runs, `STUCK_AFTER`) with a suggested remedy. If it does not arrive, the schedule is no longer running (GitHub disables it after 60 days without repository activity).
+- **Warning emails with tips:** “Fetch problem” emails give a possible cause and fix for each error type (robots.txt → `ignore_robots`, 403/bot block/timeout → `js: true`, 404 → check the URL, selector not found, etc.).
+- **Alert:** If the workflow fails (for example, a Resend error), a final step attempts to send an alert email with a link to the run. GitHub also emails you about failed runs.
+- **Diffs:** Up to 500 diff lines with 3 context lines are stored (`store_diff_lines`, `diff_context` in `settings.json`). The email shows the first 60 (`mail_diff_lines`) with word-level highlighting, `+N −M`, a summary at the top, and a link to “the changed section” (text fragment `#:~:text=`, works in Chromium and Safari for plain text). The dashboard’s “Recent changes” tab shows a calendar heatmap for the last 26 weeks at the top (click a day to filter the list; it follows group and page filters), followed by the full diff grouped by day, with date-range and group filters.
+- **Dashboard:** The web dashboard (`web/`) shows status per URL, the last check, and change history with search and filters.
+- **GitHub Pages dashboard (optional):** Pages sites are publicly accessible, even for private repositories, and private repositories require a paid plan. Enable it: Settings → Pages → Source “GitHub Actions” and set `ENABLE_PAGES=true` (Settings → Secrets and variables → Actions → Variables).
+- **Dependabot** updates dependencies and Actions weekly, grouped into one PR per ecosystem for patch and minor/major updates (patch PRs are automatically merged by `dependabot-automerge.yml` when `tests` passes). `tests.yml` runs lint, type checks, tests, and `uv audit` (dependency vulnerability checks) on pushes, pull requests, and weekly.
 
-## Fehlerbehebung
+## Troubleshooting
 
-- **„Seite liefert zu wenig Text“ (Status „Zu wenig Text“):** Die Seite lieferte weniger als 30 % des bisherigen Textes, meist wegen Cookie-Wand, Bot-Block oder per JavaScript geladener Inhalte. Der Snapshot bleibt unverändert. `js: true` setzen oder den Selector prüfen. Ist der Rückgang gewollt, `min_ratio` senken (`0` schaltet den Wächter ab).
-- **„robots.txt verbietet den Abruf“:** Die Seite will keine automatischen Abrufe. Nur wenn das für dich erlaubt ist, `ignore_robots: true` in den Optionen der URL setzen.
-- **„Selector nicht gefunden“:** Die Seite wurde umgebaut oder der Inhalt kommt erst per JavaScript. Im Dashboard unter „Bearbeiten“ die Vorschau nutzen, `selector: auto` probieren oder `js: true` setzen.
-- **„Jetzt prüfen“ schlägt fehl:**
-  - *„GH_DISPATCH_TOKEN ist nicht gesetzt“*: Das Secret in Supabase fehlt (`supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>`).
-  - *Meldung von GitHub (401/403/404)*: Token abgelaufen oder ohne „Actions: Read and write“ für dieses Repo. Neues Token anlegen und das Secret ersetzen.
-  - *429*: Der letzte Lauf wurde vor weniger als einer Minute gestartet, kurz warten.
-  - *403 oder CORS-Fehler im Browser*: Die Function erlaubt nur `https://jhoelzl.github.io` (und `http://localhost:5173`). Eine andere Adresse muss in `ALLOWED_ORIGINS` der Function ergänzt und neu deployt werden.
-  - *„nicht freigeschaltet“*: Das Konto steht nicht in `watchlist_admins`.
-- **Änderungen lassen sich nicht speichern („Fehlt die Policy …“):** Die Policies `admins update urls`, `admins add urls` bzw. der Block `watchlist_groups` aus `supabase/schema.sql` wurden noch nicht im SQL-Editor ausgeführt.
-- **Immer wieder Änderungen durch Zähler oder Datum:** Im Bearbeiten-Formular erscheinen Ignore-Vorschläge aus dem Verlauf, die sich mit einem Klick übernehmen lassen.
+- **“Too little text” (status “Too little text”):** The page returned less than 30% of its previous text, usually due to a cookie wall, bot block, or JavaScript-loaded content. The snapshot remains unchanged. Set `js: true` or check the selector. If the decrease is expected, lower `min_ratio` (`0` disables the guard).
+- **“robots.txt disallows fetching”:** The site does not allow automated fetches. Set `ignore_robots: true` in the URL options only if you are allowed to do so.
+- **“Selector not found”:** The site may have changed, or the content may load only through JavaScript. In the dashboard, use the preview under “Edit”, try `selector: auto`, or set `js: true`.
+- **“Check now” fails:**
+  - *“GH_DISPATCH_TOKEN is not set”*: The secret is missing in Supabase (`supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>`).
+  - *GitHub message (401/403/404)*: The token expired or lacks “Actions: Read and write” for this repository. Create a new token and replace the secret.
+  - *429*: The last run started less than a minute ago; wait briefly.
+  - *403 or CORS error in the browser*: The Function allows only `https://jhoelzl.github.io` (and `http://localhost:5173`). Add other addresses to `ALLOWED_ORIGINS` in the Function and redeploy it.
+  - *“Not authorized”*: The account is not in `watchlist_admins`.
+- **Changes cannot be saved (“Missing policy …”):** The `admins update urls` or `admins add urls` policies, or the `watchlist_groups` block from `supabase/schema.sql`, have not yet been run in the SQL Editor.
+- **Repeated changes from counters or dates:** The Edit form shows ignore suggestions from history that can be applied with one click.
 
-## Lokal
-Mitarbeit, Stil und Prüfungen vor dem Commit: [CONTRIBUTING.md](CONTRIBUTING.md).
+## Local use
+Contributing, style, and pre-commit checks: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ```
-uv run check.py                       # Mails werden nur ausgegeben, wenn RESEND_API_KEY fehlt
-uv run --extra js playwright install chromium   # einmalig, nur für js: true (ein Browser pro Lauf, eine Seite je URL)
-uv run --extra js check.py            # mit js: true
-uv run pytest                         # Tests
-uv run ruff check .                   # Lint
-uv run ruff format .                  # Formatieren (CI prüft mit --check)
-uv run mypy check.py add.py  # Typcheck
-uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei Änderungen in web/ auch oxlint und tsc
-uv run pre-commit run --all-files     # alle Hooks von Hand
-uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten
+uv run check.py                       # emails are only printed when RESEND_API_KEY is missing
+uv run --extra js playwright install chromium   # once; only for js: true (one browser per run, one page per URL)
+uv run --extra js check.py            # with js: true
+uv run pytest                         # tests
+uv run ruff check .                   # lint
+uv run ruff format .                  # format (CI checks with --check)
+uv run mypy check.py add.py           # type check
+uv run pre-commit install             # once per clone: gitleaks, ruff, mypy, plus oxlint and tsc for web/ changes
+uv run pre-commit run --all-files     # run all hooks manually
+uv audit --preview-features audit-command  # known dependency vulnerabilities
 ```
-Mit Secrets aus einer `.env`-Datei: `op run --env-file=.env -- uv run check.py` (die `.env` enthält nur `op://`-Referenzen, keine Werte).
-Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...` (nötig z. B. bei `uv add`, damit `uv.lock` nur öffentliche PyPI-URLs enthält).
+With secrets from a `.env` file: `op run --env-file=.env -- uv run check.py` (`.env` contains only `op://` references, no values).
+If a global uv configuration with private index feeds causes issues: `UV_NO_CONFIG=1 uv ...` (needed, for example, with `uv add`, so `uv.lock` contains only public PyPI URLs).
 
-Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).
+Change dependencies with `uv add <package>` (updates `pyproject.toml` and `uv.lock`).
 
-Optional: `DASHBOARD_URL` (Standard `https://jhoelzl.github.io/watchlist/`) bestimmt, worauf die Dashboard-Links in den Mails zeigen.
+Optional: `DASHBOARD_URL` (default `https://jhoelzl.github.io/watchlist/`) determines where dashboard links in emails point.

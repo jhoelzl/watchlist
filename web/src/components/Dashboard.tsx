@@ -37,11 +37,11 @@ export function Dashboard() {
     if (hash !== window.location.hash) history.replaceState(null, '', hash || window.location.pathname + window.location.search)
   }, [tab, group, status, period, query, sort])
 
-  if (result.state === 'loading') return <p className="muted">Lade …</p>
+  if (result.state === 'loading') return <p className="muted">Loading …</p>
   if (result.state === 'denied') {
-    return <p className="error">Dieses Konto ist nicht für die Watchlist freigeschaltet. Siehe README, Abschnitt „Dashboard“.</p>
+    return <p className="error">This account is not enabled for the watchlist. See the README, section “Dashboard”.</p>
   }
-  if (result.state === 'error') return <p className="error">Laden fehlgeschlagen: {result.message}</p>
+  if (result.state === 'error') return <p className="error">Loading failed: {result.message}</p>
 
   const total = data?.entries.length ?? 0
   return (
@@ -49,42 +49,42 @@ export function Dashboard() {
       <div className="library-intro">
         <div>
           <h2>Watchlist</h2>
-          <p>{data?.updated ? `Zuletzt aktualisiert: ${new Date(data.updated).toLocaleString('de-AT')}` : 'Noch kein Lauf'}</p>
+          <p>{data?.updated ? `Last updated: ${new Date(data.updated).toLocaleString('en-GB')}` : 'No run yet'}</p>
         </div>
         <div className="intro-actions">
-          <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>URL hinzufügen</button>
+          <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>Add URL</button>
           <details className="menu">
             <summary className="btn">Import / Export</summary>
             <div className="menu-items">
-              <button className="btn" onClick={() => void download('yaml')}>Export als YAML</button>
-              <button className="btn" onClick={() => void download('json')}>Export als JSON</button>
+              <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
+              <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
               <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
             </div>
           </details>
           <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy' || check.state === 'waiting' || check.state === 'running'}>
-            {check.state === 'busy' ? 'Starte …' : check.state === 'waiting' || check.state === 'running' ? 'Prüfung läuft …' : 'Jetzt prüfen'}
+            {check.state === 'busy' ? 'Starting …' : check.state === 'waiting' || check.state === 'running' ? 'Check running …' : 'Check now'}
           </button>
         </div>
       </div>
-      {check.state === 'waiting' && <p className="muted">Prüfung gestartet, warte auf den Lauf bei GitHub …</p>}
-      {check.state === 'running' && <p className="muted">Prüfung läuft{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">Lauf ansehen</a>)</>}. Die Ansicht aktualisiert sich automatisch.</p>}
-      {check.state === 'success' && <p className="muted">Prüfung fertig, die Ansicht ist aktualisiert.</p>}
-      {check.state === 'failed' && <p className="error">Die Prüfung ist fehlgeschlagen{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">Lauf ansehen</a>)</>}.</p>}
-      {check.state === 'timeout' && <p className="error">Der Lauf dauert ungewöhnlich lange. Bitte bei GitHub nachsehen.</p>}
-      {check.state === 'error' && <p className="error">Prüfung konnte nicht gestartet werden: {check.message}</p>}
+      {check.state === 'waiting' && <p className="muted">Check started, waiting for the run on GitHub …</p>}
+      {check.state === 'running' && <p className="muted">Check running{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">View run</a>)</>}. The view updates automatically.</p>}
+      {check.state === 'success' && <p className="muted">Check finished, the view is up to date.</p>}
+      {check.state === 'failed' && <p className="error">The check failed{check.url && <> (<a href={check.url} target="_blank" rel="noreferrer noopener">View run</a>)</>}.</p>}
+      {check.state === 'timeout' && <p className="error">The run is taking unusually long. Please check GitHub.</p>}
+      {check.state === 'error' && <p className="error">Check could not be started: {check.message}</p>}
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
-        <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Letzte Änderungen<span className="count">{data?.changes.length ?? 0}</span></button>
-        <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Gruppen<span className="count">{groups.length}</span></button>
+        <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Recent changes<span className="count">{data?.changes.length ?? 0}</span></button>
+        <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
       </div>
       {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} metas={data?.metas ?? []} groupsReady={data?.groupsReady ?? false} onChanged={() => reload()} />}
       {tab !== 'groups' && <div className="toolbar">
         <div className="search-field">
           <span aria-hidden="true">⌕</span>
-          <input type="search" placeholder="Suchen (Name, URL, Text)" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input type="search" placeholder="Search (name, URL, text)" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <select aria-label="Gruppe" value={group} onChange={(e) => setGroup(e.target.value)} style={{ width: 'auto' }}>
-          <option value="">Alle Gruppen</option>
+        <select aria-label="Group" value={group} onChange={(e) => setGroup(e.target.value)} style={{ width: 'auto' }}>
+          <option value="">All groups</option>
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>}      {data && tab === 'urls' && (

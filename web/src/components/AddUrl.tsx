@@ -28,15 +28,15 @@ export function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; 
   return (
     <form className="panel add-panel" onSubmit={(e) => { e.preventDefault(); void submit() }}>
       <label className="grow">URL<input type="url" placeholder="https://…" value={form.url} onChange={(e) => set({ url: e.target.value })} required autoFocus /></label>
-      <label>Name (optional)<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Seitentitel" /></label>
-      <label>Gruppe<input list="groups" value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
+      <label>Name (optional)<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Page title" /></label>
+      <label>Group<input list="groups" value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
       <datalist id="groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
-      <label>Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto = passenden Bereich erkennen, leer = ganze Seite" /></label>
-      <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
+      <label>Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto = detect the matching area, empty = whole page" /></label>
+      <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Render with JavaScript</label>
       <PreviewBox preview={preview} js={form.js} />
       <div className="add-actions">
-        <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
-        <button className="btn" type="button" onClick={() => { setOpen(false); setError('') }}>Abbrechen</button>
+        <button className="btn primary" type="submit" disabled={busy}>Save</button>
+        <button className="btn" type="button" onClick={() => { setOpen(false); setError('') }}>Cancel</button>
       </div>
       {error && <p className="error">{error}</p>}
     </form>

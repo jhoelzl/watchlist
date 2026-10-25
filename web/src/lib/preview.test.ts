@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { analyze, type Doc } from '../../../supabase/functions/watchlist-preview/analyze.ts'
 
-// Minimales DOM: Selector -> Text; "total" ist der Text der ganzen Seite.
+// Minimal DOM: selector -> text; "total" is the text of the whole page.
 function fakeDoc(total: string, nodes: Record<string, string>): Doc {
   const el = (text: string) => ({ textContent: text, remove() {} })
   return {
-    title: ' Meine  Seite ',
+    title: ' My  Page ',
     documentElement: el(total),
     querySelector: (sel: string) => {
-      if (sel === 'kaputt[') throw new Error('invalid selector')
+      if (sel === 'broken[') throw new Error('invalid selector')
       return sel in nodes ? el(nodes[sel]) : null
     },
     querySelectorAll: () => [],
@@ -17,25 +17,25 @@ function fakeDoc(total: string, nodes: Record<string, string>): Doc {
 
 const PAGE = 'x'.repeat(1000)
 
-describe('analyze (Selector-Vorschau)', () => {
-  it('auto nimmt den ersten ausreichend großen Kandidaten', () => {
+describe('analyze (selector preview)', () => {
+  it('auto picks the first sufficiently large candidate', () => {
     const p = analyze(fakeDoc(PAGE, { main: 'y'.repeat(500), article: 'z'.repeat(900) }), 'auto')
-    expect(p).toMatchObject({ mode: 'auto', selector: 'main', chars: 500, title: 'Meine Seite' })
+    expect(p).toMatchObject({ mode: 'auto', selector: 'main', chars: 500, title: 'My Page' })
   })
 
-  it('auto überspringt fast leere Kandidaten und fällt auf die ganze Seite zurück', () => {
-    const p = analyze(fakeDoc(PAGE, { main: 'kurz' }), 'auto')
+  it('auto skips almost empty candidates and falls back to the whole page', () => {
+    const p = analyze(fakeDoc(PAGE, { main: 'short' }), 'auto')
     expect(p).toMatchObject({ mode: 'auto', selector: null, chars: 1000 })
-    expect(p.candidates).toEqual([{ selector: 'main', chars: 4 }])
+    expect(p.candidates).toEqual([{ selector: 'main', chars: 5 }])
   })
 
-  it('eigener Selector: gefunden, nicht gefunden und ungültig', () => {
-    expect(analyze(fakeDoc(PAGE, { '.inhalt': 'abc' }), '.inhalt')).toMatchObject({ found: true, chars: 3 })
-    expect(analyze(fakeDoc(PAGE, {}), '.fehlt')).toMatchObject({ found: false, chars: 0 })
-    expect(analyze(fakeDoc(PAGE, {}), 'kaputt[')).toMatchObject({ found: false })
+  it('custom selector: found, not found and invalid', () => {
+    expect(analyze(fakeDoc(PAGE, { '.content': 'abc' }), '.content')).toMatchObject({ found: true, chars: 3 })
+    expect(analyze(fakeDoc(PAGE, {}), '.missing')).toMatchObject({ found: false, chars: 0 })
+    expect(analyze(fakeDoc(PAGE, {}), 'broken[')).toMatchObject({ found: false })
   })
 
-  it('leerer Selector bedeutet ganze Seite', () => {
+  it('empty selector means whole page', () => {
     expect(analyze(fakeDoc(PAGE, {}), '')).toMatchObject({ mode: 'page', chars: 1000 })
   })
 })
