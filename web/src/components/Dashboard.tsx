@@ -420,7 +420,7 @@ export function Dashboard() {
                     <td><Spark times={data?.freq[e.url] ?? []} /></td>
                     <td className="row-actions">
                       <button className="icon-btn" title="Verlauf dieser Seite" aria-label={`Verlauf von ${e.name}`} onClick={() => showHistory(e.url)}>⏱</button>
-                      <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}>✎</button>
+                      <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}><span className="flip">✎</span></button>
                       <button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => void remove(e)}>×</button>
                     </td>
                   </tr>
