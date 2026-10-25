@@ -11,6 +11,7 @@ import check
 def sleeps(monkeypatch):
     calls = []
     monkeypatch.setattr(check.time, "sleep", calls.append)
+    monkeypatch.setattr(check.random, "uniform", lambda a, b: 0)
     return calls
 
 
@@ -133,3 +134,30 @@ def test_add_main_feed_flag(tmp_path, monkeypatch):
     monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: (rss if url.endswith(".xml") else page, {}))
     add.main(["https://x/blog", "--feed", "-y"])
     assert [e["url"] for e in check.load_config(f)] == ["https://other", "https://x/f.xml"]
+
+
+def test_retry_wait_has_jitter(monkeypatch, sleeps):
+    monkeypatch.setattr(check.random, "uniform", lambda a, b: b)
+    sequence(monkeypatch, [FakeResp(503), FakeResp(200)])
+    check.get_with_retry("https://a", {})
+    assert sleeps == [2.5]
+
+
+def test_404_is_permanent_error(monkeypatch, sleeps):
+    sequence(monkeypatch, [FakeResp(404)])
+    with pytest.raises(check.CheckError, match="dauerhafter Fehler") as ei:
+        check.fetch_body("https://a", False)
+    assert ei.value.code == "http_404" and sleeps == []
+
+
+def test_permanent_error_alerts_earlier(env, monkeypatch):
+    tmp, sent = env
+
+    def boom(url, opts, cond=None):
+        raise check.CheckError("Seite nicht mehr vorhanden (HTTP 404), dauerhafter Fehler", "http_404")
+
+    monkeypatch.setattr(check, "fetch", boom)
+    check.run()
+    assert sent == []
+    check.run()
+    assert len(sent) == 1 and "2x in Folge" in sent[0][1]

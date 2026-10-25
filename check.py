@@ -3,6 +3,7 @@ import hashlib
 import html
 import json
 import os
+import random
 import re
 import sys
 import threading
@@ -41,6 +42,9 @@ FAIL_ALERT_AFTER = 3
 STUCK_AFTER = 6  # Läufe in Folge (bei 2 Läufen pro Tag = 3 Tage), ab denen eine Seite als dauerhaft kaputt gilt
 RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
 MAX_RETRY_AFTER = 30
+RETRY_JITTER = 0.25  # bis zu +25 % Zufall auf die Wartezeit, damit Wiederholungen nicht im Gleichschritt laufen
+PERMANENT_CODES = {"http_404", "http_410"}  # Seite gibt es nicht mehr: kein Abwarten nötig
+PERMANENT_ALERT_AFTER = 2
 MAX_WORKERS = 6  # parallele Abrufe insgesamt
 MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -151,8 +155,9 @@ def get_with_retry(url, headers):
     delay = 0
     for attempt in range(len(RETRY_DELAYS) + 1):
         if attempt:
-            print(f"            Wiederholung {attempt}/{len(RETRY_DELAYS)} in {delay}s ({last})")
-            time.sleep(delay)
+            wait = round(delay + random.uniform(0, delay * RETRY_JITTER), 1)
+            print(f"            Wiederholung {attempt}/{len(RETRY_DELAYS)} in {wait}s ({last})")
+            time.sleep(wait)
         delay = RETRY_DELAYS[attempt] if attempt < len(RETRY_DELAYS) else 0
         try:
             resp = requests.get(url, headers=headers, timeout=30)
@@ -244,6 +249,10 @@ def fetch_body(url, js, cond=None):
     resp = get_with_retry(url, headers)
     if resp.status_code == 304:
         return None, cond
+    if resp.status_code in (404, 410):
+        raise CheckError(
+            f"Seite nicht mehr vorhanden (HTTP {resp.status_code}), dauerhafter Fehler", status_code_name(resp.status_code)
+        )
     resp.raise_for_status()
     if "charset" not in resp.headers.get("Content-Type", "").lower():
         resp.encoding = "utf-8"
@@ -783,7 +792,7 @@ def _run(store):
             store.set_counter(key, "fail", n)
             entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
-            if n == FAIL_ALERT_AFTER:
+            if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
                 problems.append(
                     {
                         "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),

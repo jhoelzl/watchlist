@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 93 Python- und 41 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 41 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -82,7 +82,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **Cron in UTC** (`0 6,18 * * *`) in der README dokumentieren oder auf lokale Zeiten abstimmen (Sommer-/Winterzeit verschiebt die Mailzeit). (S)
 - 🟡 **Benachrichtigung bei Workflow-Ausfall:** Scheitert `check.yml` selbst (Supabase down, Secret fehlt), kommt keine Mail. Zweiter Job mit `if: failure()` oder Überwachung „kein Lauf seit 36 h“. (S)
 - 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
-- ⚪ **Retry mit Jitter** und Unterscheidung dauerhafter Fehler (404/410) von vorübergehenden. (S)
 - ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
 - ⚪ **Dependabot gruppieren** (ein PR pro Woche) und Auto-Merge für Patch-Updates bei grünen Tests. (S)
 - ⚪ **Web-Prüfungen in `tests.yml`:** `tsc`, `oxlint` und `vitest` laufen bisher nur lokal, der `pages`-Workflow baut nur. (S)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Anzeige-Einstellungen gemerkt | Tab, Filter und zugeklappte Gruppen liegen in `localStorage` und kommen beim nächsten Besuch zurück. Ein Hash in der URL (geteilter Link) hat Vorrang |
 | Änderungshäufigkeit als Sparkline | Neue Spalte „Letzte 30 Tage“ in der URL-Tabelle: Balken pro Tag mit Änderungen, aus `watchlist_history` (bis 5000 Einträge der letzten 30 Tage) |
 | Statisches `dashboard.py` entfernt | `check.py` erzeugt kein `site/index.html` mehr, das Web-Dashboard ersetzt es vollständig. Tests, Hooks, CI und Docs angepasst |
+| Retry mit Jitter, dauerhafte Fehler | Wartezeit zwischen Wiederholungen bekommt bis zu 25 % Zufall. 404/410 werden sofort als „dauerhafter Fehler“ gemeldet (kein Retry) und lösen die Warn-Mail schon nach 2 statt 3 Läufen aus |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
