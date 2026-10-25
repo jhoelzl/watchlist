@@ -199,3 +199,13 @@ def test_mail_shows_short_diff_and_summary():
     assert 'href="#g1"' in html_out and 'id="c1"' in html_out
     assert "2 Seiten geändert in 2 Gruppen" in html_out
     assert "Seiten geändert" not in check.render_text(changes[1:])
+
+
+def test_auto_selector_picks_main_or_falls_back_to_whole_page():
+    with_main = "<body><nav>Menü</nav><main>" + "Inhalt " * 40 + "</main></body>"
+    assert "Menü" not in check.parse_html(with_main, "auto")[1]
+    role = "<body><nav>Navigation</nav><div role='main'>" + "Inhalt " * 40 + "</div></body>"
+    assert "Navigation" not in check.parse_html(role, "auto")[1]
+    plain = "<body><p>Nur Text ohne Hauptbereich</p></body>"
+    assert "Nur Text" in check.parse_html(plain, "auto")[1]
+    assert "Menü" in check.parse_html(with_main, None)[1]

@@ -90,13 +90,30 @@ def parse_feed(body):
     return title, "\n".join(lines)
 
 
+AUTO_SELECTOR = "auto"
+CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
+SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
+
+
+def auto_root(soup):
+    """Erster Kandidat, der existiert und nicht fast leer ist, sonst die ganze Seite."""
+    total = len(clean(soup.get_text(" ")))
+    for sel in CANDIDATE_SELECTORS:
+        node = soup.select_one(sel)
+        if node is not None and total and len(clean(node.get_text(" "))) >= total * SELECTOR_MIN_SHARE:
+            return node
+    return soup
+
+
 def parse_html(body, selector):
     soup = BeautifulSoup(body, "html.parser")
     title = clean(soup.title.get_text()) if soup.title else ""
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
     root: BeautifulSoup | Tag = soup
-    if selector:
+    if selector == AUTO_SELECTOR:
+        root = auto_root(soup)
+    elif selector:
         found = soup.select_one(selector)
         if found is None:
             raise ValueError(f"Selector nicht gefunden: {selector}")

@@ -11,23 +11,16 @@ from bs4 import BeautifulSoup
 import check
 from store import FileStore, open_store
 
-CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
-SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
-
 
 def suggest_selector(body):
-    """Erster Kandidat, der existiert und nicht fast leer ist. Sonst None (ganze Seite)."""
+    """Erster passender Kandidat als Selector, sonst None (ganze Seite)."""
     soup = BeautifulSoup(body, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
-    total = len(check.clean(soup.get_text(" ")))
-    for sel in CANDIDATE_SELECTORS:
-        node = soup.select_one(sel)
-        if node is not None:
-            size = len(check.clean(node.get_text(" ")))
-            if total and size >= total * SELECTOR_MIN_SHARE:
-                return sel
-    return None
+    node = check.auto_root(soup)
+    if node is soup:
+        return None
+    return next(s for s in check.CANDIDATE_SELECTORS if soup.select_one(s) is node)
 
 
 FEED_TYPES = ("application/rss+xml", "application/atom+xml")

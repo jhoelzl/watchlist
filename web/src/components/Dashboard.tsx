@@ -34,7 +34,7 @@ async function load(): Promise<Load> {
   }
 }
 
-const EMPTY_FORM = { url: '', name: '', group: '', selector: 'main', js: false }
+const EMPTY_FORM = { url: '', name: '', group: '', selector: 'auto', js: false }
 
 function AddUrl({ entries, onAdded }: { entries: Entry[]; onAdded: () => void }) {
   const [open, setOpen] = useState(false)
@@ -62,7 +62,7 @@ function AddUrl({ entries, onAdded }: { entries: Entry[]; onAdded: () => void })
       <label>Name (optional)<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Seitentitel" /></label>
       <label>Gruppe<input list="groups" value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
       <datalist id="groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
-      <label>Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="leer = ganze Seite" /></label>
+      <label>Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto = passenden Bereich erkennen, leer = ganze Seite" /></label>
       <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
       <div className="add-actions">
         <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
