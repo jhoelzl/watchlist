@@ -106,3 +106,5 @@ Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.p
 Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...` (nötig z. B. bei `uv add`, damit `uv.lock` nur öffentliche PyPI-URLs enthält).
 
 Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).
+
+Optional: `DASHBOARD_URL` (Standard `https://jhoelzl.github.io/watchlist/`) bestimmt, worauf die Dashboard-Links in den Mails zeigen.

@@ -80,7 +80,7 @@ export function Dashboard() {
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
   const [period, setPeriod] = useState<Period>('')
   const [adding, setAdding] = useState(false)
-  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>('urls')
+  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(() => (window.location.hash.startsWith('#changes') ? 'changes' : 'urls'))
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
 
@@ -95,6 +95,18 @@ export function Dashboard() {
     [data, query, group, period],
   )
   const days = useMemo(() => groupByDay(changes), [changes])
+
+  // Mail-Link #changes:<URL> öffnet den passenden Eintrag
+  useEffect(() => {
+    const m = /^#changes:(.+)$/.exec(window.location.hash)
+    if (!m || !data) return
+    const url = decodeURIComponent(m[1])
+    const el = Array.from(document.querySelectorAll<HTMLDetailsElement>('details.change')).find((d) => d.dataset.url === url)
+    if (el) {
+      el.open = true
+      el.scrollIntoView({ block: 'center' })
+    }
+  }, [data])
 
   const checkNow = async () => {
     setCheck({ state: 'busy' })
@@ -221,7 +233,7 @@ export function Dashboard() {
         <section key={day}>
           <h3 className="day-heading">{dayLabel(day)}<span className="count">{items.length}</span></h3>
           {items.map((c) => (
-            <details className="change" key={c.id}>
+            <details className="change" key={c.id} data-url={c.url}>
               <summary>
                 {c.time.slice(11)} – {c.name ?? c.url}
                 <span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span>

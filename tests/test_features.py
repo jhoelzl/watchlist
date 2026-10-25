@@ -356,35 +356,47 @@ def test_fetch_all_empty():
 
 
 @pytest.mark.parametrize(
-    "error, expected",
+    ("code", "expected"),
     [
-        ("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)", "ignore_robots"),
-        ("403 Client Error: Forbidden for url: https://x", "js: true"),
-        ("404 Client Error: Not Found for url: https://x", "URL"),
-        ("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "zu langsam"),
-        ("Abruf nach 3 Versuchen fehlgeschlagen (HTTP 429)", "Rate-Limit"),
-        ("Abruf nach 3 Versuchen fehlgeschlagen (HTTP 503)", "Serverfehler"),
-        ("Abruf nach 3 Versuchen fehlgeschlagen (ConnectionError)", "Verbindung"),
-        ("Selector nicht gefunden: main", "Selector"),
-        ("nur 10 statt 900 Zeichen (Cookie-Wand oder Bot-Block?)", "min_ratio"),
-        ("Konfigurationsfehler: ungültige ignore-Regex", "urls.yml"),
+        ("robots", "ignore_robots"),
+        ("http_403", "js: true"),
+        ("http_404", "URL"),
+        ("timeout", "zu langsam"),
+        ("http_429", "Rate-Limit"),
+        ("http_5xx", "Serverfehler"),
+        ("connection", "Verbindung"),
+        ("selector", "Selector"),
+        ("content", "min_ratio"),
+        ("config", "urls.yml"),
     ],
 )
-def test_hint_for_known_errors(error, expected):
-    assert expected in check.hint_for(error)
+def test_hint_for_known_codes(code, expected):
+    assert expected in check.hint_for(code)
 
 
-def test_hint_for_unknown_error_is_empty():
-    assert check.hint_for("irgendwas Unbekanntes") == ""
-    assert check.with_hint("Text", "irgendwas Unbekanntes") == "Text"
-    assert check.with_hint("Text", "Timeout").startswith("Text\n  Tipp: ")
+def test_hint_for_unknown_code_is_empty():
+    assert check.hint_for("") == "" and check.hint_for(None) == ""
+    assert check.with_hint("Text", "unbekannt") == "Text"
+    assert check.with_hint("Text", "timeout").startswith("Text\n  Tipp: ")
+
+
+def test_error_code_classifies_exceptions():
+    import requests
+
+    resp = requests.Response()
+    resp.status_code = 503
+    assert check.error_code(check.CheckError("x", "selector")) == "selector"
+    assert check.error_code(requests.HTTPError(response=resp)) == "http_5xx"
+    assert check.error_code(requests.Timeout()) == "timeout"
+    assert check.error_code(requests.ConnectionError()) == "connection"
+    assert check.error_code(ValueError("x")) == ""
 
 
 def test_repeated_failure_mail_contains_hint(env, monkeypatch):
     tmp, sent = env
 
     def boom(url, opts, cond=None):
-        raise RuntimeError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)")
+        raise check.CheckError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "timeout")
 
     monkeypatch.setattr(check, "fetch", boom)
     for _ in range(check.FAIL_ALERT_AFTER):
@@ -403,7 +415,14 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
     monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append(t))
     status = {
         "https://a": {"name": "A", "group": "Azure", "status": "ok"},
-        "https://b": {"name": "B", "group": "Azure", "status": "error", "error": "Timeout", "streak": check.STUCK_AFTER},
+        "https://b": {
+            "name": "B",
+            "group": "Azure",
+            "status": "error",
+            "error": "Timeout",
+            "code": "timeout",
+            "streak": check.STUCK_AFTER,
+        },
         "https://c": {"name": "C", "group": "", "status": "error", "error": "404 Client Error", "streak": 1},
     }
     hist = [{"time": "2026-11-02 06:00 UTC", "name": "A", "group": "Azure"}]

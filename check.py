@@ -27,6 +27,7 @@ ROOT = Path(__file__).parent
 # Im Workflow liegen state/ und site/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
 STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
+DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Umgebungsvariable DASHBOARD_URL
 MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
 DIFF_CONTEXT = 3
 MAX_HISTORY = 100
@@ -116,7 +117,7 @@ def parse_html(body, selector):
     elif selector:
         found = soup.select_one(selector)
         if found is None:
-            raise ValueError(f"Selector nicht gefunden: {selector}")
+            raise CheckError(f"Selector nicht gefunden: {selector}", "selector")
         root = found
     return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
 
@@ -147,6 +148,7 @@ def config_hash(opts):
 def get_with_retry(url, headers):
     """GET mit Wiederholung bei Netzwerkfehlern, Timeouts, 429 und 5xx. Andere 4xx werden sofort zurückgegeben."""
     last = None
+    last_code = ""
     delay = 0
     for attempt in range(len(RETRY_DELAYS) + 1):
         if attempt:
@@ -157,15 +159,17 @@ def get_with_retry(url, headers):
             resp = requests.get(url, headers=headers, timeout=30)
         except (requests.ConnectionError, requests.Timeout) as ex:
             last = type(ex).__name__
+            last_code = error_code(ex)
             continue
         if resp.status_code == 429 or resp.status_code >= 500:
             last = f"HTTP {resp.status_code}"
+            last_code = status_code_name(resp.status_code)
             retry_after = resp.headers.get("Retry-After", "")
             if retry_after.isdigit():
                 delay = min(int(retry_after), MAX_RETRY_AFTER)
             continue
         return resp
-    raise RuntimeError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})")
+    raise CheckError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})", last_code)
 
 
 class BrowserPool:
@@ -374,6 +378,23 @@ def summary_line(changes):
     return f"{pages} Seite{'n' if pages != 1 else ''} geändert in {groups} Gruppe{'n' if groups != 1 else ''}"
 
 
+def dashboard_link(url=None):
+    """Link auf den Tab "Letzte Änderungen", mit URL direkt zum passenden Eintrag."""
+    base = os.environ.get("DASHBOARD_URL") or DASHBOARD_URL
+    return f"{base}#changes" + (f":{urllib.parse.quote(url, safe='')}" if url else "")
+
+
+def subject_for(changes):
+    shown = merge_variants(changes)
+    if len(shown) == 1:
+        return f"Watchlist: {shown[0]['name']} geändert"
+    names = [c["name"] for c in shown]
+    head = ", ".join(names[:3]) + (", …" if len(names) > 3 else "")
+    groups = list(group_changes(shown))
+    tail = f" ({', '.join(groups[:3])}{', …' if len(groups) > 3 else ''})" if len(groups) > 1 else ""
+    return f"Watchlist: {len(shown)} Änderungen: {head}{tail}"[:150]
+
+
 def render_text(changes):
     changes = merge_variants(changes)
     out = [summary_line(changes), ""] if len(changes) > 1 else []
@@ -381,7 +402,12 @@ def render_text(changes):
         out.append(f"=== {group} ===")
         for c in items:
             diff, extra = mail_view(c)
-            out.append(f"{c['name']}\n{fragment_url(c['url'], c['diff'])}")
+            added, removed = diff_counts(c["diff"])
+            jump = fragment_url(c["url"], c["diff"])
+            out.append(f"{c['name']} (+{added} -{removed})\n{c['url']}")
+            if jump != c["url"]:
+                out.append(f"Zur geänderten Stelle: {jump}")
+            out.append(f"Im Dashboard: {dashboard_link(c['url'])}")
             if c.get("variants"):
                 out.append("Gleicher Inhalt auch unter:")
                 out += [f"  {v}" for v in c["variants"]]
@@ -390,6 +416,7 @@ def render_text(changes):
             if extra:
                 out.append(f"... und {extra} weitere Zeilen (vollständig im Dashboard)")
             out.append("")
+    out.append(f"Alle Änderungen im Dashboard: {dashboard_link()}")
     return "\n".join(out).strip()
 
 
@@ -421,6 +448,7 @@ def render_html(changes):
                 if jump != c["url"] and safe_link(jump).startswith("<a")
                 else ""
             )
+            dash = f' &middot; <a href="{html.escape(dashboard_link(c["url"]))}">im Dashboard</a>'
             more = "".join(f"<br>{safe_link(v)}" for v in c.get("variants", []))
             if more:
                 more = f'<span style="color:#6e7781;font-size:12px">Gleicher Inhalt auch unter:{more}</span>'
@@ -429,7 +457,7 @@ def render_html(changes):
                 f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
                 f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
                 f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
-                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}</p>{more}'
+                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}{dash}</p>{more}'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )
@@ -452,7 +480,9 @@ def render_html(changes):
             if extra:
                 parts.append(f'<div style="color:#6e7781">... und {extra} weitere Zeilen (vollständig im Dashboard)</div>')
             parts.append("</pre>")
-    parts.append("</div>")
+    parts.append(
+        f'<p style="margin:24px 0 0"><a href="{html.escape(dashboard_link())}">Alle Änderungen im Dashboard</a></p></div>'
+    )
     return "".join(parts)
 
 
@@ -530,43 +560,59 @@ def as_list(value):
     return [value] if isinstance(value, str) else list(value)
 
 
+class CheckError(RuntimeError):
+    """Abruf- oder Prüffehler mit stabilem Code, über den der Hinweis (HINTS) gewählt wird."""
+
+    def __init__(self, message, code):
+        super().__init__(message)
+        self.code = code
+
+
 HINT_CONTENT = (
     "Vermutlich Cookie-Wand, Bot-Block oder per JavaScript geladene Inhalte: 'js: true' probieren oder Selector prüfen."
 )
-HINT_SELECTOR = (
-    "Der Selector passt nicht mehr (Seite umgebaut?) oder die Inhalte kommen per JavaScript: Selector prüfen oder 'js: true'."
-)
-# (Muster im Fehlertext in Kleinbuchstaben, Hinweis mit möglicher Ursache und Abhilfe). Erster Treffer gewinnt.
-HINTS = (
-    (("robots.txt",), "Die Seite verbietet automatische Abrufe. Nur wenn das erlaubt ist: 'ignore_robots: true' setzen."),
-    (("selector nicht gefunden",), HINT_SELECTOR),
-    (("bot-block", "kaum text"), HINT_CONTENT + " Mit 'min_ratio' lässt sich der Textwächter anpassen."),
-    (("403 client", "http 403"), "Der Server blockt den Abruf (Bot-Schutz?): 'js: true' probieren."),
-    (("401 client", "http 401"), "Die Seite verlangt eine Anmeldung und ist so nicht überwachbar."),
-    (("404 client", "http 404"), "Die Seite gibt es nicht mehr oder die URL hat sich geändert: URL in urls.yml prüfen."),
-    (("410 client", "http 410"), "Die Seite wurde entfernt: URL in urls.yml prüfen oder Eintrag löschen."),
-    (("429 client", "http 429"), "Rate-Limit: Der Server drosselt die Abrufe, meist hilft Abwarten."),
-    (
-        ("timeout",),
-        "Der Server antwortet zu langsam oder gar nicht: Abwarten, bei Dauerproblem URL prüfen oder 'js: true' probieren.",
+HINTS = {
+    "robots": "Die Seite verbietet automatische Abrufe. Nur wenn das erlaubt ist: 'ignore_robots: true' setzen.",
+    "selector": (
+        "Der Selector passt nicht mehr (Seite umgebaut?) oder die Inhalte kommen per JavaScript: Selector prüfen oder 'js: true'."
     ),
-    (("connectionerror",), "Keine Verbindung zum Server (DNS, Netzwerk, Zertifikat): Host und URL prüfen."),
-    (("server error", "http 5"), "Serverfehler auf der Gegenseite: meist vorübergehend, Abwarten."),
-    (("konfigurationsfehler",), "Eintrag in urls.yml korrigieren (siehe Meldung)."),
-)
+    "content": HINT_CONTENT + " Mit 'min_ratio' lässt sich der Textwächter anpassen.",
+    "http_403": "Der Server blockt den Abruf (Bot-Schutz?): 'js: true' probieren.",
+    "http_401": "Die Seite verlangt eine Anmeldung und ist so nicht überwachbar.",
+    "http_404": "Die Seite gibt es nicht mehr oder die URL hat sich geändert: URL in urls.yml prüfen.",
+    "http_410": "Die Seite wurde entfernt: URL in urls.yml prüfen oder Eintrag löschen.",
+    "http_429": "Rate-Limit: Der Server drosselt die Abrufe, meist hilft Abwarten.",
+    "timeout": "Der Server antwortet zu langsam oder gar nicht: Abwarten, bei Dauerproblem URL prüfen oder 'js: true' probieren.",
+    "connection": "Keine Verbindung zum Server (DNS, Netzwerk, Zertifikat): Host und URL prüfen.",
+    "http_5xx": "Serverfehler auf der Gegenseite: meist vorübergehend, Abwarten.",
+    "config": "Eintrag in urls.yml korrigieren (siehe Meldung).",
+}
 
 
-def hint_for(error):
-    """Kurzer Hinweis zu Ursache und Abhilfe passend zum Fehlertext, sonst leer."""
-    low = (error or "").lower()
-    for patterns, hint in HINTS:
-        if any(p in low for p in patterns):
-            return hint
+def status_code_name(status):
+    return "http_5xx" if status >= 500 else f"http_{status}"
+
+
+def error_code(ex):
+    """Stabiler Fehlercode zu einer Exception, leer wenn unbekannt."""
+    if isinstance(ex, CheckError):
+        return ex.code
+    if isinstance(ex, requests.HTTPError) and ex.response is not None:
+        return status_code_name(ex.response.status_code)
+    if isinstance(ex, requests.Timeout):
+        return "timeout"
+    if isinstance(ex, requests.ConnectionError):
+        return "connection"
     return ""
 
 
-def with_hint(text, error):
-    hint = hint_for(error)
+def hint_for(code):
+    """Kurzer Hinweis zu Ursache und Abhilfe passend zum Fehlercode, sonst leer."""
+    return HINTS.get(code or "", "")
+
+
+def with_hint(text, code):
+    hint = hint_for(code)
     return f"{text}\n  Tipp: {hint}" if hint else text
 
 
@@ -603,7 +649,7 @@ def send_heartbeat(now, entries, status, history, meta):
     if stuck:
         lines += ["", f"Dauerhaft kaputt (seit mindestens {STUCK_AFTER} Läufen in Folge):"]
         for u, s in stuck:
-            lines.append(with_hint(f"- {s['name']} ({u}): {s['error']} [{s['streak']} Läufe]", s["error"]))
+            lines.append(with_hint(f"- {s['name']} ({u}): {s['error']} [{s['streak']} Läufe]", s.get("code")))
     send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))
     meta["heartbeat"] = month
 
@@ -626,7 +672,7 @@ def fetch_all(jobs):
                     with robots_lock:
                         allowed = robots_allowed(url, robots)
                     if not allowed:
-                        raise RuntimeError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)")
+                        raise CheckError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)", "robots")
                 if opts.get("js"):
                     with js_lock:
                         return url, fetch(url, opts, cond)
@@ -691,12 +737,13 @@ def _run(store):
             "changed": prev.get("changed", ""),
             "status": "ok",
             "error": "",
+            "code": "",
         }
         status[url] = entry
         errors = config_errors(opts)
         if errors:
             msg = "Konfigurationsfehler: " + "; ".join(errors)
-            entry.update(status="error", error=msg[:300], checked=prev.get("checked", "-"))
+            entry.update(status="error", error=msg[:300], code="config", checked=prev.get("checked", "-"))
             config_bad.append(f"{url}\n  {msg}")
             print(f"[KONFIG]    {url}: {msg}")
             continue
@@ -710,12 +757,12 @@ def _run(store):
         except Exception as ex:
             n = store.counter(key, "fail") + 1
             store.set_counter(key, "fail", n)
-            entry.update(status="error", error=str(ex)[:200], checked=prev.get("checked", "-"), streak=n)
+            entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
             print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
             if n == FAIL_ALERT_AFTER:
                 problems.append(
                     {
-                        "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", str(ex)),
+                        "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),
                         "counter": (key, "fail"),
                         "value": n,
                     }
@@ -739,12 +786,12 @@ def _run(store):
             n = store.counter(key, "short") + 1
             store.set_counter(key, "short", n)
             msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
-            entry.update(status="warn", error=msg, checked=prev.get("checked", "-"), streak=n)
+            entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
             print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
             if n == GUARD_ALERT_AFTER:
                 problems.append(
                     {
-                        "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "kaum text"),
+                        "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "content"),
                         "counter": (key, "short"),
                         "value": n,
                     }
@@ -785,11 +832,7 @@ def _run(store):
     ok = not config_bad
     sent_ok = True
     if changes:
-        shown = merge_variants(changes)
-        if len(shown) == 1:
-            subject = f"Watchlist: {shown[0]['name']} geändert"
-        else:
-            subject = f"Watchlist: {len(shown)} Seiten geändert ({', '.join(group_changes(shown))})"
+        subject = subject_for(changes)
         print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
         try:
             send_mail(subject, render_text(changes), render_html(changes))

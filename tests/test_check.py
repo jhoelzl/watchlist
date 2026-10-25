@@ -37,7 +37,7 @@ def test_parse_html_strips_noise_and_selects():
 
 
 def test_parse_html_missing_selector():
-    with pytest.raises(ValueError):
+    with pytest.raises(check.CheckError):
         check.parse_html(HTML, "#gibt-es-nicht")
 
 
@@ -268,3 +268,22 @@ def test_identical_diffs_are_merged_into_one_entry():
     out, text = check.render_html(changes), check.render_text(changes)
     assert out.count("Lang TTS") == 0 and "https://a/l?tabs=tts" in out
     assert "3 Seiten geändert" in out and "Gleicher Inhalt auch unter" in text
+
+
+def test_subject_lists_names_and_groups():
+    def ch(n, g="A"):
+        return {"name": n, "url": f"https://x/{n}", "group": g, "diff": [f"+{n} neu"], "extra": 0}
+
+    assert check.subject_for([ch("Eins")]) == "Watchlist: Eins geändert"
+    assert check.subject_for([ch("Eins"), ch("Zwei")]) == "Watchlist: 2 Änderungen: Eins, Zwei"
+    sub = check.subject_for([ch("Eins"), ch("Zwei", "B"), ch("Drei"), ch("Vier")])
+    assert sub == "Watchlist: 4 Änderungen: Eins, Zwei, Drei, … (A, B)"
+
+
+def test_mail_links_to_dashboard_entry(monkeypatch):
+    monkeypatch.delenv("DASHBOARD_URL", raising=False)
+    c = [{"name": "N", "url": "https://a/x?y=1", "group": "G", "diff": ["+neuer Text hier"], "extra": 0}]
+    link = f"{check.DASHBOARD_URL}#changes:https%3A%2F%2Fa%2Fx%3Fy%3D1"
+    assert link in check.render_html(c) and link in check.render_text(c)
+    assert f'href="{check.DASHBOARD_URL}#changes"' in check.render_html(c)
+    assert "+1 -0" in check.render_text(c)

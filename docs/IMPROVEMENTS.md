@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 91 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 94 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -47,10 +47,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 
 ## 3. UX / UI (Mails und CLI)
 
-- 🟡 **Mail-Betreff aussagekräftiger:** Erste Seitennamen und Gruppen statt nur Anzahl, z. B. „3 Änderungen: Voice Live, S-Bike, …“. (S)
-- 🟡 **Link zum Dashboard** in jeder Mail, möglichst mit Sprung auf den passenden Eintrag im Tab „Letzte Änderungen“. (S)
-- ⚪ **Plain-Text-Teil** der Mail an die HTML-Struktur angleichen. (S)
-- ⚪ **Hinweistexte (`HINTS`) pflegen:** Die Tipps greifen über Textmuster im Fehlertext. Fehler künftig als eigene Exception-Klassen mit Code statt Textsuche modellieren. (M)
 
 ## 4. Dashboard
 
@@ -133,6 +129,10 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 |-------|-----------|
 | HTML-Mail abgesichert | Tests für feindliche Inhalte (`<script>`, Attribute, Feed-Inhalte) und Sonderzeichen im Fragment-Link. `safe_link` verlinkt nur `http(s)`-URLs, `javascript:` bleibt Text |
 | Tab-/Parameter-Varianten | `merge_variants` in `check.py` fasst Einträge mit identischem Diff in derselben Gruppe in Mail und Betreff zu einem Eintrag zusammen, die weiteren URLs stehen als "Gleicher Inhalt auch unter". Snapshots und Verlauf bleiben pro URL |
+| Mail-Betreff | `subject_for`: "3 Änderungen: Voice Live, S-Bike, Drei, … (Gruppen)" statt nur der Anzahl |
+| Dashboard-Link | Jede Mail verlinkt `#changes` und pro Eintrag `#changes:<URL>`. Das Dashboard öffnet den Tab und springt zum Eintrag. Basis-URL per `DASHBOARD_URL` überschreibbar |
+| Plain-Text-Mail | Gleiche Struktur wie HTML: Zusammenfassung, Gruppen, +/−-Zähler, Sprunglink, Dashboard-Link, Varianten |
+| Fehlercodes statt Textsuche | `CheckError(message, code)` und `error_code(ex)`, `HINTS` ist ein Dict nach Code. Der Code steht auch im Status (`code`) |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
