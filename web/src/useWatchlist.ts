@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
+import { useToast } from './toast'
 import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
 
 export type Data = { runs: RunRecord[]; freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
@@ -38,6 +39,7 @@ async function load(): Promise<Load> {
 
 /** Laden der Daten und alle Aktionen mit Seiteneffekt (Prüflauf starten, Export, Import, Löschen). */
 export function useWatchlist() {
+  const notify = useToast()
   const [result, setResult] = useState<Load>({ state: 'loading' })
   const [check, setCheck] = useState<CheckState>({ state: 'idle' })
   const [baseline, setBaseline] = useState<number | null>(null)
@@ -82,7 +84,7 @@ export function useWatchlist() {
 
   const download = async (format: 'yaml' | 'json') => {
     const { data: rows, error } = await supabase.from('watchlist_urls').select('url, name, grp, options').order('position').order('id')
-    if (error) return window.alert(`Export fehlgeschlagen: ${error.message}`)
+    if (error) return notify(`Export fehlgeschlagen: ${error.message}`, { kind: 'error' })
     const blob = new Blob([exportUrls((rows ?? []) as DbUrl[], format)], { type: 'text/plain;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -94,20 +96,32 @@ export function useWatchlist() {
   const upload = async (file: File | undefined) => {
     if (!file) return
     const { data: have, error } = await supabase.from('watchlist_urls').select('url')
-    if (error) return window.alert(`Import fehlgeschlagen: ${error.message}`)
+    if (error) return notify(`Import fehlgeschlagen: ${error.message}`, { kind: 'error' })
     const parsed = parseImport(await file.text(), (have ?? []).map((r) => r.url as string))
-    const note = [`${parsed.rows.length} neu, ${parsed.skipped} schon vorhanden.`, ...parsed.errors.slice(0, 5)].join('\n')
-    if (parsed.rows.length === 0) return window.alert(`Nichts zu importieren.\n${note}`)
-    if (!window.confirm(`Importieren?\n${note}`)) return
+    const note = [`${parsed.rows.length} neu, ${parsed.skipped} schon vorhanden.`, ...parsed.errors.slice(0, 5)].join(' ')
+    if (parsed.rows.length === 0) return notify(`Nichts zu importieren. ${note}`)
     const { error: failed } = await supabase.from('watchlist_urls').insert(parsed.rows)
-    if (failed) return window.alert(`Import fehlgeschlagen: ${failed.message}`)
+    if (failed) return notify(`Import fehlgeschlagen: ${failed.message}`, { kind: 'error' })
+    const urls = parsed.rows.map((r) => r.url)
+    notify(`Importiert: ${note}`, { action: { label: 'Rückgängig', run: async () => {
+      const { error: e } = await supabase.from('watchlist_urls').delete().in('url', urls)
+      if (e) notify(`Rückgängig fehlgeschlagen: ${e.message}`, { kind: 'error' })
+      setResult(await load())
+    } } })
     setResult(await load())
   }
 
+  // Kein Bestätigungsdialog: Die Zeile wird vorher gesichert und lässt sich über „Rückgängig“ wieder anlegen.
   const remove = async (e: Entry) => {
-    if (!window.confirm(`„${e.name}“ wirklich löschen?\n${e.url}`)) return
+    const { data: saved, error: readError } = await supabase.from('watchlist_urls').select('url, name, grp, active, position, options').eq('url', e.url).maybeSingle()
+    if (readError || !saved) return notify(`Löschen fehlgeschlagen: ${readError?.message ?? 'URL nicht gefunden'}`, { kind: 'error' })
     const { error } = await supabase.from('watchlist_urls').delete().eq('url', e.url)
-    if (error) return window.alert(`Löschen fehlgeschlagen: ${error.message}`)
+    if (error) return notify(`Löschen fehlgeschlagen: ${error.message}`, { kind: 'error' })
+    notify(`„${e.name}“ gelöscht.`, { action: { label: 'Rückgängig', run: async () => {
+      const { error: restoreError } = await supabase.from('watchlist_urls').insert(saved)
+      if (restoreError) notify(`Wiederherstellen fehlgeschlagen: ${restoreError.message}`, { kind: 'error' })
+      setResult(await load())
+    } } })
     setResult(await load())
   }
 

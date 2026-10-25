@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
+import { useToast } from '../toast'
 import { DEFAULT_GROUP, GROUP_COLORS, groupChange, isHexColor, moveGroup, orderGroups, type Entry, type GroupMeta } from '../lib/watchlist'
 
 type Editing = { current: string | null; name: string; selected: Set<string> }
@@ -7,6 +8,7 @@ type Editing = { current: string | null; name: string; selected: Set<string> }
 type Props = { entries: Entry[]; metas: GroupMeta[]; groupsReady: boolean; onChanged: () => void }
 
 export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
+  const notify = useToast()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -41,12 +43,20 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
     onChanged()
   }
 
+  // Ohne Bestätigungsdialog: „Rückgängig“ stellt Zuordnung und Gruppenstil wieder her.
   const dissolve = async (name: string) => {
-    const n = entries.filter((e) => e.group === name).length
-    if (!window.confirm(`Gruppe „${name}“ auflösen? Die ${n} URLs bleiben erhalten und wandern nach „${DEFAULT_GROUP}“.`)) return
+    const urls = entries.filter((e) => e.group === name).map((e) => e.url)
+    const meta = metaOf(name)
     await apply(name, name, new Set())
     if (groupsReady) await supabase.from('watchlist_groups').delete().eq('name', name)
     onChanged()
+    notify(`Gruppe „${name}“ aufgelöst, ${urls.length} URLs liegen jetzt in „${DEFAULT_GROUP}“.`, { action: { label: 'Rückgängig', run: async () => {
+      const back = await supabase.from('watchlist_urls').update({ grp: name }).in('url', urls)
+      const metaBack = meta && groupsReady ? await supabase.from('watchlist_groups').upsert(meta) : null
+      const failed = back.error ?? metaBack?.error
+      if (failed) notify(`Rückgängig fehlgeschlagen: ${failed.message}`, { kind: 'error' })
+      onChanged()
+    } } })
   }
 
   const saveMeta = async (rows: GroupMeta[]) => {

@@ -4,7 +4,7 @@ Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunde
 
 Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, Web-Dashboard in `web/` (React, Supabase), 125 Python- und 78 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
-## Nächste Schritte (Top 6)
+## Nächste Schritte (Top 5)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
@@ -12,8 +12,7 @@ Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 | 2 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
 | 3 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
 | 4 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
-| 5 | Toasts statt `window.confirm` | Dashboard | 🟡 | S |
-| 6 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
+| 5 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
 
 ---
 
@@ -42,7 +41,6 @@ Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 ## 4. Dashboard
 
-- 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
 - ⚪ **Als gelesen markieren** im Tab „Letzte Änderungen“ mit Zähler für Ungelesenes. (M)
 - ⚪ **Accessibility:** `aria-label` für Filter, Tastaturbedienung der Diffs, Status nicht nur über Farbe, Fokusreihenfolge im Formular. (S)
 - ⚪ **PWA/Installierbar** mit Offline-Cache der letzten Daten. (M)
