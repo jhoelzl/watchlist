@@ -93,7 +93,12 @@ def record_run(
 
 
 def plan_jobs(
-    store: Store, entries: list[Options], old_status: dict[str, UrlStatus], http_cache: dict[str, Validators], now: datetime
+    store: Store,
+    entries: list[Options],
+    old_status: dict[str, UrlStatus],
+    http_cache: dict[str, Validators],
+    now: datetime,
+    force: bool = False,
 ) -> list[tuple[Options, Validators]]:
     """Welche URLs in diesem Lauf abgerufen werden (gültige Konfiguration, Intervall erreicht) und mit welchen Validatoren."""
     jobs: list[tuple[Options, Validators]] = []
@@ -104,7 +109,7 @@ def plan_jobs(
         url = opts["url"]
         cached = http_cache.get(url, {})
         snap_exists = url_key(url) in snapshot_keys
-        if not is_due(opts, old_status.get(url, {}), now, snap_exists):
+        if not force and not is_due(opts, old_status.get(url, {}), now, snap_exists):
             continue
         jobs.append((opts, cached if snap_exists and cached.get("config") == config_hash(opts) else {}))
     return jobs
@@ -122,9 +127,18 @@ def _run(store: Store) -> bool:
     history = store.history(SETTINGS.max_history)
     new_history: list[HistoryEntry] = []
     meta = store.doc("meta", {})
+    known: set[str] = set()
+    only = os.environ.get("WATCHLIST_ONLY_URL", "").strip()  # Einzelprüfung aus dem Dashboard
+    if only:
+        known = {e["url"] for e in entries}
+        entries = [e for e in entries if e["url"] == only]
+        if not entries:
+            print(f"[FEHLER]    URL nicht in der Konfiguration: {only}")
+            return False
 
     print(f"Prüfe {len(entries)} URL(s)...")
-    fetched = fetch_all(plan_jobs(store, entries, st.old_status, st.http_cache, now))
+    jobs = plan_jobs(store, entries, st.old_status, st.http_cache, now, force=bool(only))
+    fetched = fetch_all(jobs)
     for opts in entries:
         apply_result(store, st, opts["url"], check_url(store, st, opts, fetched))
 
@@ -133,16 +147,23 @@ def _run(store: Store) -> bool:
     ok &= send_problem_mail(store, st)
 
     history = history[-SETTINGS.max_history :]
-    try:
-        send_heartbeat(now, entries, st.status, history, meta)
-    except Exception as ex:
-        ok = False
-        print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
+    if only:  # Zustand der übrigen URLs bleibt unverändert; kein Lebenszeichen, kein Eintrag in der Laufhistorie
+        st.status = {**{u: s for u, s in st.old_status.items() if u in known and u != only}, **st.status}
+        st.new_cache = {**{u: c for u, c in st.http_cache.items() if u != only}, **st.new_cache}
+    else:
+        try:
+            send_heartbeat(now, entries, st.status, history, meta)
+        except Exception as ex:
+            ok = False
+            print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
     store.set_doc("status", st.status)
     store.add_history(new_history, SETTINGS.max_history)
     store.set_doc("meta", meta)
     store.set_doc("http", st.new_cache)
-    store.set_doc("runs", record_run(store.doc("runs", []), st.stamp, time.monotonic() - started, st.status, len(st.changes), ok))
+    if not only:
+        store.set_doc(
+            "runs", record_run(store.doc("runs", []), st.stamp, time.monotonic() - started, st.status, len(st.changes), ok)
+        )
     bad = sum(1 for s in st.status.values() if s["status"] in ("error", "warn"))
     print(f"{len(entries)} geprüft, {len(st.changes)} geändert, {bad} mit Problemen")
     return ok

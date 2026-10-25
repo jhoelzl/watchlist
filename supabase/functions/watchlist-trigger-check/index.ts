@@ -60,7 +60,13 @@ Deno.serve(async (req) => {
   if (last && Date.now() - new Date(last.created_at).getTime() < MIN_INTERVAL_MS) {
     return reply({ error: "Zu viele Starts: höchstens ein Lauf pro Minute." }, 429);
   }
-  const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
+  // Optional: nur eine URL prüfen. Sie muss in der Konfiguration stehen (RLS: nur für freigeschaltete Konten lesbar).
+  const only = typeof body?.url === "string" ? body.url : "";
+  if (only) {
+    const { data: row } = await supabase.from("watchlist_urls").select("url").eq("url", only).maybeSingle();
+    if (!row) return reply({ error: "URL nicht gefunden." }, 404);
+  }
+  const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main", ...(only ? { inputs: { url: only } } : {}) }) });
   if (res.status !== 204) return reply({ error: `GitHub antwortet mit ${res.status}.` }, 502);
   return reply({ status: "started", baseline: last?.id ?? 0 });
 });

@@ -623,3 +623,36 @@ def test_run_skips_url_not_yet_due(env, monkeypatch):
     status = json.loads((tmp / "state" / "status.json").read_text())
     assert status["https://b"]["status"] == "new"
     assert status["https://b"]["checked"]
+
+
+def test_run_single_url_only_touches_that_url(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n  - url: https://b\n    interval: weekly\n")
+    calls = []
+
+    def fake_fetch(url, opts, cond=None):
+        calls.append(url)
+        return "T", f"text {len(calls)}", False, {}
+
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
+    assert check.run() is True
+    status_file = tmp / "state" / "status.json"
+    before = json.loads(status_file.read_text())
+    runs_before = json.loads((tmp / "state" / "runs.json").read_text()) if (tmp / "state" / "runs.json").exists() else None
+
+    calls.clear()
+    monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://b")  # interval weekly: wird trotzdem geprüft
+    assert check.run() is True
+    assert calls == ["https://b"]
+    after = json.loads(status_file.read_text())
+    assert after["https://a"] == before["https://a"]
+    assert set(after) == {"https://a", "https://b"}
+    if runs_before is not None:
+        assert json.loads((tmp / "state" / "runs.json").read_text()) == runs_before
+
+
+def test_run_single_url_unknown_fails(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n")
+    monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://nope")
+    assert check.run() is False

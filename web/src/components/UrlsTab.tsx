@@ -44,11 +44,13 @@ type Props = {
   adding: boolean
   setAdding: (open: boolean) => void
   onShowHistory: (url: string) => void
+  onCheckUrl: (url: string) => void
+  checkBusy: boolean
   onReload: () => void
   onRemove: (entry: Entry) => void
 }
 
-export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onReload, onRemove }: Props) {
+export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, checkBusy, onReload, onRemove }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const total = data.entries.length
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
@@ -109,6 +111,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
                 <td>{e.changed || '-'}</td>
                 <td><Spark times={data.freq[e.url] ?? []} /></td>
                 <td className="row-actions">
+                  <button className="icon-btn" title="Nur diese Seite jetzt prüfen" aria-label={`${e.name} jetzt prüfen`} disabled={checkBusy} onClick={() => onCheckUrl(e.url)}>↻</button>
                   <button className="icon-btn" title="Verlauf dieser Seite" aria-label={`Verlauf von ${e.name}`} onClick={() => onShowHistory(e.url)}>⏱</button>
                   <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}><span className="flip">✎</span></button>
                   <button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => onRemove(e)}>×</button>
