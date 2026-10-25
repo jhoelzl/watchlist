@@ -73,15 +73,17 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
     <span className="muted count-text">{count} von {total}</span>
   </div>
   <div className="composer-list">
-    {shown.map(([name, items]) => (
+    {shown.map(([name, items]) => {
+      const problems = items.filter((e) => e.status === 'error' || e.status === 'warn').length
+      return (
       <section className="composer-section" key={name} style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}` } : undefined}>
         <button className="section-heading" aria-expanded={!collapsed.has(name)} onClick={() => toggle(name)}>
           <h3>
             <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span>{metaOf(name)?.icon && <span className="group-icon">{metaOf(name)?.icon}</span>}{name}<span className="count">{items.length}</span>
           </h3>
           <span className="group-stats">
-            {items.some((e) => e.status === 'error' || e.status === 'warn') && (
-              <span className="badge error">{items.filter((e) => e.status === 'error' || e.status === 'warn').length} Probleme</span>
+            {problems > 0 && (
+              <span className="badge error">{problems} {problems === 1 ? 'Problem' : 'Probleme'}</span>
             )}
             {items.some((e) => e.status === 'new') && <span className="badge new">{items.filter((e) => e.status === 'new').length} neu</span>}
             {items.some((e) => e.status === 'pending') && <span className="muted">{items.filter((e) => e.status === 'pending').length} offen</span>}
@@ -125,7 +127,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
           </tbody>
         </table>}
       </section>
-    ))}
+    )})}
   </div>
     </>
   )
