@@ -8,7 +8,7 @@ Voraussetzungen: [uv](https://docs.astral.sh/uv/) (Python 3.12) und Node.js für
 
 ```
 uv sync                               # Python-Abhängigkeiten
-uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei web/-Änderungen oxlint und tsc
+uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei web/-Änderungen oxlint und tsc; sperrt außerdem Commits und Pushes auf main
 cd web && npm ci                      # Abhängigkeiten des Dashboards
 ```
 
@@ -35,6 +35,21 @@ cd web && npx tsc -b && npm run lint && npm test
 - Was es in Python und TypeScript doppelt gibt (`annotate_diff`/`annotateDiff`, `fragment_url`/`fragmentUrl`, `diff_counts`/`countLines`, `group_of`/`groupOf`), prüfen beide Seiten gegen `fixtures/shared_cases.json` (`tests/test_shared_cases.py`, `web/src/lib/shared.test.ts`). Neuer Fall: in die JSON-Datei eintragen, beide Tests müssen grün bleiben.
 - Neue Funktionen und Fehlerfälle bekommen einen Test. Netzwerk und Mails werden in Tests gemockt.
 - `uv run pre-commit run --all-files` führt alle Hooks von Hand aus. CI (`tests.yml`) prüft dasselbe plus `uv audit` und `npm audit`.
+
+## Workflow
+
+`main` ist geschützt: Direkte Pushes sind für alle gesperrt (auch für Admins), Änderungen laufen immer über Branch und Pull Request. Gemergt wird erst, wenn die Status-Checks `pytest`, `web` und `gitleaks` grün sind (Squash-Merge, der Branch wird danach gelöscht).
+
+```bash
+git switch -c feat/kurzname
+# ... ändern, committen ...
+git push -u origin HEAD
+gh pr create --fill
+gh pr merge --squash --auto      # merged automatisch, sobald die Checks grün sind
+git switch main && git pull
+```
+
+Lokal sperrt der `pre-commit`-/`pre-push`-Hook (`no-commit-to-branch`) Commits und Pushes auf `main`.
 
 ## Stil
 
