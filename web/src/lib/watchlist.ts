@@ -68,7 +68,7 @@ export function matches(
 export function groupEntries(entries: Entry[]): [string, Entry[]][] {
   const groups = new Map<string, Entry[]>()
   for (const e of entries) groups.set(e.group, [...(groups.get(e.group) ?? []), e])
-  return [...groups]
+  return [...groups].sort(([a], [b]) => a.localeCompare(b, 'de', { sensitivity: 'base' }))
 }
 
 export function diffClass(line: string): 'add' | 'del' | '' {

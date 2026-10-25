@@ -35,9 +35,9 @@ describe('watchlist helpers', () => {
     expect(matches({ url: 'https://a', group: 'G' }, '', '', 'error')).toBe(true)
   })
 
-  it('groups entries in order of appearance', () => {
+  it('groups entries sorted ascending by name', () => {
     const groups = groupEntries([entry({ group: 'B' }), entry({ group: 'A', url: 'x' }), entry({ group: 'B', url: 'y' })])
-    expect(groups.map(([g, items]) => [g, items.length])).toEqual([['B', 2], ['A', 1]])
+    expect(groups.map(([g, items]) => [g, items.length])).toEqual([['A', 1], ['B', 2]])
   })
 
   it('classifies diff lines', () => {
