@@ -215,7 +215,7 @@ describe('view hash', () => {
     expect(buildHash(parseView(''))).toBe('')
   })
   it('invalid values and old mail format', () => {
-    expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('urls')
+    expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('changes')
     expect(parseView('#s=zzz').status).toBe('')
     expect(parseView('#changes:https%3A%2F%2Fa.de').tab).toBe('changes')
   })
@@ -342,7 +342,7 @@ describe('pickView', () => {
   it('the hash takes precedence, otherwise the stored view', () => {
     expect(pickView('#t=changes', stored).tab).toBe('changes')
     expect(pickView('', stored).tab).toBe('groups')
-    expect(pickView('', null).tab).toBe('urls')
+    expect(pickView('', null).tab).toBe('changes')
   })
 })
 
