@@ -3,7 +3,7 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -179,6 +179,8 @@ export function Dashboard() {
   const [period, setPeriod] = useState<Period>('')
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
+  const [pageUrl, setPageUrl] = useState<string | null>(null)
+  const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(() => (window.location.hash.startsWith('#changes') ? 'changes' : 'urls'))
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
@@ -189,9 +191,22 @@ export function Dashboard() {
     () => groupEntries((data?.entries ?? []).filter((e) => matches({ ...e, text: e.error }, query, group, status))),
     [data, query, group, status],
   )
+  // Verlauf einer einzelnen Seite: komplett aus der Datenbank statt nur aus den letzten 100 insgesamt
+  useEffect(() => {
+    if (!pageUrl) return setPageHistory(null)
+    let stale = false
+    setPageHistory(null)
+    void supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').eq('url', pageUrl).order('id', { ascending: false }).limit(PAGE_HISTORY_LIMIT)
+      .then(({ data: rows, error }) => { if (!stale) setPageHistory(error ? { error: error.message } : ((rows ?? []) as Change[])) })
+    return () => { stale = true }
+  }, [pageUrl])
+  const source = pageUrl ? (Array.isArray(pageHistory) ? pageHistory : []) : (data?.changes ?? [])
+  const pageName = pageUrl ? (data?.entries.find((e) => e.url === pageUrl)?.name ?? pageUrl) : ''
+  const showHistory = (url: string) => { setPageUrl(url); setPeriod(''); setQuery(''); setGroup(''); setTab('changes') }
+
   const changes = useMemo(
-    () => (data?.changes ?? []).filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '') && inPeriod(c.time, period)),
-    [data, query, group, period],
+    () => source.filter((c) => matches({ name: c.name, url: c.url, text: c.diff, group: groupOf(c.grp) }, query, group, '') && inPeriod(c.time, period)),
+    [source, query, group, period],
   )
   const days = useMemo(() => groupByDay(changes), [changes])
 
@@ -343,6 +358,7 @@ export function Dashboard() {
                     <td>{e.checked || '-'}</td>
                     <td>{e.changed || '-'}</td>
                     <td className="row-actions">
+                      <button className="icon-btn" title="Verlauf dieser Seite" aria-label={`Verlauf von ${e.name}`} onClick={() => showHistory(e.url)}>⏱</button>
                       <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}>✎</button>
                       <button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => void remove(e)}>×</button>
                     </td>
@@ -361,13 +377,21 @@ export function Dashboard() {
       )}
       {tab === 'changes' && (
         <>
+      {pageUrl && (
+        <div className="page-filter">
+          <span>Verlauf von <strong>{pageName}</strong></span>
+          <button className="btn" onClick={() => setPageUrl(null)}>Alle Seiten anzeigen</button>
+        </div>
+      )}
+      {pageUrl && !pageHistory && <p className="muted">Lade Verlauf …</p>}
+      {pageUrl && pageHistory && !Array.isArray(pageHistory) && <p className="error">Verlauf konnte nicht geladen werden: {pageHistory.error}</p>}
       <div className="filter-bar">
         {PERIODS.map(([value, label]) => (
           <button key={value} className={`filter-pill${period === value ? ' active' : ''}`} onClick={() => setPeriod(value)}>{label}</button>
         ))}
-        <span className="muted count-text">{changes.length} von {data?.changes.length ?? 0}</span>
+        <span className="muted count-text">{changes.length} von {source.length}</span>
       </div>
-      {changes.length === 0 && <p className="muted">{data?.changes.length ? 'Keine Treffer.' : 'Noch keine Änderungen erkannt.'}</p>}
+      {changes.length === 0 && <p className="muted">{source.length ? 'Keine Treffer.' : pageUrl ? 'Für diese Seite wurde noch keine Änderung erkannt.' : 'Noch keine Änderungen erkannt.'}</p>}
       {days.map(([day, items]) => (
         <section key={day}>
           <h3 className="day-heading">{dayLabel(day)}<span className="count">{items.length}</span></h3>

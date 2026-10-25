@@ -303,3 +303,6 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .edit-title { flex: 1 1 100%; margin: 0; overflow-wrap: anywhere; }
 .edit-panel textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--border, #d8dee4); border-radius: 8px; resize: vertical; }
 .badge.paused { background: #eaeef2; color: #57606a; }
+
+/* Verlauf pro Seite */
+.page-filter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; padding: 10px 14px; border-radius: 10px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }

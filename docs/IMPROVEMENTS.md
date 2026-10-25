@@ -48,7 +48,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 ## 4. Dashboard
 
 - 🟡 **Fehlerserie anzeigen:** `streak` liegt im Status und ist im Typ vorhanden, wird aber nicht angezeigt. Dauerhaft kaputte Seiten hervorheben, Filter „Dauerhaft kaputt“. (S)
-- 🟡 **Verlauf pro Seite:** Klick auf eine Seite zeigt nur deren Änderungen. Derzeit nur die letzten 100 global. (M)
 - 🟡 **Sortierung:** Spalten sortierbar (zuletzt geändert, zuletzt geprüft, Status). Gruppen sind bereits alphabetisch. (S)
 - 🟡 **Filterzustand in der URL** (`#g=Azure&s=problem&t=changes`), damit Ansichten teilbar sind und beim Neuladen bleiben. (S)
 - 🟡 **Gruppen-Tab erweitern:** Reihenfolge der Gruppen, Farbe/Icon pro Gruppe, Sammelaktionen (alle URLs einer Gruppe pausieren). Heute ist eine Gruppe nur ein Textfeld an den URLs, leere Gruppen gibt es nicht. (M)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Textfragment-Link | `fragment_url`/`fragmentUrl`: bei Feeds der Eintragslink, sonst die hinzugefügte Zeile mit dem längsten schlichten Textanfang (ohne Sonderzeichen), Fallback die längste |
 | Import/Export | Menü „Import / Export“ im Dashboard: Export als YAML oder JSON im `urls.yml`-Format, Import (auch alte `urls.yml`) mit Vorschau, vorhandene URLs werden übersprungen. Globale `defaults` sind nicht enthalten |
 | URLs bearbeiten und pausieren | Stift-Button pro URL öffnet ein Formular: Name, Gruppe, Selector (mit Vorschau), JS, `ignore` (Regex pro Zeile, geprüft), `only_added` und Pausieren (`active = false`, Status „Pausiert“, eigener Filter). Unbekannte Optionen bleiben erhalten. Braucht die Policy `admins update urls` |
+| Verlauf pro Seite | Uhr-Button (⏱) in der URL-Tabelle öffnet „Letzte Änderungen“ gefiltert auf diese Seite. Die Änderungen kommen komplett aus `watchlist_history` (bis 500), nicht nur aus den letzten 100 insgesamt |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

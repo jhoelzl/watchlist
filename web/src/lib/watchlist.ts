@@ -176,6 +176,7 @@ export function countLines(diff: string, sign: '+' | '-'): number {
 }
 
 export const HISTORY_LIMIT = 100
+export const PAGE_HISTORY_LIMIT = 500
 
 export type Period = '' | 'today' | '7d' | '30d'
 
