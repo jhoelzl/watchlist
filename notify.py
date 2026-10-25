@@ -198,6 +198,10 @@ HINTS = {
     "selector": (
         "Der Selector passt nicht mehr (Seite umgebaut?) oder die Inhalte kommen per JavaScript: Selector prüfen oder 'js: true'."
     ),
+    "ignore_timeout": (
+        "Eine ignore-Regex wird bei dieser Seite extrem langsam (Backtracking): "
+        "Muster vereinfachen, z. B. ohne verschachtelte Quantifizierer."
+    ),
     "content": HINT_CONTENT + " Mit 'min_ratio' lässt sich der Textwächter anpassen.",
     "http_403": "Der Server blockt den Abruf (Bot-Schutz?): 'js: true' probieren.",
     "http_401": "Die Seite verlangt eine Anmeldung und ist so nicht überwachbar.",

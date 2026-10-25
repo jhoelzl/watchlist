@@ -20,10 +20,8 @@ Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 ## 1. Security
 
 - 🔴 **Rechte im Dashboard prüfen:** Das Supabase-Projekt ist mit anderen Apps geteilt und hat offene Registrierung. Der Zugriff hängt allein an `watchlist_admins` und den RLS-Policies. Policies (insert/update/delete) per SQL-Skript regelmäßig verifizieren, z. B. mit einem zweiten, nicht freigeschalteten Konto. (S)
-- 🟡 **ReDoS nur heuristisch abgefangen:** `config_errors` erkennt verschachtelte Quantifizierer und zu lange Muster, einen echten Timeout gibt es mit `re` nicht. Option: Bibliothek `regex` mit `timeout=`. Relevant, sobald `ignore`-Muster aus dem Dashboard kommen. (M)
 - ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
-- ⚪ **Branch Protection für `main`** (Pull Requests, Status-Check `tests`). Kollidiert mit der Regel „direkt auf `main` pushen“ in `.github/copilot-instructions.md`. (S)
 - ⚪ **Key-Rotation dokumentieren:** Alle Secrets liegen im 1Password-Tresor `watchlist` (in GitHub bleibt nur `OP_SERVICE_ACCOUNT_TOKEN`). Offen: wie man Service-Account-Token, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` und `GH_DISPATCH_TOKEN` (liegt als Supabase-Secret, nicht in 1Password) erneuert, mit Ablaufdatum des Tokens. (S)
 
 ## 2. Features

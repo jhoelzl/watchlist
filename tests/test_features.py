@@ -12,6 +12,7 @@ import diffing
 import errors
 import fetch
 import notify
+import parse
 from settings import SETTINGS
 
 
@@ -656,3 +657,11 @@ def test_run_single_url_unknown_fails(env, monkeypatch):
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n")
     monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://nope")
     assert check.run() is False
+
+
+def test_slow_ignore_regex_times_out(monkeypatch):
+    monkeypatch.setattr(parse, "IGNORE_TIMEOUT", 0.2)
+    body = "<html><body><main>" + "a" * 40 + "!</main></body></html>"
+    with pytest.raises(errors.CheckError) as ex:
+        parse.extract(body, {"ignore": [r"(a|aa)+$"]})
+    assert ex.value.code == "ignore_timeout"
