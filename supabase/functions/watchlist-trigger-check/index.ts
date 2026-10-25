@@ -4,15 +4,23 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const REPO = "jhoelzl/watchlist";
 const WORKFLOW = "check.yml";
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const ALLOWED_ORIGINS = ["https://jhoelzl.github.io", "http://localhost:5173"];
+const corsFor = (req: Request) => {
+  const origin = req.headers.get("Origin") ?? "";
+  return {
+    ...(ALLOWED_ORIGINS.includes(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    Vary: "Origin",
+  };
 };
-
-const reply = (body: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+const MIN_INTERVAL_MS = 60_000; // höchstens ein Start pro Minute
 
 Deno.serve(async (req) => {
+  const CORS = corsFor(req);
+  const reply = (body: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+  const origin = req.headers.get("Origin");
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) return reply({ error: "Herkunft nicht erlaubt." }, 403);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return reply({ error: "Nur POST erlaubt." }, 405);
 
@@ -48,6 +56,9 @@ Deno.serve(async (req) => {
 
   if (last && ["queued", "in_progress", "waiting", "requested", "pending"].includes(last.status)) {
     return reply({ status: "running", baseline: last.id - 1, run });
+  }
+  if (last && Date.now() - new Date(last.created_at).getTime() < MIN_INTERVAL_MS) {
+    return reply({ error: "Zu viele Starts: höchstens ein Lauf pro Minute." }, 429);
   }
   const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
   if (res.status !== 204) return reply({ error: `GitHub antwortet mit ${res.status}.` }, 502);

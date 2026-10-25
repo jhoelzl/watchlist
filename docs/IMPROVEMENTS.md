@@ -22,7 +22,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 ## 1. Security
 
 - 🔴 **Rechte im Dashboard prüfen:** Das Supabase-Projekt ist mit anderen Apps geteilt und hat offene Registrierung. Der Zugriff hängt allein an `watchlist_admins` und den RLS-Policies. Policies (insert/update/delete) per SQL-Skript regelmäßig verifizieren, z. B. mit einem zweiten, nicht freigeschalteten Konto. (S)
-- 🟡 **Edge Function absichern:** `watchlist-trigger-check` läuft mit `--no-verify-jwt` und prüft Login und Admin selbst. Rate-Limit (z. B. höchstens ein Start pro Minute) und CORS auf `https://jhoelzl.github.io` einschränken. (S)
 - 🟡 **ReDoS nur heuristisch abgefangen:** `config_errors` erkennt verschachtelte Quantifizierer und zu lange Muster, einen echten Timeout gibt es mit `re` nicht. Option: Bibliothek `regex` mit `timeout=`. Relevant, sobald `ignore`-Muster aus dem Dashboard kommen. (M)
 - ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Statisches `dashboard.py` entfernt | `check.py` erzeugt kein `site/index.html` mehr, das Web-Dashboard ersetzt es vollständig. Tests, Hooks, CI und Docs angepasst |
 | Retry mit Jitter, dauerhafte Fehler | Wartezeit zwischen Wiederholungen bekommt bis zu 25 % Zufall. 404/410 werden sofort als „dauerhafter Fehler“ gemeldet (kein Retry) und lösen die Warn-Mail schon nach 2 statt 3 Läufen aus |
 | CONTRIBUTING.md | Setup, Tests, Stil, Daten und Doku-Pflege in `CONTRIBUTING.md`, in der README verlinkt |
+| Edge Functions abgesichert | `watchlist-trigger-check` und `watchlist-preview` erlauben CORS nur für `https://jhoelzl.github.io` (und `localhost:5173` für die Entwicklung), fremde Origins bekommen 403. Der Start einer Prüfung ist auf einen pro Minute begrenzt (429) |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
