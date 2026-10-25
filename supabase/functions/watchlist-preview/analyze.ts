@@ -1,4 +1,4 @@
-// Spiegelt auto_root/parse_html aus check.py: gleiche Kandidaten und Schwelle.
+// Mirrors auto_root/parse_html from check.py: same candidates and threshold.
 export const CANDIDATES = ["main", "article", "[role=main]", "#main-content", "#content"];
 export const MIN_SHARE = 0.2;
 
@@ -47,7 +47,7 @@ export function analyze(doc: Doc, selector: string): Preview {
     try {
       node = doc.querySelector(sel);
     } catch {
-      /* ungültiger Selector zählt als nicht gefunden */
+      /* An invalid selector counts as not found. */
     }
     return node
       ? { ...base, mode: "selector", selector: sel, found: true, chars: text(node).length, sample: text(node).slice(0, 300) }

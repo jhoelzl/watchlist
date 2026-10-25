@@ -1,89 +1,88 @@
-# Verbesserungsideen
+# Improvement ideas
 
-Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
+Open improvements by area. Effort: **S** (< 1 h), **M** (a few hours), **L** (days). Priority: 🔴 high, 🟡 medium, ⚪ low.
 
-Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, Web-Dashboard in `web/` (React, Supabase), 125 Python- und 78 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Current state: `check.py` 356 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 125 Python and 78 web tests. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
 
-## Nächste Schritte (Top 5)
+## Next steps (Top 5)
 
-| # | Idee | Bereich | Prio | Aufwand |
-|---|------|---------|------|---------|
-| 1 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
-| 2 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
-| 3 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
-| 4 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
-| 5 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
+| # | Idea | Area | Priority | Effort |
+|---|------|------|----------|--------|
+| 1 | More channels (ntfy/Slack/Teams) and digest mode | Features | 🟡 | M |
+| 2 | Tests for `RestStore`, `add.py`, Edge Functions, and web components | Quality | 🟡 | M |
+| 3 | `timeout-minutes` and workflow-failure alert for `check.yml` | Operations | 🟡 | S |
+| 4 | Database backup (weekly export as an artifact) | Operations | 🟡 | S |
+| 5 | Verify dashboard permissions with a second account | Security | 🔴 | S |
 
 ---
 
 ## 1. Security
 
-- 🔴 **Rechte im Dashboard prüfen:** Das Supabase-Projekt ist mit anderen Apps geteilt und hat offene Registrierung. Der Zugriff hängt allein an `watchlist_admins` und den RLS-Policies. Policies (insert/update/delete) per SQL-Skript regelmäßig verifizieren, z. B. mit einem zweiten, nicht freigeschalteten Konto. (S)
-- ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
-- ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
-- ⚪ **Key-Rotation dokumentieren:** Alle Secrets liegen im 1Password-Tresor `watchlist` (in GitHub bleibt nur `OP_SERVICE_ACCOUNT_TOKEN`). Offen: wie man Service-Account-Token, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` und `GH_DISPATCH_TOKEN` (liegt als Supabase-Secret, nicht in 1Password) erneuert, mit Ablaufdatum des Tokens. (S)
+- 🔴 **Verify dashboard permissions:** The Supabase project is shared with other apps and has open registration. Access depends solely on `watchlist_admins` and the RLS policies. Regularly verify policies (insert/update/delete) with a SQL script, for example using a second account that is not authorized. (S)
+- ⚪ **Redirect/schema validation:** Allow only `http`/`https` and check redirect targets because URLs can be entered in the dashboard (SSRF to internal addresses is rarely relevant on GitHub runners, but can matter locally). (S)
+- ⚪ **Resend error text** (`r.text`) is written to the log. Ensure headers or keys are never exposed there. (S)
+- ⚪ **Document key rotation:** All secrets are in the `watchlist` 1Password vault (only `OP_SERVICE_ACCOUNT_TOKEN` remains in GitHub). Open item: how to renew the service-account token, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, and `GH_DISPATCH_TOKEN` (stored as a Supabase secret, not in 1Password), including the token expiration date. (S)
 
 ## 2. Features
 
-- 🟡 **Weitere Kanäle:** ntfy.sh (einfachster Weg für Push aufs Handy), Slack/Teams/Discord-Webhook, Telegram. Konfigurierbar über Secrets und `options`, auch pro Gruppe. (M)
-- 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
-- 🟡 **Keyword-/Regex-Trigger:** `notify_if: 'Salzburg|Python'` löst die Mail nur aus, wenn neue Zeilen passen (Jobs, Events). Im Dashboard als Feld im Formular. (S)
-- 🟡 **Empfänger pro Gruppe:** `MAIL_TO` pro Gruppe überschreibbar. (S)
-- ⚪ **JSON- und PDF-Quellen** unterstützen (JSON-Pfad, PDF-Text). (L)
-- ⚪ **Screenshots bei JS-Seiten** als Artefakt, hilft bei Layout-Problemen. (M)
-- ⚪ **Auth-Support** (Header/Cookies über Secrets) für geschützte Seiten. (M)
-- ⚪ **`add.py` verbessern:** mehrere URLs auf einmal (`-f liste.txt`), Duplikatserkennung über normalisierte URL, Vorschlag für `ignore`. (S)
+- 🟡 **More channels:** ntfy.sh (the simplest way to send push notifications to a phone), Slack/Teams/Discord webhook, Telegram. Configurable through secrets and `options`, including per group. (M)
+- 🟡 **Digest mode:** Optional daily summary instead of immediate email, per group or URL (`notify: daily|immediate`). (M)
+- 🟡 **Keyword/regex trigger:** `notify_if: 'Salzburg|Python'` sends the email only when new lines match (jobs, events). Add a field to the dashboard form. (S)
+- 🟡 **Recipients per group:** Allow `MAIL_TO` to be overridden per group. (S)
+- ⚪ **Support JSON and PDF sources** (JSON path, PDF text). (L)
+- ⚪ **Screenshots for JS pages** as artifacts, to help with layout issues. (M)
+- ⚪ **Authentication support** (headers/cookies through secrets) for protected pages. (M)
+- ⚪ **Improve `add.py`:** add multiple URLs at once (`-f list.txt`), detect duplicates using normalized URLs, suggest `ignore` patterns. (S)
 
-## 3. UX / UI (Mails und CLI)
+## 3. UX / UI (email and CLI)
 
-- Aktuell keine offenen Punkte.
-
+- No open items at the moment.
 
 ## 4. Dashboard
 
-- ⚪ **Als gelesen markieren** im Tab „Letzte Änderungen“ mit Zähler für Ungelesenes. (M)
-- ⚪ **Accessibility:** `aria-label` für Filter, Tastaturbedienung der Diffs, Status nicht nur über Farbe, Fokusreihenfolge im Formular. (S)
-- ⚪ **PWA/Installierbar** mit Offline-Cache der letzten Daten. (M)
+- ⚪ **Mark as read** in the “Recent changes” tab, with an unread counter. (M)
+- ⚪ **Accessibility:** `aria-label` for filters, keyboard navigation for diffs, status not conveyed by color alone, form focus order. (S)
+- ⚪ **Installable PWA** with an offline cache of recent data. (M)
 
 ## 5. Refactoring
 
-- ⚪ **Konfigurationsschema** mit klaren Fehlern bei Tippfehlern (`selektor:`), unbekannten Optionen und falschen Typen, auch beim Speichern im Dashboard. (M)
-- ⚪ **Logging** statt `print` (GitHub-Actions-Gruppen `::group::` und `::warning::`-Annotationen). (S)
-- ⚪ **Paketstruktur** (`src/watchlist/`, Entry-Points `watchlist check|add`). (M)
+- ⚪ **Configuration schema** with clear errors for typos (`selektor:`), unknown options, and incorrect types, including when saving in the dashboard. (M)
+- ⚪ **Logging** instead of `print` (GitHub Actions groups `::group::` and `::warning::` annotations). (S)
+- ⚪ **Package structure** (`src/watchlist/`, entry points `watchlist check|add`). (M)
 
-## 6. Zuverlässigkeit und Betrieb
+## 6. Reliability and operations
 
-- 🟡 **`timeout-minutes`** für den Job `check` setzen, damit ein hängender Playwright-Lauf nicht Stunden blockiert (derzeit nicht gesetzt). (S)
-- 🟡 **Seiten, die GitHub-Runner blockieren:** `buch.stadt-salzburg.at` antwortet nur von privaten IPs (ConnectTimeout bzw. `goto`-Timeout auf dem Runner). Optionen: Self-hosted Runner, Proxy oder lokaler launchd-Job. Bisher aus der Liste entfernt. (M)
-- ⚪ **Seiten mit A/B-Varianten:** `deepl.com/en/pro` liefert bei jedem Abruf zufällig eine von zwei Textvarianten, es gibt dauernd Änderungsmails (URL pausiert). Idee: Erkennen, wenn Snapshot ständig zwischen zwei Zuständen wechselt, und im Dashboard warnen oder automatisch pausieren. (M)
-- 🟡 **Laufdauer beobachten:** 52 URLs, viele auf `learn.microsoft.com` (`MAX_PER_HOST = 2`). Nach einigen Läufen Dauer prüfen, ggf. Limit oder Pause pro Host justieren. (S)
-- 🟡 **Benachrichtigung bei Workflow-Ausfall:** Scheitert `check.yml` selbst (Supabase down, Secret fehlt), kommt keine Mail. Zweiter Job mit `if: failure()` oder Überwachung „kein Lauf seit 36 h“. (S)
-- 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
-- ⚪ **Parser-Version im State:** Ändert sich `clean`/`parse_html`/`auto_root`, erscheinen alle Seiten als geändert. Mit `parser_version` still neu baselinen. (M)
+- 🟡 **Set `timeout-minutes`** for the `check` job so a stuck Playwright run cannot block for hours (currently unset). (S)
+- 🟡 **Pages that block GitHub runners:** `buch.stadt-salzburg.at` responds only from private IPs (ConnectTimeout or `goto` timeout on the runner). Options: self-hosted runner, proxy, or local launchd job. It has been removed from the list for now. (M)
+- ⚪ **Pages with A/B variants:** `deepl.com/en/pro` randomly returns one of two text variants on every fetch, causing repeated change emails (URL paused). Idea: detect when snapshots keep switching between two states and warn in the dashboard or pause automatically. (M)
+- 🟡 **Monitor run duration:** 52 URLs, many on `learn.microsoft.com` (`MAX_PER_HOST = 2`). After a few runs, review duration and adjust the limit or per-host delay if needed. (S)
+- 🟡 **Workflow-failure notification:** If `check.yml` itself fails (Supabase down, missing secret), no email is sent. Add a second job with `if: failure()` or monitor “no run in 36 h”. (S)
+- 🟡 **Database backup:** Regularly export `watchlist_urls` and `watchlist_history` (for example, as a weekly artifact). The Supabase project is shared. (S)
+- ⚪ **Parser version in state:** Changes to `clean`/`parse_html`/`auto_root` make every page appear changed. Quietly establish a new baseline with `parser_version`. (M)
 
-## 7. Tests und Qualität
+## 7. Tests and quality
 
-- 🟡 **Web-Komponenten testen** (Testing Library): Tabs, Filter, Gruppen-Formular, Fehlermeldung bei „Jetzt prüfen“, mit gemocktem Supabase-Client. Bisher sind nur die reinen Helfer getestet. (M)
-- 🟡 **`RestStore` testen:** Gegen einen HTTP-Mock (PostgREST-Antworten), inklusive Fehlern. `PgStore` hat Tests (Python 3.12 und `pgserver`), `RestStore` nicht. (M)
-- 🟡 **Tests für den `add.py`-Ablauf:** `main` mit gemocktem `fetch_body`, `--feed`, `-y`, Duplikate, robots-Sperre. (M)
-- 🟡 **Integrationstest** mit lokalem HTTP-Server für 304, 429/5xx-Retry, Redirects und Zeichensatz. (M)
-- 🟡 **Edge Functions testen** (Deno-Test, `watchlist-trigger-check` und `watchlist-preview`) für 401, 403, 429, „Lauf aktiv“, Start und CORS. (S)
-- 🟡 **End-to-End-Test** des Dashboards (Playwright) mit gemockten REST-Antworten. Playwright ist schon Abhängigkeit. (L)
-- 🟡 **Coverage** messen (`pytest --cov`, `vitest --coverage`) und Mindestwert in CI festlegen. (S)
-- ⚪ **Property-Tests** (Hypothesis, fast-check) für `make_diff`, `annotate_diff`, `fragment_url`, `clean` und Regex-Ignore. (M)
-- ⚪ **Konfigurationsprüfung in CI:** `check.py --validate` ohne Netzwerkzugriff (Duplikate, ungültige Regex, unbekannte Optionen). (S)
+- 🟡 **Test web components** (Testing Library): tabs, filters, group form, error message on “Check now”, using a mocked Supabase client. Only pure helpers are tested so far. (M)
+- 🟡 **Test `RestStore`:** Use an HTTP mock (PostgREST responses), including errors. `PgStore` has tests (Python 3.12 and `pgserver`); `RestStore` does not. (M)
+- 🟡 **Test the `add.py` flow:** `main` with mocked `fetch_body`, `--feed`, `-y`, duplicates, and robots blocking. (M)
+- 🟡 **Integration test** with a local HTTP server for 304, 429/5xx retries, redirects, and character encoding. (M)
+- 🟡 **Test Edge Functions** (Deno tests, `watchlist-trigger-check` and `watchlist-preview`) for 401, 403, 429, “run active”, start, and CORS. (S)
+- 🟡 **End-to-end dashboard test** (Playwright) with mocked REST responses. Playwright is already a dependency. (L)
+- 🟡 **Measure coverage** (`pytest --cov`, `vitest --coverage`) and set a minimum in CI. (S)
+- ⚪ **Property tests** (Hypothesis, fast-check) for `make_diff`, `annotate_diff`, `fragment_url`, `clean`, and regex ignore. (M)
+- ⚪ **CI configuration validation:** `check.py --validate` without network access (duplicates, invalid regexes, unknown options). (S)
 
-## 8. Dokumentation
+## 8. Documentation
 
-- ⚪ **Screenshots** des Dashboards und einer Beispiel-Mail im README. (S)
-- ⚪ **Beispielkonfigurationen** für typische Fälle (Release Notes mit `only_added`, JS-Seite, Feed, Stellenanzeigen mit `ignore`, `selector: auto`). (S)
-- ⚪ **CHANGELOG** und Versionspflege (aktuell `0.1.0`). (S)
+- ⚪ **Dashboard and sample email screenshots** in the README. (S)
+- ⚪ **Example configurations** for common cases (release notes with `only_added`, JS page, feed, job listings with `ignore`, `selector: auto`). (S)
+- ⚪ **CHANGELOG** and version management (currently `0.1.0`). (S)
 
 ---
 
-## Vorgeschlagene Reihenfolge
+## Suggested order
 
-1. URLs im Dashboard bearbeiten und pausieren, Fehlerserie anzeigen, Rückmeldung nach „Jetzt prüfen“.
-2. `timeout-minutes`, Benachrichtigung bei Workflow-Ausfall, Backup und Web-Prüfungen in CI.
-3. Tab-Varianten zusammenfassen, danach ntfy und Digest-Modus.
-4. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage in CI.
+1. Edit and pause URLs in the dashboard, show failure streaks, and provide feedback after “Check now”.
+2. Add `timeout-minutes`, workflow-failure notifications, database backups, and web checks in CI.
+3. Group tab variants, then add ntfy and digest mode.
+4. Add tests for `RestStore`, `add.py`, Edge Functions, and web components, then add coverage in CI.

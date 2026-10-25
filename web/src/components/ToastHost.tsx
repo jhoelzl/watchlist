@@ -23,7 +23,7 @@ export function ToastHost({ children }: { children: ReactNode }) {
           <div key={t.id} className={`toast${t.kind === 'error' ? ' error' : ''}`} role={t.kind === 'error' ? 'alert' : 'status'}>
             <span>{t.text}</span>
             {t.action && <button className="link" onClick={() => { dismiss(t.id); void t.action?.run() }}>{t.action.label}</button>}
-            <button className="link" aria-label="Schließen" onClick={() => dismiss(t.id)}>✕</button>
+            <button className="link" aria-label="Close" onClick={() => dismiss(t.id)}>✕</button>
           </div>
         ))}
       </div>

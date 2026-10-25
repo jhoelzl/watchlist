@@ -29,38 +29,38 @@ export function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: ()
       .select('url')
     setBusy(false)
     if (failed) return setError(failed.message)
-    if (!data?.length) return setError('Keine Änderung gespeichert. Fehlt die Policy „admins update urls“ (supabase/schema.sql)?')
+    if (!data?.length) return setError('No change saved. Is the “admins update urls” policy missing (supabase/schema.sql)?')
     onSaved()
   }
   return (
     <form className="panel add-panel edit-panel" onSubmit={(e) => { e.preventDefault(); void save() }}>
-      <p className="grow edit-title">Bearbeiten: <a href={entry.url} target="_blank" rel="noreferrer noopener">{entry.url}</a></p>
-      <label className="grow">Name<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Seitentitel" /></label>
-      <label>Gruppe<input value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
-      <label className="grow">Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto, CSS-Selector oder leer = ganze Seite" /></label>
-      <label>Prüfung<select value={form.interval} onChange={(e) => set({ interval: e.target.value })}>
-        <option value="">Bei jedem Lauf</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich</option>
+      <p className="grow edit-title">Edit: <a href={entry.url} target="_blank" rel="noreferrer noopener">{entry.url}</a></p>
+      <label className="grow">Name<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Page title" /></label>
+      <label>Group<input value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
+      <label className="grow">Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto, CSS selector or empty = whole page" /></label>
+      <label>Check<select value={form.interval} onChange={(e) => set({ interval: e.target.value })}>
+        <option value="">On every run</option><option value="daily">Daily</option><option value="weekly">Weekly</option>
       </select></label>
-      <label className="grow">Ignore (ein Regex pro Zeile)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="z. B. Last updated.*" /></label>
+      <label className="grow">Ignore (one regex per line)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="e.g. Last updated.*" /></label>
       {suggestions.length > 0 && (
         <div className="grow suggestions">
-          <strong>Ignore-Vorschläge</strong> <span className="muted">(wiederkehrende Zeilen, die sich nur in Zahlen unterscheiden)</span>
+          <strong>Ignore suggestions</strong> <span className="muted">(recurring lines that differ only in numbers)</span>
           {suggestions.slice(0, 5).map((s) => (
             <div key={s.pattern} className="suggestion">
               <code>{s.pattern}</code>
-              <span className="muted">z. B. „{s.example.slice(0, 60)}“, in {s.count} Änderungen</span>
-              <button className="btn" type="button" onClick={() => set({ ignore: [...patterns, s.pattern].join('\n') })}>Übernehmen</button>
+              <span className="muted">e.g. “{s.example.slice(0, 60)}”, in {s.count} changes</span>
+              <button className="btn" type="button" onClick={() => set({ ignore: [...patterns, s.pattern].join('\n') })}>Apply</button>
             </div>
           ))}
         </div>
       )}
-      <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
-      <label className="check"><input type="checkbox" checked={form.onlyAdded} onChange={(e) => set({ onlyAdded: e.target.checked })} />Nur Hinzugefügtes melden</label>
-      <label className="check"><input type="checkbox" checked={form.paused} onChange={(e) => set({ paused: e.target.checked })} />Pausiert (wird nicht geprüft)</label>
+      <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Render with JavaScript</label>
+      <label className="check"><input type="checkbox" checked={form.onlyAdded} onChange={(e) => set({ onlyAdded: e.target.checked })} />Report additions only</label>
+      <label className="check"><input type="checkbox" checked={form.paused} onChange={(e) => set({ paused: e.target.checked })} />Paused (not checked)</label>
       <PreviewBox preview={preview} js={form.js} />
       <div className="add-actions">
-        <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
-        <button className="btn" type="button" onClick={onClose}>Abbrechen</button>
+        <button className="btn primary" type="submit" disabled={busy}>Save</button>
+        <button className="btn" type="button" onClick={onClose}>Cancel</button>
       </div>
       {error && <p className="error">{error}</p>}
     </form>

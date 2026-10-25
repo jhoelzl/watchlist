@@ -8,11 +8,11 @@ export function RunsPanel({ runs }: { runs: RunRecord[] }) {
   return (
     <details className="runs">
       <summary>
-        Läufe: {runs.length} · Ø {formatDuration(stats.avgSeconds)} · Fehlerquote {(stats.errorRate * 100).toFixed(1).replace('.', ',')} %
-        {stats.failedRuns > 0 && <> · <span className="badge error">{stats.failedRuns} fehlgeschlagen</span></>}
+        Runs: {runs.length} · Avg {formatDuration(stats.avgSeconds)} · Error rate {(stats.errorRate * 100).toFixed(1)}%
+        {stats.failedRuns > 0 && <> · <span className="badge error">{stats.failedRuns} failed</span></>}
       </summary>
       <table>
-        <thead><tr><th>Zeit</th><th>Dauer</th><th>URLs</th><th>Fehler</th><th>Warnungen</th><th>Änderungen</th></tr></thead>
+        <thead><tr><th>Time</th><th>Duration</th><th>URLs</th><th>Errors</th><th>Warnings</th><th>Changes</th></tr></thead>
         <tbody>
           {recent.map((r) => (
             <tr key={r.time}>

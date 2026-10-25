@@ -1,22 +1,22 @@
-# defaults gelten für alle URLs (ignore-Listen werden zusammengeführt, andere Optionen überschrieben).
+# defaults apply to all URLs (ignore lists are merged; other options are overridden).
 # Optionen pro URL:
-#   name:       Anzeigename (sonst Seitentitel)
-#   group:      Gruppe für Mail und Dashboard
-#   selector:   CSS-Selektor, nur dieser Bereich wird beobachtet
-#   ignore:     Liste von Regex, die vor dem Vergleich entfernt werden
-#   only_added: true = Mail zeigt nur neue Zeilen (bei RSS/Atom-Feeds Standard)
-#   js:         true = Seite mit Playwright rendern (für per JavaScript geladene Inhalte)
-#   min_ratio:  Textwächter, Standard 0.3 (0 = aus)
-#   ignore_robots: true = robots.txt-Sperre übergehen
-# Neue URL bequem hinzufügen: uv run add.py <url>
+#   name:       Display name (defaults to the page title)
+#   group:      Group for email and dashboard (default: General)
+#   selector:   CSS selector; only this area is monitored
+#   ignore:     List of regex patterns removed before comparison
+#   only_added: true = email shows only new lines (default for RSS/Atom feeds)
+#   js:         true = render the page with Playwright (for JavaScript-loaded content)
+#   min_ratio:  Text guard, default 0.3 (0 = off)
+#   ignore_robots: true = bypass robots.txt restrictions
+# Add a URL: uv run add.py <url>
 defaults:
   ignore:
     - 'Last updated on\s*\S+'
 
 urls:
   - url: https://example.com/blog
-    name: Beispiel-Blog
-    group: Beispiele
+    name: Example Blog
+    group: Examples
     selector: main
   - url: https://example.com/feed.xml
-    group: Beispiele
+    group: Examples

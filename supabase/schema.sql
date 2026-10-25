@@ -1,6 +1,6 @@
--- Schema für die Watchlist. Im Supabase SQL-Editor ausführen (mehrfach ausführbar).
--- RLS ist aktiv. Das Python-Skript nutzt den Secret-/service_role-Key bzw. eine Postgres-Verbindung und umgeht RLS.
--- Über die öffentliche API ist nur lesbar, was unten für freigeschaltete Konten (watchlist_admins) erlaubt wird.
+-- Watchlist schema. Run in the Supabase SQL Editor (safe to run repeatedly).
+-- RLS is enabled. The Python script uses the secret/service_role key or a Postgres connection and bypasses RLS.
+-- The public API exposes only the data allowed below for authorized accounts (watchlist_admins).
 
 create table if not exists watchlist_settings (
   key text primary key,
@@ -19,7 +19,7 @@ create table if not exists watchlist_urls (
 );
 
 create table if not exists watchlist_snapshots (
-  key text primary key, -- sha1(url)[:16], wie bisher der Dateiname
+  key text primary key, -- sha1(url)[:16], same as the previous filename
   url text not null,
   content text not null,
   updated_at timestamptz not null default now()
@@ -37,9 +37,9 @@ create table if not exists watchlist_history (
   name text,
   url text not null,
   grp text,
-  time text not null, -- Zeitstempel wie in den Mails, z. B. "2026-10-23 06:00 UTC"
-  diff text not null, -- Diff-Zeilen, getrennt durch Zeilenumbruch
-  extra integer not null default 0, -- Anzahl abgeschnittener Zeilen
+  time text not null, -- Timestamp as used in emails, e.g. "2026-10-23 06:00 UTC"
+  diff text not null, -- Diff lines, separated by newline
+  extra integer not null default 0, -- Number of truncated lines
   created_at timestamptz not null default now()
 );
 create index if not exists watchlist_history_url_idx on watchlist_history (url, id desc);
@@ -57,8 +57,8 @@ alter table watchlist_counters enable row level security;
 alter table watchlist_history enable row level security;
 alter table watchlist_state enable row level security;
 
--- Dashboard (web/): Lesezugriff nur für freigeschaltete Konten, nicht für jedes registrierte Konto.
--- Die Registrierung im Supabase-Projekt ist offen (gleiche Auth wie andere Apps), deshalb reicht "authenticated" nicht.
+-- Dashboard (web/): read access is limited to authorized accounts, not every registered account.
+-- Registration is open in the Supabase project (same auth as other apps), so "authenticated" alone is insufficient.
 create table if not exists watchlist_admins (
   user_id uuid primary key references auth.users (id) on delete cascade
 );
@@ -67,7 +67,7 @@ alter table watchlist_admins enable row level security;
 drop policy if exists "own admin row" on watchlist_admins;
 create policy "own admin row" on watchlist_admins for select to authenticated using (user_id = auth.uid());
 
--- Snapshots (Seitentexte), Zähler und Einstellungen bleiben bewusst unlesbar.
+-- Snapshots (page text), counters, and settings intentionally remain unreadable.
 drop policy if exists "admins read urls" on watchlist_urls;
 create policy "admins read urls" on watchlist_urls for select to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
@@ -80,10 +80,10 @@ drop policy if exists "admins read state" on watchlist_state;
 create policy "admins read state" on watchlist_state for select to authenticated
   using (key = 'status' and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
 
--- Eigenes Konto freischalten (E-Mail anpassen, Konto muss vorher registriert sein):
--- insert into watchlist_admins (user_id) select id from auth.users where email = 'du@example.com' on conflict do nothing;
+-- Authorize your account (replace the email; the account must already be registered):
+-- insert into watchlist_admins (user_id) select id from auth.users where email = 'you@example.com' on conflict do nothing;
 
--- URLs im Dashboard hinzufügen und pausieren (nur freigeschaltete Konten).
+-- Add and pause URLs in the dashboard (authorized accounts only).
 drop policy if exists "admins add urls" on watchlist_urls;
 create policy "admins add urls" on watchlist_urls for insert to authenticated
   with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
@@ -92,13 +92,13 @@ drop policy if exists "admins delete urls" on watchlist_urls;
 create policy "admins delete urls" on watchlist_urls for delete to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
 
--- Gruppen im Dashboard bearbeiten (grp der URLs ändern).
+-- Edit groups in the dashboard (change the URLs’ grp).
 drop policy if exists "admins update urls" on watchlist_urls;
 create policy "admins update urls" on watchlist_urls for update to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()))
   with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
 
--- Gruppen: Reihenfolge, Farbe und Icon (auch für leere Gruppen). Die Dashboard-Ansicht funktioniert auch ohne diese Tabelle.
+-- Groups: order, color, and icon (including empty groups). The dashboard also works without this table.
 create table if not exists watchlist_groups (
   name text primary key,
   position int not null default 0,

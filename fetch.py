@@ -14,17 +14,17 @@ from parse import extract
 from settings import SETTINGS
 
 ROBOTS_AGENT = "watchlist"
-RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
+RETRY_DELAYS = (2, 5)  # Delay in seconds before the second and third attempt.
 MAX_RETRY_AFTER = 30
-RETRY_JITTER = 0.25  # bis zu +25 % Zufall auf die Wartezeit, damit Wiederholungen nicht im Gleichschritt laufen
-MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
+RETRY_JITTER = 0.25  # Up to 25% random jitter so retries do not run in lockstep.
+MAX_PER_HOST = 2  # Concurrent fetches per host (be considerate of servers).
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-FetchResult = tuple[str | None, str | None, bool, Validators]  # (Titel, Text, ist_feed, Validatoren); Text None bei 304
-HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
+FetchResult = tuple[str | None, str | None, bool, Validators]  # (title, text, is_feed, validators); text is None on 304.
+HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "en,de;q=0.8"}
 
 
 def robots_allowed(url: str, cache: dict[str, RobotFileParser]) -> bool:
-    """Prüft robots.txt pro Host (einmal pro Lauf). Fehlt die Datei oder ist sie nicht lesbar, ist alles erlaubt."""
+    """Checks robots.txt once per host. If the file is missing or unreadable, everything is allowed."""
     parts = urlparse(url)
     base = f"{parts.scheme}://{parts.netloc}"
     if base not in cache:
@@ -34,7 +34,7 @@ def robots_allowed(url: str, cache: dict[str, RobotFileParser]) -> bool:
             if r.status_code == 200:
                 rp.parse(r.text.splitlines())
             else:
-                rp.parse([])  # leere Regeln: alles erlaubt
+                rp.parse([])  # Empty rules: allow everything.
         except requests.RequestException:
             rp.parse([])
         cache[base] = rp
@@ -42,14 +42,14 @@ def robots_allowed(url: str, cache: dict[str, RobotFileParser]) -> bool:
 
 
 def get_with_retry(url: str, headers: dict[str, str]) -> requests.Response:
-    """GET mit Wiederholung bei Netzwerkfehlern, Timeouts, 429 und 5xx. Andere 4xx werden sofort zurückgegeben."""
+    """GET with retries for network errors, timeouts, 429, and 5xx. Other 4xx responses are returned immediately."""
     last: str | None = None
     last_code = ""
     delay = 0
     for attempt in range(len(RETRY_DELAYS) + 1):
         if attempt:
             wait = round(delay + random.uniform(0, delay * RETRY_JITTER), 1)
-            print(f"            Wiederholung {attempt}/{len(RETRY_DELAYS)} in {wait}s ({last})")
+            print(f"            Retry {attempt}/{len(RETRY_DELAYS)} in {wait}s ({last})")
             time.sleep(wait)
         delay = RETRY_DELAYS[attempt] if attempt < len(RETRY_DELAYS) else 0
         try:
@@ -66,14 +66,14 @@ def get_with_retry(url: str, headers: dict[str, str]) -> requests.Response:
                 delay = min(int(retry_after), MAX_RETRY_AFTER)
             continue
         return resp
-    raise CheckError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})", last_code)
+    raise CheckError(f"Fetch failed after {len(RETRY_DELAYS) + 1} attempts ({last})", last_code)
 
 
 class BrowserPool:
-    """Ein Chromium für alle js-Seiten eines Laufs. Starten erst beim ersten Bedarf.
+    """One Chromium instance for all js pages in a run. Start it only when first needed.
 
-    Playwrights Sync-API ist an den Thread gebunden, der sie startet. Deshalb laufen alle Aufrufe
-    über einen eigenen Ein-Thread-Executor, egal aus welchem Worker sie kommen (das serialisiert sie auch).
+    Playwright's sync API is bound to the thread that starts it, so all calls run
+    through a dedicated single-thread executor, regardless of the calling worker (which also serializes them).
     """
 
     def __init__(self) -> None:
@@ -94,7 +94,7 @@ class BrowserPool:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError:
-            raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)") from None
+            raise RuntimeError("js: true requires Playwright (uv run --extra js check.py)") from None
         self._playwright = sync_playwright().start()
         self._browser = self._playwright.chromium.launch()
 
@@ -109,7 +109,7 @@ class BrowserPool:
 
     def _content(self, url: str) -> str:
         if self._browser is not None and not self._browser.is_connected():
-            self._stop()  # Browser abgestürzt: beim nächsten Aufruf neu starten
+            self._stop()  # Browser crashed; restart on the next call.
         if self._browser is None:
             self._start()
         page = self._browser.new_page(user_agent=USER_AGENT)
@@ -120,15 +120,15 @@ class BrowserPool:
             page.close()
 
 
-_browser_pool: BrowserPool | None = None  # wird von fetch_all pro Lauf gesetzt
+_browser_pool: BrowserPool | None = None  # Set by fetch_all for each run.
 
 
 def fetch_body(url: str, js: bool, cond: Validators | None = None) -> tuple[str | None, Validators]:
-    """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
+    """Returns (body, validators). Body is None when the server responds with 304."""
     if js:
         if _browser_pool is not None:
             return _browser_pool.content(url), Validators()
-        pool = BrowserPool()  # Einzelaufruf (z. B. add.py): eigener Browser, danach wieder schließen
+        pool = BrowserPool()  # Standalone call (e.g. add.py): use and then close its own browser.
         try:
             return pool.content(url), Validators()
         finally:
@@ -143,9 +143,7 @@ def fetch_body(url: str, js: bool, cond: Validators | None = None) -> tuple[str 
     if resp.status_code == 304:
         return None, cond
     if resp.status_code in (404, 410):
-        raise CheckError(
-            f"Seite nicht mehr vorhanden (HTTP {resp.status_code}), dauerhafter Fehler", status_code_name(resp.status_code)
-        )
+        raise CheckError(f"Page no longer exists (HTTP {resp.status_code}), persistent error", status_code_name(resp.status_code))
     resp.raise_for_status()
     if "charset" not in resp.headers.get("Content-Type", "").lower():
         resp.encoding = "utf-8"
@@ -157,7 +155,7 @@ def fetch_body(url: str, js: bool, cond: Validators | None = None) -> tuple[str 
 
 
 def fetch(url: str, opts: Options, cond: Validators | None = None) -> FetchResult:
-    """Liefert (Titel, Text, ist_feed, Validatoren). Text ist None bei 304 Not Modified."""
+    """Returns (title, text, is_feed, validators). Text is None on 304 Not Modified."""
     body, validators = fetch_body(url, opts.get("js", False), cond)
     if body is None:
         return None, None, False, validators
@@ -166,10 +164,10 @@ def fetch(url: str, opts: Options, cond: Validators | None = None) -> FetchResul
 
 
 def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult | Exception]:
-    """Ruft alle Seiten parallel ab. jobs: [(opts, cond)]. Liefert {url: Ergebnis-Tupel oder Exception}.
+    """Fetches all pages in parallel. jobs: [(opts, cond)]. Returns {url: result tuple or exception}.
 
-    Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
-    (ein gemeinsamer Playwright-Browser pro Lauf, siehe BrowserPool). Die Auswertung bleibt seriell und deterministisch in run().
+    At most MAX_PER_HOST fetches per host run concurrently. Pages with js: true run sequentially
+    (using one shared Playwright browser per run; see BrowserPool). Evaluation remains serial and deterministic in run().
     """
     robots: dict[str, RobotFileParser] = {}
     robots_lock, js_lock = threading.Lock(), threading.Lock()
@@ -183,7 +181,7 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
                     with robots_lock:
                         allowed = robots_allowed(url, robots)
                     if not allowed:
-                        raise CheckError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)", "robots")
+                        raise CheckError("robots.txt blocks the fetch (set ignore_robots: true to override)", "robots")
                 if opts.get("js"):
                     with js_lock:
                         return url, fetch(url, opts, cond)

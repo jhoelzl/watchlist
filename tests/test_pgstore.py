@@ -1,4 +1,4 @@
-"""Integrationstest gegen echtes Postgres: WATCHLIST_TEST_DSN setzen oder pgserver installieren, sonst wird übersprungen."""
+"""Integration test against real Postgres: set WATCHLIST_TEST_DSN or install pgserver; otherwise the test is skipped."""
 
 import os
 import tempfile
@@ -53,9 +53,9 @@ def test_store_roundtrip(db):
         db.add_url({"url": "https://a"})
 
     assert db.snapshot("k") is None
-    db.set_snapshot("k", "https://a", "eins")
-    db.set_snapshot("k", "https://a", "zwei äö")
-    assert db.snapshot("k") == "zwei äö" and db.snapshot_keys() == {"k"}
+    db.set_snapshot("k", "https://a", "One")
+    db.set_snapshot("k", "https://a", "Two aeo")
+    assert db.snapshot("k") == "Two aeo" and db.snapshot_keys() == {"k"}
 
     assert db.counter("k", "fail") == 0
     db.set_counter("k", "fail", 2)
@@ -76,7 +76,7 @@ def test_store_roundtrip(db):
 
 def test_run_uses_database(db, tmp_path, monkeypatch):
     db.add_url({"url": "https://a", "group": "G"})
-    pages = iter(["eins", "zwei"])
+    pages = iter(["One", "Two"])
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
     monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
@@ -84,8 +84,8 @@ def test_run_uses_database(db, tmp_path, monkeypatch):
     monkeypatch.setattr(notify, "send_mail", lambda subject, text, html_body=None: sent.append(subject))
     assert check.run()
     assert check.run()
-    assert len(sent) == 1 and "geändert" in sent[0]
-    assert db.history(10)[0]["diff"][-2:] == ["-eins", "+zwei"]
+    assert len(sent) == 1 and "changed" in sent[0]
+    assert db.history(10)[0]["diff"][-2:] == ["-One", "+Two"]
     assert db.doc("status", {})["https://a"]["changed"]
     assert not (tmp_path / "state").exists()  # nichts lokal geschrieben
 
@@ -112,11 +112,11 @@ def test_migrate_from_files(db, tmp_path):
 def test_add_writes_to_database(db, monkeypatch):
     import add
 
-    html = "<html><head><title>Seite</title></head><body><main>" + "Text " * 80 + "</main></body></html>"
+    html = "<html><head><title>page</title></head><body><main>" + "Text " * 80 + "</main></body></html>"
     monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: (html, {}))
-    add.main(["https://neu.example/", "--group", "G", "-y"])
+    add.main(["https://new.example/", "--group", "G", "-y"])
     entry = config.merge_config(db.raw_config())[0]
-    assert entry["url"] == "https://neu.example/" and entry["group"] == "G" and entry["selector"] == "main"
-    with pytest.raises(SystemExit, match="Schon vorhanden"):
-        add.main(["https://neu.example/", "-y"])
+    assert entry["url"] == "https://new.example/" and entry["group"] == "G" and entry["selector"] == "main"
+    with pytest.raises(SystemExit, match="Already exists"):
+        add.main(["https://new.example/", "-y"])

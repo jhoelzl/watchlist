@@ -1,4 +1,4 @@
-"""Neue URL zu urls.yml hinzufügen: uv run add.py <url> [--name N] [--group G] [--selector S] [--js] [-y]"""
+"""Add a new URL to urls.yml: uv run add.py <url> [--name N] [--group G] [--selector S] [--js] [-y]"""
 
 import argparse
 import sys
@@ -18,7 +18,7 @@ from store import FileStore, PgStore, open_store
 
 
 def suggest_selector(body: str) -> str | None:
-    """Erster passender Kandidat als Selector, sonst None (ganze Seite)."""
+    """First matching candidate as the selector, or None (the whole page)."""
     soup = BeautifulSoup(body, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
@@ -32,7 +32,7 @@ FEED_TYPES = ("application/rss+xml", "application/atom+xml")
 
 
 def find_feeds(body: str, base_url: str) -> list[str]:
-    """Feed-URLs aus <link rel="alternate" type="application/rss+xml|atom+xml">, absolut und ohne Duplikate."""
+    """Feed URLs from <link rel="alternate" type="application/rss+xml|atom+xml">, absolute and without duplicates."""
     soup = BeautifulSoup(body, "html.parser")
     feeds: list[str] = []
     for link in soup.find_all("link"):
@@ -50,7 +50,7 @@ def find_feeds(body: str, base_url: str) -> list[str]:
 
 
 def suggest_group(url: str, entries: list[Options]) -> str:
-    """Gleiche Gruppe wie eine vorhandene URL desselben Hosts, sonst leer."""
+    """Same group as an existing URL on the same host, or empty."""
     host = urlparse(url).netloc
     for e in entries:
         if urlparse(e["url"]).netloc == host and e.get("group"):
@@ -91,75 +91,75 @@ def ask(prompt: str, default: str, assume_yes: bool) -> str:
 
 
 def fetch_text(url: str, js: bool) -> str:
-    """Ohne Validatoren antwortet der Server nie mit 304, der Body ist also immer da."""
+    """Without validators, the server never responds with 304, so the body is always present."""
     body, _ = fetch.fetch_body(url, js)
     if body is None:
-        raise RuntimeError("Leere Antwort (304)")
+        raise RuntimeError("Empty response (304)")
     return body
 
 
 def prepare(args: argparse.Namespace, entries: list[Options]) -> dict[str, Any]:
-    """Seite abrufen, Feed/Selector/Name/Gruppe bestimmen. Beendet das Programm bei Fehlern."""
-    print(f"Rufe {args.url} ab...")
+    """Fetch a page and determine its feed, selector, name, and group. Exits on errors."""
+    print(f"Fetching {args.url}...")
     if not args.js and not fetch.robots_allowed(args.url, {}):
-        sys.exit("robots.txt verbietet den Abruf. Trage die URL manuell mit 'ignore_robots: true' ein.")
+        sys.exit("robots.txt blocks this fetch. Add the URL manually with 'ignore_robots: true'.")
     try:
         body = fetch_text(args.url, args.js)
     except Exception as ex:
-        sys.exit(f"Abruf fehlgeschlagen: {ex}")
+        sys.exit(f"Fetch failed: {ex}")
 
     feed = parse.is_feed(body)
     if not feed:
         feeds = find_feeds(body, args.url)
         if feeds:
-            print("Feeds gefunden:")
+            print("Found feeds:")
             for i, f in enumerate(feeds, 1):
                 print(f"  {i}. {f}")
-            choice = "1" if args.feed else ("" if args.yes else input("Feed überwachen? Nummer (leer = Seite): ").strip())
+            choice = "1" if args.feed else ("" if args.yes else input("Monitor this feed? Number (blank = page): ").strip())
             if choice.isdigit() and 1 <= int(choice) <= len(feeds):
                 feed_url = feeds[int(choice) - 1]
                 if any(e["url"] == feed_url for e in entries):
-                    sys.exit(f"Schon vorhanden: {feed_url}")
+                    sys.exit(f"Already exists: {feed_url}")
                 if not fetch.robots_allowed(feed_url, {}):
-                    sys.exit("robots.txt verbietet den Abruf des Feeds.")
+                    sys.exit("robots.txt blocks fetching this feed.")
                 try:
                     feed_body = fetch_text(feed_url, False)
                 except Exception as ex:
-                    sys.exit(f"Feed-Abruf fehlgeschlagen: {ex}")
+                    sys.exit(f"Feed fetch failed: {ex}")
                 if not parse.is_feed(feed_body):
-                    sys.exit(f"{feed_url} ist kein gültiger Feed.")
+                    sys.exit(f"{feed_url} is not a valid feed.")
                 args.url, body, feed, args.js = feed_url, feed_body, True, False
             elif args.yes and not args.feed:
-                print("Tipp: mit --feed wird der Feed statt der Seite überwacht.")
+                print("Tip: use --feed to monitor the feed instead of the page.")
     selector = None
     if feed:
         title, text = parse.parse_feed(body)
-        print(f"Feed erkannt: {title!r}, {len(text.splitlines())} Einträge")
+        print(f"Feed detected: {title!r}, {len(text.splitlines())} entries")
     else:
         title = parse.parse_html(body, None)[0]
         selector = args.selector if args.selector else suggest_selector(body)
         if args.selector == "none":
             selector = None
         if selector:
-            print(f"Selector-Vorschlag: {selector}")
+            print(f"Suggested selector: {selector}")
         text = parse.parse_html(body, selector)[1]
-        print(f"Titel: {title!r}, {len(text)} Zeichen Text")
+        print(f"Title: {title!r}, {len(text)} characters of text")
         if len(text) < 200:
-            print("WARNUNG: sehr wenig Text. Vielleicht braucht die Seite --js oder einen anderen Selector.")
+            print("WARNING: very little text. The page may need --js or a different selector.")
 
-    name = args.name if args.name is not None else ask("Name (leer = Seitentitel)", "", args.yes)
-    group = args.group if args.group is not None else ask("Gruppe", suggest_group(args.url, entries), args.yes)
+    name = args.name if args.name is not None else ask("Name (blank = page title)", "", args.yes)
+    group = args.group if args.group is not None else ask("Group", suggest_group(args.url, entries), args.yes)
     if not feed and args.selector is None:
-        selector = ask("Selector ('none' = ganze Seite)", selector or "none", args.yes)
+        selector = ask("Selector ('none' = whole page)", selector or "none", args.yes)
         selector = None if selector == "none" else selector
     return {"url": args.url, "name": name, "group": group, "selector": selector, "js": args.js}
 
 
 def add_to_database(args: argparse.Namespace, store: PgStore) -> None:
-    """Gleicher Ablauf wie bei urls.yml, nur das Speichern geht in die Datenbank."""
+    """Same workflow as urls.yml, but saves to the database."""
     entries = config.merge_config(store.raw_config())
     if any(e["url"] == args.url for e in entries):
-        sys.exit(f"Schon vorhanden: {args.url}")
+        sys.exit(f"Already exists: {args.url}")
     prepared = prepare(args, entries)
     entry: dict[str, Any] = {"url": prepared["url"]}
     for key in ("name", "group", "selector"):
@@ -168,19 +168,19 @@ def add_to_database(args: argparse.Namespace, store: PgStore) -> None:
     if prepared["js"]:
         entry["js"] = True
     store.add_url(entry)
-    print("\nIn Supabase hinzugefügt: " + prepared["url"])
-    print("Baseline erzeugen: uv run check.py (oder beim nächsten geplanten Lauf).")
+    print("\nAdded to Supabase: " + prepared["url"])
+    print("Create a baseline: uv run check.py (or wait for the next scheduled run).")
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="URL zu urls.yml hinzufügen")
+    ap = argparse.ArgumentParser(description="Add a URL to urls.yml")
     ap.add_argument("url")
     ap.add_argument("--name")
     ap.add_argument("--group")
-    ap.add_argument("--selector", help="'none' für die ganze Seite")
-    ap.add_argument("--js", action="store_true", help="Seite mit Playwright rendern")
-    ap.add_argument("--feed", action="store_true", help="gefundenen RSS/Atom-Feed statt der Seite überwachen")
-    ap.add_argument("-y", "--yes", action="store_true", help="Vorschläge ohne Rückfrage übernehmen")
+    ap.add_argument("--selector", help="'none' for the whole page")
+    ap.add_argument("--js", action="store_true", help="Render the page with Playwright")
+    ap.add_argument("--feed", action="store_true", help="Monitor the discovered RSS/Atom feed instead of the page")
+    ap.add_argument("-y", "--yes", action="store_true", help="Accept suggestions without prompting")
     args = ap.parse_args(argv)
 
     path = check.ROOT / "urls.yml"
@@ -192,7 +192,7 @@ def main(argv: list[str] | None = None) -> None:
             store.close()
     entries = config.load_config(path)
     if any(e["url"] == args.url for e in entries):
-        sys.exit(f"Schon vorhanden: {args.url}")
+        sys.exit(f"Already exists: {args.url}")
 
     prepared = prepare(args, entries)
     args.url, name, group, selector, js = (prepared[k] for k in ("url", "name", "group", "selector", "js"))
@@ -207,9 +207,9 @@ def main(argv: list[str] | None = None) -> None:
         ok = False
     if not ok:
         path.write_text(original)
-        sys.exit("Konnte den Eintrag nicht sauber anhängen (steht 'urls:' am Dateiende?). urls.yml unverändert.")
-    print("\nHinzugefügt:\n" + block)
-    print("Baseline erzeugen: uv run check.py (oder beim nächsten geplanten Lauf).")
+        sys.exit("Could not append the entry cleanly (is 'urls:' at the end of the file?). urls.yml is unchanged.")
+    print("\nAdded:\n" + block)
+    print("Create a baseline: uv run check.py (or wait for the next scheduled run).")
 
 
 if __name__ == "__main__":

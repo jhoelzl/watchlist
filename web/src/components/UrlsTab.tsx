@@ -14,10 +14,10 @@ function shortUrl(url: string): string {
   }
 }
 
-const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Seite'], ['checked', 'Zuletzt geprüft'], ['changed', 'Zuletzt geändert']]
+const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Page'], ['checked', 'Last checked'], ['changed', 'Last changed']]
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
-  ['', 'Alle'], ['problem', 'Probleme'], ['stuck', 'Dauerhaft kaputt'], ['error', 'Fehler'], ['warn', 'Zu wenig Text'], ['new', 'Neu'], ['ok', 'OK'], ['pending', 'Offen'], ['paused', 'Pausiert'],
+  ['', 'All'], ['problem', 'Problems'], ['stuck', 'Permanently broken'], ['error', 'Errors'], ['warn', 'Too little text'], ['new', 'New'], ['ok', 'OK'], ['pending', 'Pending'], ['paused', 'Paused'],
 ]
 
 function Spark({ times }: { times: string[] }) {
@@ -25,8 +25,8 @@ function Spark({ times }: { times: string[] }) {
   const total = counts.reduce((a, b) => a + b, 0)
   if (!total) return <span className="muted">-</span>
   return (
-    <svg className="spark" width="90" height="18" role="img" aria-label={`${total} Änderungen in ${SPARK_DAYS} Tagen`}>
-      <title>{total} Änderungen in {SPARK_DAYS} Tagen</title>
+    <svg className="spark" width="90" height="18" role="img" aria-label={`${total} changes in ${SPARK_DAYS} days`}>
+      <title>{total} changes in {SPARK_DAYS} days</title>
       {sparkBars(counts).map((b) => <rect key={b.x} x={b.x} y={b.y} width={b.w} height={b.h} rx="1" />)}
     </svg>
   )
@@ -68,9 +68,9 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
       </button>
     ))}
     <button className="filter-pill" onClick={() => setCollapsed(allOpen ? new Set(shown.map(([n]) => n)) : new Set())}>
-      {allOpen ? 'Alle zuklappen' : 'Alle aufklappen'}
+      {allOpen ? 'Collapse all' : 'Expand all'}
     </button>
-    <span className="muted count-text">{count} von {total}</span>
+    <span className="muted count-text">{count} of {total}</span>
   </div>
   <div className="composer-list">
     {shown.map(([name, items]) => {
@@ -83,10 +83,10 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
           </h3>
           <span className="group-stats">
             {problems > 0 && (
-              <span className="badge error">{problems} {problems === 1 ? 'Problem' : 'Probleme'}</span>
+              <span className="badge error">{problems} {problems === 1 ? 'problem' : 'problems'}</span>
             )}
-            {items.some((e) => e.status === 'new') && <span className="badge new">{items.filter((e) => e.status === 'new').length} neu</span>}
-            {items.some((e) => e.status === 'pending') && <span className="muted">{items.filter((e) => e.status === 'pending').length} offen</span>}
+            {items.some((e) => e.status === 'new') && <span className="badge new">{items.filter((e) => e.status === 'new').length} new</span>}
+            {items.some((e) => e.status === 'pending') && <span className="muted">{items.filter((e) => e.status === 'pending').length} pending</span>}
           </span>
         </button>
         {!collapsed.has(name) && <table>
@@ -94,7 +94,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
             <th key={key} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : 'none'}>
               <button className="sort-btn" onClick={() => setSort(nextSort(sort, key))}>{label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</button>
             </th>
-          ))}<th>Letzte {SPARK_DAYS} Tage</th><th></th></tr></thead>
+          ))}<th>Last {SPARK_DAYS} days</th><th></th></tr></thead>
           <tbody>
             {sortEntries(items, sort).map((e) => (
               <Fragment key={e.url}>
@@ -102,21 +102,21 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
                 <td><span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span></td>
                 <td>
                   {e.name === e.url
-                    ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Titel folgt nach der ersten Prüfung</div></>
+                    ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Title follows after the first check</div></>
                     : <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>}
                   {e.error && <div className="muted">{e.error}</div>}
                   {(e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) > 1 && (
-                    <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Seit mehreren Tagen dauerhaft kaputt' : undefined}>{isStuck(e) ? 'Dauerhaft kaputt, ' : ''}{e.streak} Läufe in Folge</span>
+                    <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Permanently broken for several days' : undefined}>{isStuck(e) ? 'Permanently broken, ' : ''}{e.streak} runs in a row</span>
                   )}
                 </td>
                 <td>{e.checked || '-'}</td>
                 <td>{e.changed || '-'}</td>
                 <td><Spark times={data.freq[e.url] ?? []} /></td>
                 <td className="row-actions">
-                  <button className="icon-btn" title="Nur diese Seite jetzt prüfen" aria-label={`${e.name} jetzt prüfen`} disabled={checkBusy} onClick={() => onCheckUrl(e.url)}>↻</button>
-                  <button className="icon-btn" title="Verlauf dieser Seite" aria-label={`Verlauf von ${e.name}`} onClick={() => onShowHistory(e.url)}>⏱</button>
-                  <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}><span className="flip">✎</span></button>
-                  <button className="icon-btn" title="Löschen" aria-label={`${e.name} löschen`} onClick={() => onRemove(e)}>×</button>
+                  <button className="icon-btn" title="Check only this page now" aria-label={`Check ${e.name} now`} disabled={checkBusy} onClick={() => onCheckUrl(e.url)}>↻</button>
+                  <button className="icon-btn" title="History of this page" aria-label={`History of ${e.name}`} onClick={() => onShowHistory(e.url)}>⏱</button>
+                  <button className="icon-btn" title="Edit" aria-label={`Edit ${e.name}`} onClick={() => setEditing(editing === e.url ? null : e.url)}><span className="flip">✎</span></button>
+                  <button className="icon-btn" title="Delete" aria-label={`Delete ${e.name}`} onClick={() => onRemove(e)}>×</button>
                 </td>
               </tr>
               {editing === e.url && (

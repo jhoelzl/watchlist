@@ -28,21 +28,21 @@ export type Change = {
 
 export type StatusFilter = '' | Status | 'problem' | 'stuck'
 
-// Läufe in Folge, ab denen eine Seite als dauerhaft kaputt gilt (settings.json)
+// Consecutive runs after which a page counts as permanently broken (settings.json)
 export const STUCK_AFTER = settings.stuck_after
 export const isStuck = (e: { status?: Status; streak?: number }) => (e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) >= STUCK_AFTER
 
-export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'Neu', error: 'Fehler', warn: 'Zu wenig Text', pending: 'Noch nicht geprüft', paused: 'Pausiert' }
+export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'New', error: 'Error', warn: 'Too little text', pending: 'Not checked yet', paused: 'Paused' }
 
 export function groupOf(group: string | null | undefined): string {
-  return group || 'Allgemein'
+  return group || 'General'
 }
 
 export type UrlRow = { url: string; name: string | null; grp: string | null; active?: boolean; options?: Record<string, unknown> | null }
 
 type StatusDoc = Record<string, Partial<Omit<Entry, 'url'>>>
 
-/** Alle konfigurierten URLs, mit Status aus dem letzten Lauf. Ohne Status gilt "Noch nicht geprüft". */
+/** All configured URLs, with the status from the last run. Without a status, "Not checked yet" applies. */
 export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
   return urls.map((u) => {
     const s = status[u.url] ?? {}
@@ -80,7 +80,7 @@ export function matches(
 export function groupEntries(entries: Entry[]): [string, Entry[]][] {
   const groups = new Map<string, Entry[]>()
   for (const e of entries) groups.set(e.group, [...(groups.get(e.group) ?? []), e])
-  return [...groups].sort(([a], [b]) => a.localeCompare(b, 'de', { sensitivity: 'base' }))
+  return [...groups].sort(([a], [b]) => a.localeCompare(b, 'en-GB', { sensitivity: 'base' }))
 }
 
 export function diffClass(line: string): 'add' | 'del' | '' {
@@ -89,7 +89,7 @@ export function diffClass(line: string): 'add' | 'del' | '' {
 
 export type NewUrl = { url: string; name: string; group: string; selector: string; js: boolean }
 
-/** Prüft das Formular und liefert die Zeile für watchlist_urls oder eine Fehlermeldung. */
+/** Validates the form and returns the row for watchlist_urls or an error message. */
 export function buildRow(
   form: NewUrl,
   existing: string[],
@@ -100,10 +100,10 @@ export function buildRow(
   try {
     parsed = new URL(url)
   } catch {
-    return { error: 'Bitte eine gültige URL eingeben.' }
+    return { error: 'Please enter a valid URL.' }
   }
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return { error: 'Nur http und https sind erlaubt.' }
-  if (existing.includes(url)) return { error: 'Diese URL ist schon vorhanden.' }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return { error: 'Only http and https are allowed.' }
+  if (existing.includes(url)) return { error: 'This URL already exists.' }
   const options: Record<string, unknown> = {}
   if (form.selector.trim()) options.selector = form.selector.trim()
   if (form.js) options.js = true
@@ -152,7 +152,7 @@ function toSegments(tokens: string[], changed: boolean[]): Segment[] {
   return out
 }
 
-/** Je Diff-Zeile die Textstücke; in ersetzten Zeilen (-/+ Paare) sind nur die geänderten Wörter markiert. */
+/** Text segments per diff line; in replaced lines (-/+ pairs) only the changed words are marked. */
 export function annotateDiff(lines: string[]): Segment[][] {
   const result: (Segment[] | null)[] = lines.map(() => null)
   let i = 0
@@ -185,7 +185,7 @@ function stripSign(segs: Segment[]): Segment[] {
   return text ? [{ ...first, text }, ...rest] : rest
 }
 
-/** Diff-Zeilen als Zeilenpaare für die Ansicht Alt/Neu; Hunk-Köpfe (@@) bleiben eigene Zeilen. */
+/** Diff lines as line pairs for the Old/New view; hunk headers (@@) stay separate rows. */
 export function sideBySide(lines: string[]): SideRow[] {
   const ann = annotateDiff(lines)
   const rows: SideRow[] = []
@@ -235,7 +235,7 @@ export function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`
 }
 
-/** Durchschnittsdauer und Fehlerquote (Anteil URLs mit Fehler oder Warnung) über die übergebenen Läufe. */
+/** Average duration and error rate (share of URLs with an error or warning) over the given runs. */
 export function runStats(runs: RunRecord[]): { avgSeconds: number; errorRate: number; failedRuns: number } {
   if (!runs.length) return { avgSeconds: 0, errorRate: 0, failedRuns: 0 }
   const total = runs.reduce((a, r) => a + r.total, 0)
@@ -252,9 +252,9 @@ export const PAGE_HISTORY_LIMIT = 500
 
 export type Period = '' | 'today' | '7d' | '30d'
 
-export const PERIODS: [Period, string][] = [['', 'Alle'], ['today', 'Heute'], ['7d', '7 Tage'], ['30d', '30 Tage']]
+export const PERIODS: [Period, string][] = [['', 'All'], ['today', 'Today'], ['7d', '7 days'], ['30d', '30 days']]
 
-/** Zeitstempel wie "2026-10-23 06:00 UTC" als Date, sonst null. */
+/** Timestamp such as "2026-10-23 06:00 UTC" as a Date, otherwise null. */
 export function parseStamp(time: string): Date | null {
   const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(time)
   if (!m) return null
@@ -271,7 +271,7 @@ export function inPeriod(time: string, period: Period, now: Date = new Date()): 
   return now.getTime() - at.getTime() <= days * 86_400_000
 }
 
-/** Gruppiert nach Tag (Reihenfolge bleibt erhalten, neueste zuerst). */
+/** Groups by day (order is preserved, newest first). */
 export function groupByDay<T extends { time: string }>(items: T[]): [string, T[]][] {
   const days = new Map<string, T[]>()
   for (const item of items) {
@@ -283,23 +283,23 @@ export function groupByDay<T extends { time: string }>(items: T[]): [string, T[]
 
 export function dayLabel(day: string): string {
   const d = new Date(`${day}T12:00:00`)
-  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-/** URL mit Textfragment (#:~:text=) zur ersten hinzugefügten Zeile; sonst die unveränderte URL. */
+/** URL with text fragment (#:~:text=) pointing to the first added line; otherwise the unchanged URL. */
 const PLAIN_SNIPPET = /^[\p{L}\p{N}_ .,'-]+$/u
 
-/** Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel. */
+/** Feed lines look like "Date | Title | Link | Summary": the entry link is the better target. */
 function feedEntryLink(line: string): string {
   return line.split(' | ').slice(1).map((p) => p.trim()).find((p) => /^https?:\/\/\S+$/.test(p)) ?? ''
 }
 
-/** Wie Pythons urllib.parse.quote(safe="") plus %2D: encodeURIComponent lässt zusätzlich !'()* stehen. */
+/** Like Python's urllib.parse.quote(safe="") plus %2D: encodeURIComponent additionally leaves !'()* unescaped. */
 function encodeFragment(text: string): string {
   return encodeURIComponent(text).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`).replaceAll('-', '%2D')
 }
 
-/** Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment der längsten schlichten Zeile. */
+/** Jump target to the changed spot: the entry link for feeds, otherwise a text fragment of the longest plain line. */
 export function fragmentUrl(url: string, diff: string): string {
   const added = diff.split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1))
   for (const line of added) {
@@ -321,9 +321,9 @@ export function fragmentUrl(url: string, diff: string): string {
   return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeFragment(best)}`
 }
 
-export const DEFAULT_GROUP = 'Allgemein'
+export const DEFAULT_GROUP = 'General'
 
-/** Welche URLs bekommen die Gruppe, welche verlieren sie (grp = null → "Allgemein")? */
+/** Which URLs get the group, which lose it (grp = null → "General")? */
 export function groupChange(entries: Entry[], current: string | null, name: string, selected: Set<string>) {
   const trimmed = name.trim()
   const grp = !trimmed || trimmed === DEFAULT_GROUP ? null : trimmed
@@ -336,7 +336,7 @@ export function groupChange(entries: Entry[], current: string | null, name: stri
 export type DbUrl = { url: string; name: string | null; grp: string | null; options: Record<string, unknown> | null }
 export type NewRow = ReturnType<typeof buildRow> extends infer R ? Extract<R, { row: unknown }>['row'] : never
 
-/** Format wie urls.yml: {urls: [{url, name, group, ...Optionen}]}. */
+/** Format like urls.yml: {urls: [{url, name, group, ...options}]}. */
 export function exportUrls(rows: DbUrl[], format: 'yaml' | 'json'): string {
   const urls = rows.map((r) => ({
     url: r.url,
@@ -349,23 +349,23 @@ export function exportUrls(rows: DbUrl[], format: 'yaml' | 'json'): string {
 
 export type ImportResult = { rows: NewRow[]; skipped: number; errors: string[] }
 
-/** Liest YAML oder JSON (Liste oder {urls: [...]}, auch das alte urls.yml). Vorhandene URLs werden übersprungen. */
+/** Reads YAML or JSON (list or {urls: [...]}, also the old urls.yml). Existing URLs are skipped. */
 export function parseImport(text: string, existing: string[]): ImportResult {
   let doc: unknown
   try {
     doc = parse(text)
   } catch (e) {
-    return { rows: [], skipped: 0, errors: [`Datei nicht lesbar: ${e instanceof Error ? e.message.split('\n')[0] : 'Syntaxfehler'}`] }
+    return { rows: [], skipped: 0, errors: [`File not readable: ${e instanceof Error ? e.message.split('\n')[0] : 'syntax error'}`] }
   }
   const list = Array.isArray(doc) ? doc : (doc as { urls?: unknown } | null)?.urls
-  if (!Array.isArray(list)) return { rows: [], skipped: 0, errors: ['Erwartet wird eine Liste oder ein Objekt mit "urls".'] }
+  if (!Array.isArray(list)) return { rows: [], skipped: 0, errors: ['Expected a list or an object with "urls".'] }
   const seen = [...existing]
   const rows: NewRow[] = []
   const errors: string[] = []
   let skipped = 0
   list.forEach((item, i) => {
     const e: Record<string, unknown> = typeof item === 'string' ? { url: item } : { ...(item as object) }
-    if (!e || typeof e.url !== 'string') return void errors.push(`Eintrag ${i + 1}: url fehlt.`)
+    if (!e || typeof e.url !== 'string') return void errors.push(`Entry ${i + 1}: url is missing.`)
     if (seen.includes(e.url.trim())) return void (skipped += 1)
     const { url, name, group, ...options } = e
     const built = buildRow(
@@ -373,7 +373,7 @@ export function parseImport(text: string, existing: string[]): ImportResult {
       seen,
       existing.length + rows.length + 1,
     )
-    if ('error' in built) return void errors.push(`Eintrag ${i + 1} (${String(url)}): ${built.error}`)
+    if ('error' in built) return void errors.push(`Entry ${i + 1} (${String(url)}): ${built.error}`)
     built.row.options = options
     seen.push(built.row.url)
     rows.push(built.row)
@@ -385,7 +385,7 @@ export type IgnoreSuggestion = { pattern: string; example: string; count: number
 
 const MAX_SUGGESTION_LENGTH = 160
 
-/** Regex, die die Zeile trifft und jede Ziffernfolge (Datum, Zähler, Uhrzeit) offen lässt. */
+/** Regex that matches the line and leaves every digit sequence (date, counter, time) open. */
 function lineToPattern(line: string): string {
   return line
     .trim()
@@ -395,8 +395,8 @@ function lineToPattern(line: string): string {
 }
 
 /**
- * Sucht im Verlauf einer Seite Zeilen mit Ziffern, die sich in mindestens `minCount` Änderungen
- * nur in den Zahlen unterscheiden (Datum, Besucherzähler, Zeitstempel), und schlägt dafür ignore-Regex vor.
+ * Looks through a page's history for lines with digits that differ only in their numbers across at least
+ * `minCount` changes (date, visitor counter, timestamp), and suggests ignore regexes for them.
  */
 export function suggestIgnores(diffs: string[], existing: string[] = [], minCount = 2): IgnoreSuggestion[] {
   const found = new Map<string, { example: string; entries: number }>()
@@ -429,7 +429,7 @@ export function toEditForm(e: Entry): EditForm {
   const ignore = o.ignore
   return {
     name: e.name === e.url ? '' : e.name,
-    group: e.group === 'Allgemein' ? '' : e.group,
+    group: e.group === 'General' ? '' : e.group,
     selector: typeof o.selector === 'string' ? o.selector : '',
     js: o.js === true,
     ignore: (Array.isArray(ignore) ? ignore : typeof ignore === 'string' ? [ignore] : []).join('\n'),
@@ -439,7 +439,7 @@ export function toEditForm(e: Entry): EditForm {
   }
 }
 
-/** Übernimmt das Formular in die Zeile. Unbekannte Optionen (min_ratio, ignore_robots, ...) bleiben erhalten. */
+/** Applies the form to the row. Unknown options (min_ratio, ignore_robots, ...) are preserved. */
 export function applyEdit(options: Record<string, unknown>, form: EditForm): { options: Record<string, unknown> } | { error: string } {
   const next: Record<string, unknown> = { ...options }
   const set = (key: string, value: unknown, keep: boolean) => (keep ? (next[key] = value) : delete next[key])
@@ -448,7 +448,7 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
     try {
       new RegExp(p)
     } catch {
-      return { error: `Ungültiger Ignore-Ausdruck: ${p}` }
+      return { error: `Invalid ignore expression: ${p}` }
     }
   }
   set('selector', form.selector.trim(), form.selector.trim() !== '')
@@ -469,7 +469,7 @@ const TABS: Tab[] = ['urls', 'changes', 'groups']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
-// Format: #t=changes&g=Azure&s=problem&p=7d&q=text. Altes Mail-Format #changes[:URL] bleibt gültig.
+// Format: #t=changes&g=Azure&s=problem&p=7d&q=text. The old mail format #changes[:URL] remains valid.
 export function parseView(hash: string): ViewState {
   const raw = hash.replace(/^#/, '')
   if (raw.startsWith('changes')) return { ...DEFAULT_VIEW, tab: 'changes' }
@@ -487,7 +487,7 @@ export function parseView(hash: string): ViewState {
   }
 }
 
-// "changed" = aufsteigend, "-changed" = absteigend
+// "changed" = ascending, "-changed" = descending
 function parseSort(raw: string): Sort {
   const desc = raw.startsWith('-')
   const key = desc ? raw.slice(1) : raw
@@ -508,10 +508,10 @@ export function buildHash(v: ViewState): string {
 
 export type GroupMeta = { name: string; position: number; color: string | null; icon: string | null }
 export const GROUP_COLORS: [string, string][] = [
-  ['', 'Keine'], ['#2563eb', 'Blau'], ['#16a34a', 'Grün'], ['#d97706', 'Orange'], ['#dc2626', 'Rot'], ['#9333ea', 'Violett'], ['#0891b2', 'Türkis'], ['#64748b', 'Grau'],
+  ['', 'None'], ['#2563eb', 'Blue'], ['#16a34a', 'Green'], ['#d97706', 'Orange'], ['#dc2626', 'Red'], ['#9333ea', 'Purple'], ['#0891b2', 'Teal'], ['#64748b', 'Grey'],
 ]
 
-/** Gruppen nach gespeicherter Reihenfolge, danach alphabetisch. Leere Gruppen nur mit includeEmpty. */
+/** Groups in stored order, then alphabetically. Empty groups only with includeEmpty. */
 export function orderGroups(entries: Entry[], metas: GroupMeta[], includeEmpty = true): [string, Entry[]][] {
   const map = new Map<string, Entry[]>()
   for (const e of entries) map.set(e.group, [...(map.get(e.group) ?? []), e])
@@ -520,11 +520,11 @@ export function orderGroups(entries: Entry[], metas: GroupMeta[], includeEmpty =
   return [...map].sort(([a], [b]) => {
     const pa = pos.get(a) ?? Infinity
     const pb = pos.get(b) ?? Infinity
-    return pa === pb ? a.localeCompare(b, 'de', { sensitivity: 'base' }) : pa < pb ? -1 : 1
+    return pa === pb ? a.localeCompare(b, 'en-GB', { sensitivity: 'base' }) : pa < pb ? -1 : 1
   })
 }
 
-/** Neue Reihenfolge nach Verschieben um eine Position (-1 hoch, +1 runter). */
+/** New order after moving by one position (-1 up, +1 down). */
 export function moveGroup(order: string[], name: string, delta: -1 | 1): string[] {
   const i = order.indexOf(name)
   const j = i + delta
@@ -541,7 +541,7 @@ export function isHexColor(c: string | null | undefined): c is string {
 export type RunInfo = { id: number; status: string; conclusion: string | null; url: string }
 export type RunPhase = 'waiting' | 'running' | 'success' | 'failed'
 
-/** Deutet den letzten Workflow-Lauf. Läufe mit id <= baseline gehören zu einer früheren Prüfung. */
+/** Interprets the latest workflow run. Runs with id <= baseline belong to an earlier check. */
 export function runPhase(run: RunInfo | null | undefined, baseline: number): RunPhase {
   if (!run || run.id <= baseline) return 'waiting'
   if (run.status !== 'completed') return 'running'
@@ -551,7 +551,7 @@ export function runPhase(run: RunInfo | null | undefined, baseline: number): Run
 export type Prefs = { view: ViewState; collapsed: string[] }
 const PREFS_KEY = 'watchlist-prefs'
 
-/** Hash hat Vorrang (geteilte Links), sonst die zuletzt gemerkte Ansicht. */
+/** The hash takes precedence (shared links), otherwise the last remembered view. */
 export function pickView(hash: string, stored: Prefs | null): ViewState {
   const fromHash = parseView(hash)
   if (hash.replace(/^#/, '') || !stored) return fromHash
@@ -570,12 +570,12 @@ export function readPrefs(): Prefs | null {
 }
 
 export function writePrefs(prefs: Prefs): void {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* Speicher gesperrt oder voll */ }
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* storage blocked or full */ }
 }
 
 export const SPARK_DAYS = 30
 
-/** Änderungen pro Tag der letzten `days` Tage (älteste zuerst, letzter Wert = heute). */
+/** Changes per day over the last `days` days (oldest first, last value = today). */
 export function dailyCounts(times: string[], now: Date = new Date(), days = SPARK_DAYS): number[] {
   const counts = Array.from({ length: days }, () => 0)
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
@@ -593,7 +593,7 @@ export const HEAT_WEEKS = 26
 
 export type HeatCell = { day: string; count: number; level: 0 | 1 | 2 | 3 | 4 }
 
-/** Kalender-Heatmap: Spalten = Wochen (Mo–So, UTC), letzte Spalte = aktuelle Woche; Tage nach heute fehlen (null). */
+/** Calendar heatmap: columns = weeks (Mon–Sun, UTC), last column = current week; days after today are missing (null). */
 export function heatmap(times: string[], now: Date = new Date(), weeks = HEAT_WEEKS): { columns: (HeatCell | null)[][]; total: number; months: (string | null)[] } {
   const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
@@ -620,12 +620,12 @@ export function heatmap(times: string[], now: Date = new Date(), weeks = HEAT_WE
   const months = columns.map((col, i) => {
     const first = col.find((c) => c)?.day.slice(5, 7)
     const prev = i ? columns[i - 1].find((c) => c)?.day.slice(5, 7) : undefined
-    return first && first !== prev ? new Date(`2000-${first}-15T12:00:00`).toLocaleDateString('de-AT', { month: 'short' }) : null
+    return first && first !== prev ? new Date(`2000-${first}-15T12:00:00`).toLocaleDateString('en-GB', { month: 'short' }) : null
   })
   return { columns, total, months }
 }
 
-/** Balken-Sparkline als SVG-Rechtecke (x, y, Höhe) in einer Fläche von width x height. */
+/** Bar sparkline as SVG rectangles (x, y, height) within an area of width x height. */
 export function sparkBars(counts: number[], width = 90, height = 18): { x: number; y: number; w: number; h: number }[] {
   const max = Math.max(...counts, 1)
   const w = width / counts.length
@@ -634,21 +634,21 @@ export function sparkBars(counts: number[], width = 90, height = 18): { x: numbe
 
 const STATUS_RANK: Record<Status, number> = { error: 0, warn: 1, new: 2, pending: 3, ok: 4, paused: 5 }
 
-/** Klick auf eine Spalte: aufsteigend, dann absteigend, dann Standardreihenfolge. */
+/** Click on a column: ascending, then descending, then default order. */
 export function nextSort(current: Sort, key: SortKey): Sort {
   if (current.key !== key) return { key, desc: false }
   return current.desc ? { key: '', desc: false } : { key, desc: true }
 }
 
-/** Sortiert Einträge innerhalb einer Gruppe. Leere Zeitwerte stehen immer am Ende. */
+/** Sorts entries within a group. Empty time values always come last. */
 export function sortEntries(items: Entry[], sort: Sort): Entry[] {
   if (!sort.key) return items
   const dir = sort.desc ? -1 : 1
   const key = sort.key
   const empty = (v: string) => !v || v === '-'
   return [...items].sort((a, b) => {
-    if (key === 'name') return dir * a.name.localeCompare(b.name, 'de', { sensitivity: 'base' })
-    if (key === 'status') return dir * (STATUS_RANK[a.status] - STATUS_RANK[b.status]) || a.name.localeCompare(b.name, 'de', { sensitivity: 'base' })
+    if (key === 'name') return dir * a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base' })
+    if (key === 'status') return dir * (STATUS_RANK[a.status] - STATUS_RANK[b.status]) || a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base' })
     const x = a[key]
     const y = b[key]
     if (empty(x) !== empty(y)) return empty(x) ? 1 : -1

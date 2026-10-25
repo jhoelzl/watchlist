@@ -1,5 +1,5 @@
-// Vorschau fürs Formular "URL hinzufügen": ruft die Seite ab und zeigt, welcher Bereich erkannt wird.
-// Nur für freigeschaltete Konten (watchlist_admins). Kein JavaScript-Rendering (Seiten mit js: true können abweichen).
+// Preview for the "Add URL" form: fetches the page and shows the detected area.
+// Authorized accounts only (watchlist_admins). JavaScript is not rendered (pages with js: true may differ).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { parseHTML } from "npm:linkedom@0.18";
 import { analyze, type Doc } from "./analyze.ts";
@@ -27,14 +27,14 @@ function privateIp(ip: string): boolean {
     (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
 }
 
-// Schutz vor SSRF: nur http(s) auf Standardports, keine internen Hosts (auch nicht per DNS oder Weiterleitung).
+// SSRF protection: only http(s) on standard ports; no internal hosts, including through DNS or redirects.
 async function assertPublic(raw: string): Promise<URL> {
   const url = new URL(raw);
-  if (!["http:", "https:"].includes(url.protocol)) throw new Error("Nur http(s)-URLs sind erlaubt.");
-  if (url.port && !["80", "443"].includes(url.port)) throw new Error("Nur die Standardports 80 und 443 sind erlaubt.");
+  if (!["http:", "https:"].includes(url.protocol)) throw new Error("Only http(s) URLs are allowed.");
+  if (url.port && !["80", "443"].includes(url.port)) throw new Error("Only the standard ports 80 and 443 are allowed.");
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) {
-    throw new Error("Interne Hosts sind nicht erlaubt.");
+    throw new Error("Internal hosts are not allowed.");
   }
   const isIp = /^[\d.]+$/.test(host) || host.includes(":");
   const ips: string[] = [];
@@ -43,11 +43,11 @@ async function assertPublic(raw: string): Promise<URL> {
     for (const type of ["A", "AAAA"] as const) {
       try {
         ips.push(...(await Deno.resolveDns(host, type)));
-      } catch { /* kein Eintrag dieses Typs */ }
+      } catch { /* No record of this type. */ }
     }
-    if (!ips.length) throw new Error("Host nicht auflösbar.");
+    if (!ips.length) throw new Error("Host could not be resolved.");
   }
-  if (ips.some(privateIp)) throw new Error("Interne Adressen sind nicht erlaubt.");
+  if (ips.some(privateIp)) throw new Error("Internal addresses are not allowed.");
   return url;
 }
 
@@ -57,7 +57,7 @@ async function fetchPage(start: string): Promise<{ body: string; type: string; u
     const res = await fetch(url, {
       redirect: "manual",
       signal: AbortSignal.timeout(12_000),
-      headers: { "User-Agent": UA, "Accept-Language": "de,en;q=0.8" },
+      headers: { "User-Agent": UA, "Accept-Language": "en" },
     });
     if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
       url = await assertPublic(new URL(res.headers.get("location")!, url).toString());
@@ -80,7 +80,7 @@ async function fetchPage(start: string): Promise<{ body: string; type: string; u
     const body = new TextDecoder().decode(await new Blob(chunks).arrayBuffer());
     return { body, type: res.headers.get("content-type") ?? "", url: url.toString() };
   }
-  throw new Error("Zu viele Weiterleitungen.");
+  throw new Error("Too many redirects.");
 }
 
 Deno.serve(async (req) => {
@@ -88,26 +88,26 @@ Deno.serve(async (req) => {
   const reply = (body: Record<string, unknown>, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
   const origin = req.headers.get("Origin");
-  if (origin && !ALLOWED_ORIGINS.includes(origin)) return reply({ error: "Herkunft nicht erlaubt." }, 403);
+  if (origin && !ALLOWED_ORIGINS.includes(origin)) return reply({ error: "Origin not allowed." }, 403);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method !== "POST") return reply({ error: "Nur POST erlaubt." }, 405);
+  if (req.method !== "POST") return reply({ error: "Only POST is allowed." }, 405);
 
   const auth = req.headers.get("Authorization") ?? "";
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: auth } },
   });
   const { data: user } = await supabase.auth.getUser(auth.replace(/^Bearer\s+/i, ""));
-  if (!user.user) return reply({ error: "Nicht angemeldet." }, 401);
+  if (!user.user) return reply({ error: "Not signed in." }, 401);
   const { data: admin } = await supabase.from("watchlist_admins").select("user_id").maybeSingle();
-  if (!admin) return reply({ error: "Konto nicht freigeschaltet." }, 403);
+  if (!admin) return reply({ error: "Account not authorized." }, 403);
 
   let input: { url?: unknown; selector?: unknown };
   try {
     input = await req.json();
   } catch {
-    return reply({ error: "Ungültige Anfrage." }, 400);
+    return reply({ error: "Invalid request." }, 400);
   }
-  if (typeof input.url !== "string" || input.url.length > 2000) return reply({ error: "URL fehlt." }, 400);
+  if (typeof input.url !== "string" || input.url.length > 2000) return reply({ error: "URL is required." }, 400);
   const selector = typeof input.selector === "string" ? input.selector.slice(0, 200) : "auto";
 
   try {
@@ -118,6 +118,6 @@ Deno.serve(async (req) => {
     const { document } = parseHTML(page.body);
     return reply({ ...analyze(document as unknown as Doc, selector), finalUrl: page.url });
   } catch (e) {
-    return reply({ error: e instanceof Error ? e.message : "Abruf fehlgeschlagen." });
+    return reply({ error: e instanceof Error ? e.message : "Fetch failed." });
   }
 });

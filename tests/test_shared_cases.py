@@ -1,4 +1,4 @@
-"""Gleiche Fälle wie web/src/lib/shared.test.ts (fixtures/shared_cases.json): hält Python und TypeScript synchron."""
+"""Same cases as web/src/lib/shared.test.ts (fixtures/shared_cases.json): keeps Python and TypeScript in sync."""
 
 import json
 from pathlib import Path

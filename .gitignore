@@ -6,6 +6,6 @@ site/
 data/
 node_modules/
 dist/
-# Persönliche Daten (nur lokal): URL-Liste und Import
+# Personal data (local only): URL list and import
 urls.yml
 supabase/import_urls.sql

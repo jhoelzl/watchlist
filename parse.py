@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup, Tag
 from errors import CheckError
 from models import Options
 
-# Obergrenze pro ignore-Muster; schützt vor katastrophalem Backtracking, das die Heuristik in config.py nicht erkennt.
+# Per-pattern timeout; protects against catastrophic backtracking not caught by the heuristic in config.py.
 IGNORE_TIMEOUT = 2.0
 
 
@@ -25,7 +25,7 @@ def is_feed(body: str) -> bool:
 
 
 def parse_feed(body: str) -> tuple[str, str]:
-    """Liefert (Titel, Text) mit einer Zeile pro Eintrag."""
+    """Returns (title, text) with one line per entry."""
     root = ET.fromstring(body.encode("utf-8"))
     for el in root.iter():
         el.tag = el.tag.split("}")[-1]
@@ -56,11 +56,11 @@ def parse_feed(body: str) -> tuple[str, str]:
 
 AUTO_SELECTOR = "auto"
 CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
-SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
+SELECTOR_MIN_SHARE = 0.2  # A selector must return at least this fraction of the full page text.
 
 
 def auto_root(soup: BeautifulSoup) -> BeautifulSoup | Tag:
-    """Erster Kandidat, der existiert und nicht fast leer ist, sonst die ganze Seite."""
+    """First candidate that exists and is not nearly empty; otherwise use the whole page."""
     total = len(clean(soup.get_text(" ")))
     for sel in CANDIDATE_SELECTORS:
         node = soup.select_one(sel)
@@ -80,18 +80,18 @@ def parse_html(body: str, selector: str | None) -> tuple[str, str]:
     elif selector:
         found = soup.select_one(selector)
         if found is None:
-            raise CheckError(f"Selector nicht gefunden: {selector}", "selector")
+            raise CheckError(f"Selector not found: {selector}", "selector")
         root = found
     return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
 
 
 def extract(body: str, opts: Options) -> tuple[str, str, bool]:
-    """Body -> (Titel, Text, ist_feed). Entfernt danach die ignore-Muster und leere Zeilen."""
+    """Body -> (title, text, is_feed). Then removes ignore patterns and blank lines."""
     feed = is_feed(body)
     title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
     for pattern in opts.get("ignore", []):
         try:
             text = regex.sub(pattern, "", text, timeout=IGNORE_TIMEOUT)
         except TimeoutError as ex:
-            raise CheckError(f"ignore-Regex braucht zu lange (>{IGNORE_TIMEOUT} s): {pattern[:60]}", "ignore_timeout") from ex
+            raise CheckError(f"ignore regex took too long (>{IGNORE_TIMEOUT} s): {pattern[:60]}", "ignore_timeout") from ex
     return title, drop_blank_lines(text), feed

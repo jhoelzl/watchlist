@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import cases from '../../../fixtures/shared_cases.json'
 import { annotateDiff, countLines, fragmentUrl, groupOf } from './watchlist'
 
-// Dieselben Fälle prüft tests/test_shared_cases.py gegen die Python-Fassung (diffing.py, notify.py).
+// The same cases are checked by tests/test_shared_cases.py against the Python version (diffing.py, notify.py).
 describe('shared fixtures (Python <-> TypeScript)', () => {
   it.each(cases.group_of)('groupOf %j', ({ input, expected }) => {
     expect(groupOf(input)).toBe(expected)

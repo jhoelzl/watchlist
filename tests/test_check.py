@@ -14,37 +14,37 @@ import parse
 from settings import SETTINGS
 
 HTML = """
-<html><head><title> Meine   Seite </title><style>x{}</style></head>
-<body><nav>Navigation</nav><main><h1>Titel</h1>
+<html><head><title> My   page </title><style>x{}</style></head>
+<body><nav>Navigation</nav><main><h1>Title</h1>
 <script>var a=1;</script><p>Last updated on
 2026-10-08</p>
-<p>Text   mit    Leerraum</p></main></body></html>
+<p>Text   with    Leerraum</p></main></body></html>
 """
 
 RSS = """<?xml version="1.0"?>
-<rss version="2.0"><channel><title>Mein Feed</title>
-<item><title>Eins</title><link>https://x/1</link><pubDate>Mon, 01 Jan 2026</pubDate>
+<rss version="2.0"><channel><title>My Feed</title>
+<item><title>One</title><link>https://x/1</link><pubDate>Mon, 01 Jan 2026</pubDate>
 <description>&lt;b&gt;Hallo&lt;/b&gt; Welt</description></item>
-<item><title>Zwei</title><link>https://x/2</link></item>
+<item><title>Two</title><link>https://x/2</link></item>
 </channel></rss>"""
 
 ATOM = """<?xml version="1.0"?>
 <feed xmlns="http://www.w3.org/2005/Atom"><title>Atom Feed</title>
 <entry><title>A1</title><link href="https://x/a1"/><updated>2026-01-01</updated>
-<summary>Zusammenfassung</summary></entry></feed>"""
+<summary>Summary</summary></entry></feed>"""
 
 
 def test_parse_html_strips_noise_and_selects():
     title, text = parse.parse_html(HTML, "main")
-    assert title == "Meine Seite"
+    assert title == "My page"
     assert "Navigation" not in text
     assert "var a" not in text
-    assert "Text mit Leerraum" in text.splitlines()
+    assert "Text with Leerraum" in text.splitlines()
 
 
 def test_parse_html_missing_selector():
     with pytest.raises(errors.CheckError):
-        parse.parse_html(HTML, "#gibt-es-nicht")
+        parse.parse_html(HTML, "#gibt-es-not")
 
 
 def test_is_feed():
@@ -56,15 +56,15 @@ def test_is_feed():
 def test_parse_rss():
     title, text = parse.parse_feed(RSS)
     lines = text.splitlines()
-    assert title == "Mein Feed"
-    assert lines[0] == "Mon, 01 Jan 2026 | Eins | https://x/1 | Hallo Welt"
-    assert lines[1] == "Zwei | https://x/2"
+    assert title == "My Feed"
+    assert lines[0] == "Mon, 01 Jan 2026 | One | https://x/1 | Hallo Welt"
+    assert lines[1] == "Two | https://x/2"
 
 
 def test_parse_atom():
     title, text = parse.parse_feed(ATOM)
     assert title == "Atom Feed"
-    assert text == "2026-01-01 | A1 | https://x/a1 | Zusammenfassung"
+    assert text == "2026-01-01 | A1 | https://x/a1 | Summary"
 
 
 def test_make_diff_full():
@@ -75,11 +75,11 @@ def test_make_diff_full():
 
 def test_make_diff_only_added_ignores_removals():
     assert diffing.make_diff("a\nb", "a", only_added=True) == ([], 0)
-    assert diffing.make_diff("a", "a\nneu", only_added=True) == (["+neu"], 0)
+    assert diffing.make_diff("a", "a\nnew", only_added=True) == (["+new"], 0)
 
 
 def test_make_diff_truncates():
-    new = "\n".join(f"zeile {i}" for i in range(600))
+    new = "\n".join(f"line {i}" for i in range(600))
     diff, extra = diffing.make_diff("", new, only_added=True)
     assert len(diff) == SETTINGS.store_diff_lines
     assert extra == 600 - SETTINGS.store_diff_lines
@@ -87,8 +87,8 @@ def test_make_diff_truncates():
 
 def test_default_ignore_removes_last_updated():
     cfg = {"ignore": [r"Last updated on\s*\S+"]}
-    text = parse.drop_blank_lines(re.sub(cfg["ignore"][0], "", "vorher\nLast updated on\n2026-10-08\nnachher"))
-    assert text == "vorher\nnachher"
+    text = parse.drop_blank_lines(re.sub(cfg["ignore"][0], "", "before\nLast updated on\n2026-10-08\nafter"))
+    assert text == "before\nafter"
 
 
 def test_load_config_list_format(tmp_path):
@@ -112,17 +112,17 @@ def test_load_config_defaults_merge(tmp_path):
 
 def test_render_groups_and_escapes():
     changes = [
-        {"name": "A <b>", "url": "https://a", "group": "Azure", "diff": ["+neu & gut"], "extra": 2},
-        {"name": "G", "url": "https://g", "group": "Google", "diff": ["-weg"], "extra": 0},
+        {"name": "A <b>", "url": "https://a", "group": "Azure", "diff": ["+new & good"], "extra": 2},
+        {"name": "G", "url": "https://g", "group": "Google", "diff": ["-gone"], "extra": 0},
         {"name": "N", "url": "https://n", "group": None, "diff": ["+x"], "extra": 0},
     ]
     html_out = notify.render_html(changes)
     text_out = notify.render_text(changes)
     assert "A &lt;b&gt;" in html_out and "<b>" not in html_out
-    assert "neu &amp; gut" in html_out
-    for g in ("Azure", "Google", "Allgemein"):
+    assert "new &amp; good" in html_out
+    for g in ("Azure", "Google", "General"):
         assert g in html_out and f"=== {g} ===" in text_out
-    assert "und 2 weitere Zeilen" in text_out
+    assert "and 2 more lines" in text_out
 
 
 def test_heartbeat_first_run_is_silent(monkeypatch):
@@ -138,13 +138,13 @@ def test_heartbeat_sent_once_per_month(monkeypatch):
     sent = []
     monkeypatch.setattr(notify, "send_mail", lambda *a, **k: sent.append(a))
     meta = {"heartbeat": "2026-10"}
-    status = {"u": {"name": "Seite", "status": "error", "error": "kaputt"}}
-    hist = [{"time": "2026-11-02 06:00 UTC", "name": "Seite"}]
+    status = {"u": {"name": "page", "status": "error", "error": "broken"}}
+    hist = [{"time": "2026-11-02 06:00 UTC", "name": "page"}]
     nov = datetime(2026, 11, 3, tzinfo=UTC)
     notify.send_heartbeat(nov, [1], status, hist, meta)
     notify.send_heartbeat(nov, [1], status, hist, meta)
     assert len(sent) == 1
-    assert "Seite: kaputt" in sent[0][1]
+    assert "page: broken" in sent[0][1]
     assert meta["heartbeat"] == "2026-11"
 
 
@@ -152,56 +152,57 @@ def test_run_end_to_end(tmp_path, monkeypatch):
     (tmp_path / "urls.yml").write_text("urls:\n  - url: https://a\n    group: G\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    pages = iter(["eins", "eins", "zwei"])
+    pages = iter(["One", "One", "Two"])
     monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
     monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     sent = []
     monkeypatch.setattr(notify, "send_mail", lambda s, t, h=None: sent.append(s))
 
     check.run()  # Baseline
-    check.run()  # unverändert
+    check.run()  # unchanged
     assert sent == []
-    check.run()  # geändert
-    assert sent == ["Watchlist: T geändert"]
+    check.run()  # changed
+    assert sent == ["Watchlist: T changed"]
     hist = json.loads((tmp_path / "state" / "history.json").read_text())
-    assert hist[0]["diff"] == ["-eins", "+zwei"] or "+zwei" in hist[0]["diff"]
+    assert hist[0]["diff"] == ["-One", "+Two"] or "+Two" in hist[0]["diff"]
     assert not (tmp_path / "site").exists()
 
 
 def test_fragment_url_points_to_first_added_line():
-    diff = ["@@ -1 +1 @@", " Kontext", "-alt", "+Neue Preise ab 12-Euro, sofort & jetzt"]
+    diff = ["@@ -1 +1 @@", " Kontext", "-Old", "+New prices from 12 euros, available now & today"]
     assert (
         diffing.fragment_url("https://a/x", diff)
-        == "https://a/x#:~:text=Neue%20Preise%20ab%2012%2DEuro%2C%20sofort%20%26%20jetzt"
+        == "https://a/x#:~:text=New%20prices%20from%2012%20euros%2C%20available%20now%20%26"
     )
-    assert diffing.fragment_url("https://a/x#top", ["+Ein langer neuer Satz"]).startswith("https://a/x#top:~:text=")
-    assert diffing.fragment_url("https://a/x", ["-nur weg", "+kurz"]) == "https://a/x"
+    assert diffing.fragment_url("https://a/x#top", ["+A long new sentence"]).startswith("https://a/x#top:~:text=")
+    assert diffing.fragment_url("https://a/x", ["-only gone", "+short"]) == "https://a/x"
 
 
 def test_mail_shows_short_diff_and_summary():
-    diff = [f"+zeile {i}" for i in range(100)]
+    diff = [f"+line {i}" for i in range(100)]
     changes = [
         {"name": "A", "url": "https://a", "group": "G1", "diff": diff, "extra": 5},
         {"name": "B", "url": "https://b", "group": "G2", "diff": ["+x"], "extra": 0},
     ]
     text = notify.render_text(changes)
-    assert text.startswith("2 Seiten geändert in 2 Gruppen")
-    assert "zeile 59" in text and "zeile 60" not in text
-    assert f"und {5 + 100 - SETTINGS.mail_diff_lines} weitere Zeilen" in text
+    assert notify.summary_line([changes[0]]) == "1 page changed in 1 group"
+    assert text.startswith("2 pages changed in 2 groups")
+    assert "line 59" in text and "line 60" not in text
+    assert f"and {5 + 100 - SETTINGS.mail_diff_lines} more lines" in text
     html_out = notify.render_html(changes)
     assert 'href="#g1"' in html_out and 'id="c1"' in html_out
-    assert "2 Seiten geändert in 2 Gruppen" in html_out
-    assert "Seiten geändert" not in notify.render_text(changes[1:])
+    assert "2 pages changed in 2 groups" in html_out
+    assert "pages changed" not in notify.render_text(changes[1:])
 
 
 def test_auto_selector_picks_main_or_falls_back_to_whole_page():
-    with_main = "<body><nav>Menü</nav><main>" + "Inhalt " * 40 + "</main></body>"
-    assert "Menü" not in parse.parse_html(with_main, "auto")[1]
-    role = "<body><nav>Navigation</nav><div role='main'>" + "Inhalt " * 40 + "</div></body>"
+    with_main = "<body><nav>Menu</nav><main>" + "content " * 40 + "</main></body>"
+    assert "Menu" not in parse.parse_html(with_main, "auto")[1]
+    role = "<body><nav>Navigation</nav><div role='main'>" + "content " * 40 + "</div></body>"
     assert "Navigation" not in parse.parse_html(role, "auto")[1]
-    plain = "<body><p>Nur Text ohne Hauptbereich</p></body>"
-    assert "Nur Text" in parse.parse_html(plain, "auto")[1]
-    assert "Menü" in parse.parse_html(with_main, None)[1]
+    plain = "<body><p>Text without a main section</p></body>"
+    assert "Text without a main section" in parse.parse_html(plain, "auto")[1]
+    assert "Menu" in parse.parse_html(with_main, None)[1]
 
 
 EVIL = '<script>alert(1)</script> " onmouseover="x" <img src=x onerror=alert(1)>'
@@ -213,17 +214,17 @@ def test_mail_html_escapes_hostile_content():
             "name": EVIL,
             "url": 'https://a/?q="><script>x</script>',
             "group": EVIL,
-            "diff": [f"+{EVIL} Zeile mit genug Text", f"-{EVIL}"],
+            "diff": [f"+{EVIL} line with genug Text", f"-{EVIL}"],
             "extra": 0,
         },
-        {"name": "J", "url": "javascript:alert(1)", "group": "G", "diff": ["+etwas neuer Text hier"], "extra": 0},
+        {"name": "J", "url": "javascript:alert(1)", "group": "G", "diff": ["+some new text here"], "extra": 0},
     ]
     out = notify.render_html(changes)
     assert "<script" not in out and "<img" not in out
     assert 'onmouseover="x"' not in out
     assert "&lt;script&gt;" in out and "&quot; onmouseover=&quot;x&quot;" in out
     assert 'href="javascript' not in out
-    assert "javascript:alert(1)" in out  # nur als Text
+    assert "javascript:alert(1)" in out  # only als Text
     assert re.findall(r'href="([^"]*)"', out)
     assert all(h.startswith(("#", "https://")) for h in re.findall(r'href="([^"]*)"', out))
 
@@ -239,43 +240,43 @@ def test_mail_html_escapes_feed_content():
 
 
 def test_fragment_url_special_characters():
-    diff = ['+Preis: 5 & 6, "neu" <b>fett</b> #1 - Übung 100%']
+    diff = ['+Price: 5 & 6, "new" <b>bold</b> #1 - exercise 100%']
     url = diffing.fragment_url("https://a/x?y=1&z=2", diff)
     frag = url.split("#:~:text=")[1]
     assert re.fullmatch(r"[A-Za-z0-9%._~]+", frag)
     assert "%3Cb%3E" in frag and "%2D" in frag
     out = notify.render_html([{"name": "N", "url": "https://a/x?y=1&z=2", "group": "G", "diff": diff, "extra": 0}])
     assert 'href="https://a/x?y=1&amp;z=2#:~:text=' in out
-    assert "<b>fett" not in out
+    assert "<b>bold" not in out
 
 
 def test_identical_diffs_are_merged_into_one_entry():
-    d = ["+gleiche neue Zeile hier"]
+    d = ["+same new line here"]
     changes = [
         {"name": "Lang STT", "url": "https://a/l?tabs=stt", "group": "A", "diff": d, "extra": 0},
         {"name": "Lang TTS", "url": "https://a/l?tabs=tts", "group": "A", "diff": d, "extra": 0},
-        {"name": "Andere", "url": "https://a/o", "group": "A", "diff": ["+etwas anderes"], "extra": 0},
+        {"name": "Andere", "url": "https://a/o", "group": "A", "diff": ["+something else"], "extra": 0},
         {"name": "Lang B", "url": "https://b/l", "group": "B", "diff": d, "extra": 0},
     ]
     assert len(notify.merge_variants(changes)) == 3
     out, text = notify.render_html(changes), notify.render_text(changes)
     assert out.count("Lang TTS") == 0 and "https://a/l?tabs=tts" in out
-    assert "3 Seiten geändert" in out and "Gleicher Inhalt auch unter" in text
+    assert "3 pages changed" in out and "Same content also at" in text
 
 
 def test_subject_lists_names_and_groups():
     def ch(n, g="A"):
-        return {"name": n, "url": f"https://x/{n}", "group": g, "diff": [f"+{n} neu"], "extra": 0}
+        return {"name": n, "url": f"https://x/{n}", "group": g, "diff": [f"+{n} new"], "extra": 0}
 
-    assert notify.subject_for([ch("Eins")]) == "Watchlist: Eins geändert"
-    assert notify.subject_for([ch("Eins"), ch("Zwei")]) == "Watchlist: 2 Änderungen: Eins, Zwei"
-    sub = notify.subject_for([ch("Eins"), ch("Zwei", "B"), ch("Drei"), ch("Vier")])
-    assert sub == "Watchlist: 4 Änderungen: Eins, Zwei, Drei, … (A, B)"
+    assert notify.subject_for([ch("One")]) == "Watchlist: One changed"
+    assert notify.subject_for([ch("One"), ch("Two")]) == "Watchlist: 2 changes: One, Two"
+    sub = notify.subject_for([ch("One"), ch("Two", "B"), ch("Three"), ch("Vier")])
+    assert sub == "Watchlist: 4 changes: One, Two, Three, … (A, B)"
 
 
 def test_mail_links_to_dashboard_entry(monkeypatch):
     monkeypatch.delenv("DASHBOARD_URL", raising=False)
-    c = [{"name": "N", "url": "https://a/x?y=1", "group": "G", "diff": ["+neuer Text hier"], "extra": 0}]
+    c = [{"name": "N", "url": "https://a/x?y=1", "group": "G", "diff": ["+new text here"], "extra": 0}]
     link = f"{notify.DASHBOARD_URL}#changes:https%3A%2F%2Fa%2Fx%3Fy%3D1"
     assert link in notify.render_html(c) and link in notify.render_text(c)
     assert f'href="{notify.DASHBOARD_URL}#changes"' in notify.render_html(c)
@@ -283,11 +284,9 @@ def test_mail_links_to_dashboard_entry(monkeypatch):
 
 
 def test_fragment_url_prefers_longest_plain_line_and_feed_links():
-    diff = ["+Kurz & knapp <b>", "+Eine schlichte Zeile mit Text", "+Noch eine deutlich längere schlichte Zeile hier"]
-    assert diffing.fragment_url("https://a", diff).endswith(
-        "#:~:text=Noch%20eine%20deutlich%20l%C3%A4ngere%20schlichte%20Zeile%20hier"
-    )
-    diff = ["+Ganz langer Satz mit & vielen <Sonderzeichen> hier", "+Schlicht aber kurz"]
-    assert diffing.fragment_url("https://a", diff).endswith("#:~:text=Schlicht%20aber%20kurz")
-    feed = ["+2026-01-01 | Neuer Beitrag | https://a/post/1 | Zusammenfassung"]
+    diff = ["+short & brief <b>", "+A plain line of text", "+Another much longer plain line here"]
+    assert diffing.fragment_url("https://a", diff).endswith("#:~:text=Another%20much%20longer%20plain%20line%20here")
+    diff = ["+A very long sentence with & many <special characters> here", "+plain but short"]
+    assert diffing.fragment_url("https://a", diff).endswith("#:~:text=plain%20but%20short")
+    feed = ["+2026-01-01 | New post | https://a/post/1 | Summary"]
     assert diffing.fragment_url("https://a/feed", feed) == "https://a/post/1"
