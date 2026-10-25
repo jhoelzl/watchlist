@@ -30,6 +30,8 @@ jobs:
           SUPABASE_URL: op://watchlist/Supabase/url
           SUPABASE_SERVICE_KEY: op://watchlist/Supabase/service-token
           RESEND_API_KEY: op://watchlist/Resend/api-key
+          MAIL_TO: op://watchlist/Mail/to
+          MAIL_FROM: op://watchlist/Mail/from
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
@@ -40,13 +42,8 @@ jobs:
           fi
       - run: uv run --frozen --no-dev --extra js check.py
         env:
-          MAIL_TO: ${{ secrets.MAIL_TO }}
-          MAIL_FROM: ${{ secrets.MAIL_FROM }}
           WATCHLIST_ONLY_URL: ${{ inputs.url }}
       - name: Alarm bei Fehler
         if: failure()
         run: |
           uv run --frozen --no-dev check.py --alert "Der Workflow ist fehlgeschlagen: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        env:
-          MAIL_TO: ${{ secrets.MAIL_TO }}
-          MAIL_FROM: ${{ secrets.MAIL_FROM }}
