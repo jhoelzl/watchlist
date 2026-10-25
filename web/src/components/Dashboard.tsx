@@ -3,7 +3,7 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, groupEntries, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -172,16 +172,18 @@ function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: b
 
 export function Dashboard() {
   const [result, setResult] = useState<Load>({ state: 'loading' })
-  const [query, setQuery] = useState('')
-  const [group, setGroup] = useState('')
-  const [status, setStatus] = useState<StatusFilter>('')
+  const [initial] = useState(() => parseView(window.location.hash))
+  const [mailTarget] = useState(() => /^#changes:(.+)$/.exec(window.location.hash))
+  const [query, setQuery] = useState(initial.query)
+  const [group, setGroup] = useState(initial.group)
+  const [status, setStatus] = useState<StatusFilter>(initial.status)
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
-  const [period, setPeriod] = useState<Period>('')
+  const [period, setPeriod] = useState<Period>(initial.period)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
-  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(() => (window.location.hash.startsWith('#changes') ? 'changes' : 'urls'))
+  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(initial.tab)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
 
@@ -212,7 +214,7 @@ export function Dashboard() {
 
   // Mail-Link #changes:<URL> öffnet den passenden Eintrag
   useEffect(() => {
-    const m = /^#changes:(.+)$/.exec(window.location.hash)
+    const m = mailTarget
     if (!m || !data) return
     const url = decodeURIComponent(m[1])
     const el = Array.from(document.querySelectorAll<HTMLDetailsElement>('details.change')).find((d) => d.dataset.url === url)
@@ -220,7 +222,12 @@ export function Dashboard() {
       el.open = true
       el.scrollIntoView({ block: 'center' })
     }
-  }, [data])
+  }, [data, mailTarget])
+
+  useEffect(() => {
+    const hash = buildHash({ tab, group, status, period, query })
+    if (hash !== window.location.hash) history.replaceState(null, '', hash || window.location.pathname + window.location.search)
+  }, [tab, group, status, period, query])
 
   const checkNow = async () => {
     setCheck({ state: 'busy' })

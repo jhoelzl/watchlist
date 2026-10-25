@@ -338,3 +338,38 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
   set('ignore', patterns, patterns.length > 0)
   return { options: next }
 }
+
+export type Tab = 'urls' | 'changes' | 'groups'
+export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string }
+export const DEFAULT_VIEW: ViewState = { tab: 'urls', group: '', status: '', period: '', query: '' }
+const TABS: Tab[] = ['urls', 'changes', 'groups']
+const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem']
+const PERIOD_VALUES = ['', 'today', '7d', '30d']
+
+// Format: #t=changes&g=Azure&s=problem&p=7d&q=text. Altes Mail-Format #changes[:URL] bleibt gültig.
+export function parseView(hash: string): ViewState {
+  const raw = hash.replace(/^#/, '')
+  if (raw.startsWith('changes')) return { ...DEFAULT_VIEW, tab: 'changes' }
+  const p = new URLSearchParams(raw)
+  const t = p.get('t') as Tab
+  const s = p.get('s') ?? ''
+  const per = p.get('p') ?? ''
+  return {
+    tab: TABS.includes(t) ? t : 'urls',
+    group: p.get('g') ?? '',
+    status: (STATUSES.includes(s) ? s : '') as StatusFilter,
+    period: (PERIOD_VALUES.includes(per) ? per : '') as Period,
+    query: p.get('q') ?? '',
+  }
+}
+
+export function buildHash(v: ViewState): string {
+  const p = new URLSearchParams()
+  if (v.tab !== 'urls') p.set('t', v.tab)
+  if (v.group) p.set('g', v.group)
+  if (v.status) p.set('s', v.status)
+  if (v.period) p.set('p', v.period)
+  if (v.query) p.set('q', v.query)
+  const out = p.toString()
+  return out ? `#${out}` : ''
+}

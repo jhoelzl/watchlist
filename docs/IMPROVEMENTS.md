@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 30 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 95 Python- und 33 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -49,7 +49,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 
 - 🟡 **Fehlerserie anzeigen:** `streak` liegt im Status und ist im Typ vorhanden, wird aber nicht angezeigt. Dauerhaft kaputte Seiten hervorheben, Filter „Dauerhaft kaputt“. (S)
 - 🟡 **Sortierung:** Spalten sortierbar (zuletzt geändert, zuletzt geprüft, Status). Gruppen sind bereits alphabetisch. (S)
-- 🟡 **Filterzustand in der URL** (`#g=Azure&s=problem&t=changes`), damit Ansichten teilbar sind und beim Neuladen bleiben. (S)
 - 🟡 **Gruppen-Tab erweitern:** Reihenfolge der Gruppen, Farbe/Icon pro Gruppe, Sammelaktionen (alle URLs einer Gruppe pausieren). Heute ist eine Gruppe nur ein Textfeld an den URLs, leere Gruppen gibt es nicht. (M)
 - 🟡 **Rückmeldung nach „Jetzt prüfen“:** Lauf-Status live aus der GitHub-API holen (läuft/fertig/Fehler) statt fest 90 Sekunden zu warten. (M)
 - 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Import/Export | Menü „Import / Export“ im Dashboard: Export als YAML oder JSON im `urls.yml`-Format, Import (auch alte `urls.yml`) mit Vorschau, vorhandene URLs werden übersprungen. Globale `defaults` sind nicht enthalten |
 | URLs bearbeiten und pausieren | Stift-Button pro URL öffnet ein Formular: Name, Gruppe, Selector (mit Vorschau), JS, `ignore` (Regex pro Zeile, geprüft), `only_added` und Pausieren (`active = false`, Status „Pausiert“, eigener Filter). Unbekannte Optionen bleiben erhalten. Braucht die Policy `admins update urls` |
 | Verlauf pro Seite | Uhr-Button (⏱) in der URL-Tabelle öffnet „Letzte Änderungen“ gefiltert auf diese Seite. Die Änderungen kommen komplett aus `watchlist_history` (bis 500), nicht nur aus den letzten 100 insgesamt |
+| Filterzustand in der URL | Tab, Gruppe, Status, Zeitraum und Suche stehen im Hash (`#t=changes&g=Azure&s=problem&p=7d&q=…`), bleiben beim Neuladen und sind teilbar. Alte Mail-Links (`#changes:<URL>`) funktionieren weiter |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

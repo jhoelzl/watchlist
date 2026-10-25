@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -196,5 +196,20 @@ describe('URLs bearbeiten', () => {
   })
   it('pausierte URLs bekommen den Status "paused"', () => {
     expect(toEntries([{ url: 'https://a', name: null, grp: null, active: false }], { 'https://a': { status: 'ok' } })[0].status).toBe('paused')
+  })
+})
+
+describe('view hash', () => {
+  it('roundtrip', () => {
+    const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b' }
+    expect(parseView(buildHash(v))).toEqual(v)
+  })
+  it('default ist leer', () => {
+    expect(buildHash(parseView(''))).toBe('')
+  })
+  it('ungültige Werte und altes Mail-Format', () => {
+    expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('urls')
+    expect(parseView('#s=zzz').status).toBe('')
+    expect(parseView('#changes:https%3A%2F%2Fa.de').tab).toBe('changes')
   })
 })
