@@ -465,7 +465,7 @@ export type Sort = { key: SortKey; desc: boolean }
 export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
 export const DEFAULT_VIEW: ViewState = { tab: 'changes', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
-const TABS: Tab[] = ['urls', 'changes', 'groups']
+const TABS: Tab[] = ['changes', 'urls', 'groups']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
