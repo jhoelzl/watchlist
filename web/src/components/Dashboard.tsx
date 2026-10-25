@@ -3,7 +3,7 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, parseView, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
@@ -175,7 +175,8 @@ function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: b
 
 export function Dashboard() {
   const [result, setResult] = useState<Load>({ state: 'loading' })
-  const [initial] = useState(() => parseView(window.location.hash))
+  const [prefs] = useState(readPrefs)
+  const [initial] = useState(() => pickView(window.location.hash, prefs))
   const [mailTarget] = useState(() => /^#changes:(.+)$/.exec(window.location.hash))
   const [query, setQuery] = useState(initial.query)
   const [group, setGroup] = useState(initial.group)
@@ -188,7 +189,7 @@ export function Dashboard() {
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(initial.tab)
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(prefs?.collapsed))
   useEffect(() => { void load().then(setResult) }, [])
 
   const data = result.state === 'ready' ? result.data : null
@@ -228,6 +229,10 @@ export function Dashboard() {
       el.scrollIntoView({ block: 'center' })
     }
   }, [data, mailTarget])
+
+  useEffect(() => {
+    writePrefs({ view: { tab, group, status, period, query }, collapsed: [...collapsed] })
+  }, [tab, group, status, period, query, collapsed])
 
   useEffect(() => {
     const hash = buildHash({ tab, group, status, period, query })

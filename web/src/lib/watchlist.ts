@@ -415,3 +415,28 @@ export function runPhase(run: RunInfo | null | undefined, baseline: number): Run
   if (run.status !== 'completed') return 'running'
   return run.conclusion === 'success' ? 'success' : 'failed'
 }
+
+export type Prefs = { view: ViewState; collapsed: string[] }
+const PREFS_KEY = 'watchlist-prefs'
+
+/** Hash hat Vorrang (geteilte Links), sonst die zuletzt gemerkte Ansicht. */
+export function pickView(hash: string, stored: Prefs | null): ViewState {
+  const fromHash = parseView(hash)
+  if (hash.replace(/^#/, '') || !stored) return fromHash
+  return { ...DEFAULT_VIEW, ...stored.view }
+}
+
+export function readPrefs(): Prefs | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null')
+    if (!raw || typeof raw !== 'object') return null
+    const collapsed = Array.isArray(raw.collapsed) ? raw.collapsed.filter((x: unknown) => typeof x === 'string') : []
+    return { view: parseView(buildHash({ ...DEFAULT_VIEW, ...raw.view })), collapsed }
+  } catch {
+    return null
+  }
+}
+
+export function writePrefs(prefs: Prefs): void {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* Speicher gesperrt oder voll */ }
+}

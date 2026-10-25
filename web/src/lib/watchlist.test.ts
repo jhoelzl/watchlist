@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, pickView, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -244,5 +244,14 @@ describe('runPhase', () => {
     expect(runPhase(run(6, 'in_progress'), 5)).toBe('running')
     expect(runPhase(run(6, 'completed', 'success'), 5)).toBe('success')
     expect(runPhase(run(6, 'completed', 'failure'), 5)).toBe('failed')
+  })
+})
+
+describe('pickView', () => {
+  const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '' }, collapsed: [] }
+  it('Hash hat Vorrang, sonst gespeicherte Ansicht', () => {
+    expect(pickView('#t=changes', stored).tab).toBe('changes')
+    expect(pickView('', stored).tab).toBe('groups')
+    expect(pickView('', null).tab).toBe('urls')
   })
 })
