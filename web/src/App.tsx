@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import './App.css'
 import { Dashboard } from './components/Dashboard'
 import { Login } from './components/Login'
+import { ToastHost } from './components/ToastHost'
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -22,7 +23,9 @@ export default function App() {
           {session && <button className="link" onClick={() => void supabase.auth.signOut()}>Abmelden</button>}
         </div>
       </header>
-      <main>{session ? <Dashboard /> : <Login />}</main>
+      <ToastHost>
+        <main>{session ? <Dashboard /> : <Login />}</main>
+      </ToastHost>
     </div>
   )
 }
