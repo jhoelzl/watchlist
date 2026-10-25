@@ -12,7 +12,7 @@ uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy,
 cd web && npm ci                      # Abhängigkeiten des Dashboards
 ```
 
-Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code oder ins Repo. Für `check.py` mit Datenbank: `uv run --env-file .env check.py`. Ohne `RESEND_API_KEY` werden Mails nur ausgegeben. Für das Dashboard `web/.env.example` nach `web/.env` kopieren (nur der Publishable/Anon-Key, nie der Secret-Key).
+Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code oder ins Repo. Für `check.py` mit Datenbank: `op run --env-file=.env -- uv run check.py`. Ohne `RESEND_API_KEY` werden Mails nur ausgegeben. Für das Dashboard `web/.env.example` nach `web/.env` kopieren (nur der Publishable/Anon-Key, nie der Secret-Key).
 
 ## Aufbau
 
@@ -46,7 +46,7 @@ cd web && npx tsc -b && npm run lint && npm test
 
 ## Daten und URLs
 
-- Die URL-Liste liegt in Supabase, nicht im Repo. URLs mit `uv run --env-file .env add.py <url> --group <Gruppe> -y` hinzufügen oder im Dashboard pflegen.
+- Die URL-Liste liegt in Supabase, nicht im Repo. URLs mit `op run --env-file=.env -- uv run add.py <url> --group <Gruppe> -y` hinzufügen oder im Dashboard pflegen.
 - Schemaänderungen kommen in `supabase/schema.sql` (mehrfach ausführbar) und werden im Supabase-SQL-Editor ausgeführt.
 - Edge Functions: `supabase functions deploy <name> --project-ref <ref> --no-verify-jwt --use-api` (die Funktionen prüfen die Anmeldung selbst).
 

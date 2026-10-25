@@ -19,13 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    env:
-      # URLs, Snapshots und Verlauf liegen in Supabase
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # URLs, Snapshots und Verlauf liegen in Supabase; die Zugangsdaten kommen aus dem 1Password-Tresor "watchlist"
+      - uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          SUPABASE_URL: op://watchlist/Supabase/url
+          SUPABASE_SERVICE_KEY: op://watchlist/Supabase/service-token
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true

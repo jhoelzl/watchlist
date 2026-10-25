@@ -27,7 +27,7 @@ flowchart LR
 
 - [ ] **Resend:** Account anlegen, Domain verifizieren (oder nur an die eigene Adresse mit `onboarding@resend.dev` senden), API-Key erzeugen.
 - [ ] **Supabase-Schema:** [supabase/schema.sql](supabase/schema.sql) im SQL-Editor ausführen, danach das eigene Konto in `watchlist_admins` eintragen (siehe „Dashboard mit Login“).
-- [ ] **GitHub-Secrets** (Settings → Secrets and variables → Actions): `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `MAIL_TO`, optional `MAIL_FROM`.
+- [ ] **Secrets:** Supabase-Zugangsdaten liegen im 1Password-Tresor `watchlist` (Item `Supabase` mit den Feldern `url`, `anon-key`, `service-token`). In GitHub (Settings → Secrets and variables → Actions) steht dafür nur `OP_SERVICE_ACCOUNT_TOKEN`, ein Service-Account mit Leserecht auf diesen Tresor; die Workflows laden die Werte per `1password/load-secrets-action` (`op://watchlist/Supabase/url` usw.). Lokal liest `op run --env-file=.env -- …` dieselben Referenzen. Noch als GitHub-Secrets: `RESEND_API_KEY`, `MAIL_TO`, optional `MAIL_FROM`.
 - [ ] **Pages:** Settings → Pages → Source „GitHub Actions“, Variable `ENABLE_PAGES=true`. Danach läuft `pages.yml` und veröffentlicht das Dashboard.
 - [ ] **Redirect-URL:** In Supabase unter Authentication → URL Configuration die Dashboard-Adresse (`https://jhoelzl.github.io/watchlist/`) als Site URL bzw. erlaubte Redirect-URL eintragen. Sonst führen Links aus Bestätigungs- und Reset-Mails ins Leere.
 - [ ] **„Jetzt prüfen“:** Fine-grained Token (nur dieses Repo, „Actions: Read and write“) als `GH_DISPATCH_TOKEN` in den Supabase-Secrets setzen und beide Edge Functions deployen (Befehle im Abschnitt „Dashboard mit Login“).
@@ -47,9 +47,9 @@ Mit `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` (Umgebungsvariablen bzw. Repo-Secr
 
 1. Im Supabase SQL-Editor [supabase/schema.sql](supabase/schema.sql) ausführen (RLS ist aktiv, keine öffentlichen Policies).
 2. Project Settings → API Keys: **Project URL** als `SUPABASE_URL` und den **service_role**-Key als `SUPABASE_SERVICE_KEY` verwenden. Der Anon-Key reicht nicht, er darf wegen RLS nichts lesen oder schreiben. Der service_role-Key ist geheim (umgeht RLS): nur in `.env` und als Secret, nie im Frontend.
-3. Lokal migrieren (einmalig, wiederholbar): `uv run --env-file .env migrate.py --state-dir state` (Ordner mit den bisherigen Snapshots; nicht nötig, wenn du bei null anfängst).
+3. Lokal migrieren (einmalig, wiederholbar): `op run --env-file=.env -- uv run migrate.py --state-dir state` (Ordner mit den bisherigen Snapshots; nicht nötig, wenn du bei null anfängst).
 4. Beide Werte als Repo-Secrets eintragen. Der Workflow arbeitet nur noch mit Supabase und kennt `urls.yml` nicht. `urls.yml` ist nicht im Repo.
-5. Neue URLs: `uv run --env-file .env add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector` (`auto` = Bereich automatisch erkennen), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+5. Neue URLs: `op run --env-file=.env -- uv run add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector` (`auto` = Bereich automatisch erkennen), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
 
 ### Dashboard mit Login (`web/`)
 
@@ -153,7 +153,7 @@ uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy,
 uv run pre-commit run --all-files     # alle Hooks von Hand
 uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten
 ```
-Mit Secrets aus einer `.env`-Datei: `set -a; source .env; set +a; uv run check.py`.
+Mit Secrets aus einer `.env`-Datei: `op run --env-file=.env -- uv run check.py` (die `.env` enthält nur `op://`-Referenzen, keine Werte).
 Falls eine globale uv-Konfiguration mit privaten Index-Feeds stört: `UV_NO_CONFIG=1 uv ...` (nötig z. B. bei `uv add`, damit `uv.lock` nur öffentliche PyPI-URLs enthält).
 
 Abhängigkeiten ändern: `uv add <paket>` (aktualisiert `pyproject.toml` und `uv.lock`).
