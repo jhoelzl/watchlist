@@ -13,7 +13,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | 3 | Fehlerserie, Pause und Verlauf pro Seite im Dashboard | Dashboard | 🟡 | M |
 | 4 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
 | 5 | `check.py` in Module aufteilen, `run()` entflechten, Annotationen, mypy `strict` | Refactoring | 🟡 | L |
-| 6 | Secret-Scan (`gitleaks`) und Branch Protection | Security | 🟡 | S |
+| 6 | Branch Protection für `main` und Rate-Limit der Edge Function | Security | 🟡 | S |
 | 7 | Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten | Qualität | 🟡 | M |
 | 8 | Selector-Vorschau im Formular (erkannter Bereich und Textmenge) | Features | 🟡 | S |
 
@@ -22,7 +22,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 ## 1. Security
 
 - 🔴 **Rechte im Dashboard prüfen:** Das Supabase-Projekt ist mit anderen Apps geteilt und hat offene Registrierung. Der Zugriff hängt allein an `watchlist_admins` und den RLS-Policies. Policies (insert/update/delete) per SQL-Skript regelmäßig verifizieren, z. B. mit einem zweiten, nicht freigeschalteten Konto. (S)
-- 🟡 **Secret-Scan:** `gitleaks` als Schritt in `tests.yml` oder pre-commit-Hook. Da das Repo jetzt öffentlich ist, stehen GitHub Secret Scanning und Push Protection zur Verfügung und können aktiviert werden. (S)
 - 🟡 **Edge Function absichern:** `watchlist-trigger-check` läuft mit `--no-verify-jwt` und prüft Login und Admin selbst. Rate-Limit (z. B. höchstens ein Start pro Minute) und CORS auf `https://jhoelzl.github.io` einschränken. (S)
 - 🟡 **ReDoS nur heuristisch abgefangen:** `config_errors` erkennt verschachtelte Quantifizierer und zu lange Muster, einen echten Timeout gibt es mit `re` nicht. Option: Bibliothek `regex` mit `timeout=`. Relevant, sobald `ignore`-Muster aus dem Dashboard kommen. (M)
 - ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
@@ -148,6 +147,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Actions per Commit-SHA gepinnt | `checkout`, `setup-uv`, `upload-pages-artifact`, `deploy-pages` mit SHA und Versionskommentar (Dependabot aktualisiert) |
 | Rechte im Workflow minimiert | `permissions: {}` global, `contents: read` im Job `check`, `pages: write` und `id-token: write` nur im Pages-Workflow |
 | `ignore`-Regex validiert | `config_errors`: ungültig, über 300 Zeichen, verschachtelte Quantifizierer. Betroffene URL steht auf „Fehler“ |
+| Secret-Scan | GitHub Secret Scanning und Push Protection aktiviert, `gitleaks` als Job in `tests.yml` (gesamte Historie) und als pre-commit-Hook |
 | `uv audit` in CI | In `tests.yml` bei Push, Pull Request und wöchentlich |
 | Parallele Abrufe | `fetch_all` mit 6 Threads, 2 pro Host, JS-Seiten nacheinander, ETag/Last-Modified (304) |
 | Warnmails mit Tipp | `hint_for`/`with_hint` nennen Ursache und Abhilfe (robots.txt, 403, 404, Timeout, Selector, zu wenig Text, …) |
@@ -162,4 +162,4 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 2. `timeout-minutes`, Benachrichtigung bei Workflow-Ausfall, Backup und Web-Prüfungen in CI.
 3. Tab-Varianten zusammenfassen, danach ntfy und Digest-Modus.
 4. `check.py` zerlegen (Module, `check_url`, TypedDict, Annotationen), danach `strict = true`.
-5. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage und `gitleaks` in CI.
+5. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage in CI.
