@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 7)
 
