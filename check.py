@@ -350,6 +350,18 @@ def diff_counts(diff):
     )
 
 
+def merge_variants(changes):
+    """Fasst Einträge mit identischem Diff in derselben Gruppe zusammen (z. B. Tab-Varianten ?tabs=stt|tts)."""
+    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for c in changes:
+        key = (c.get("group"), tuple(c["diff"]), c["extra"])
+        if key in merged:
+            merged[key]["variants"].append(c["url"])
+        else:
+            merged[key] = {**c, "variants": []}
+    return list(merged.values())
+
+
 def group_changes(changes):
     groups: dict[str, list[dict[str, Any]]] = {}
     for c in changes:
@@ -363,12 +375,17 @@ def summary_line(changes):
 
 
 def render_text(changes):
+    changes = merge_variants(changes)
     out = [summary_line(changes), ""] if len(changes) > 1 else []
     for group, items in group_changes(changes).items():
         out.append(f"=== {group} ===")
         for c in items:
             diff, extra = mail_view(c)
-            out.append(f"{c['name']}\n{fragment_url(c['url'], c['diff'])}\n")
+            out.append(f"{c['name']}\n{fragment_url(c['url'], c['diff'])}")
+            if c.get("variants"):
+                out.append("Gleicher Inhalt auch unter:")
+                out += [f"  {v}" for v in c["variants"]]
+            out.append("")
             out += diff
             if extra:
                 out.append(f"... und {extra} weitere Zeilen (vollständig im Dashboard)")
@@ -377,6 +394,7 @@ def render_text(changes):
 
 
 def render_html(changes):
+    changes = merge_variants(changes)
     parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
     grouped = group_changes(changes)
     if len(changes) > 1:
@@ -403,11 +421,15 @@ def render_html(changes):
                 if jump != c["url"] and safe_link(jump).startswith("<a")
                 else ""
             )
+            more = "".join(f"<br>{safe_link(v)}" for v in c.get("variants", []))
+            if more:
+                more = f'<span style="color:#6e7781;font-size:12px">Gleicher Inhalt auch unter:{more}</span>'
+                more = f'<p style="margin:0 0 8px">{more}</p>'
             parts.append(
                 f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
                 f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
                 f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
-                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}</p>'
+                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}</p>{more}'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )
@@ -763,10 +785,11 @@ def _run(store):
     ok = not config_bad
     sent_ok = True
     if changes:
-        if len(changes) == 1:
-            subject = f"Watchlist: {changes[0]['name']} geändert"
+        shown = merge_variants(changes)
+        if len(shown) == 1:
+            subject = f"Watchlist: {shown[0]['name']} geändert"
         else:
-            subject = f"Watchlist: {len(changes)} Seiten geändert ({', '.join(group_changes(changes))})"
+            subject = f"Watchlist: {len(shown)} Seiten geändert ({', '.join(group_changes(shown))})"
         print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
         try:
             send_mail(subject, render_text(changes), render_html(changes))

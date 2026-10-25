@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 90 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (statisches Dashboard nur für den Datei-Modus), Web-Dashboard in `web/` (React, Supabase), 91 Python- und 18 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 8)
 
@@ -31,7 +31,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 
 ## 2. Features
 
-- 🔴 **Tab-/Parameter-Varianten zusammenfassen:** Seiten wie `language-support?tabs=stt|tts|...` liefern vermutlich denselben HTML-Inhalt (noch nicht geprüft). Eine Änderung erzeugt dann mehrere Einträge in der Mail. Idee: gleiche Inhalts-Hashes über Einträge hinweg erkennen und gemeinsam melden, oder Option `variants:`. (M)
 - 🟡 **Weitere Kanäle:** ntfy.sh (einfachster Weg für Push aufs Handy), Slack/Teams/Discord-Webhook, Telegram. Konfigurierbar über Secrets und `options`, auch pro Gruppe. (M)
 - 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
 - 🟡 **Keyword-/Regex-Trigger:** `notify_if: 'Salzburg|Python'` löst die Mail nur aus, wenn neue Zeilen passen (Jobs, Events). Im Dashboard als Feld im Formular. (S)
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Thema | Umsetzung |
 |-------|-----------|
 | HTML-Mail abgesichert | Tests für feindliche Inhalte (`<script>`, Attribute, Feed-Inhalte) und Sonderzeichen im Fragment-Link. `safe_link` verlinkt nur `http(s)`-URLs, `javascript:` bleibt Text |
+| Tab-/Parameter-Varianten | `merge_variants` in `check.py` fasst Einträge mit identischem Diff in derselben Gruppe in Mail und Betreff zu einem Eintrag zusammen, die weiteren URLs stehen als "Gleicher Inhalt auch unter". Snapshots und Verlauf bleiben pro URL |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

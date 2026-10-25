@@ -254,3 +254,17 @@ def test_fragment_url_special_characters():
     out = check.render_html([{"name": "N", "url": "https://a/x?y=1&z=2", "group": "G", "diff": diff, "extra": 0}])
     assert 'href="https://a/x?y=1&amp;z=2#:~:text=' in out
     assert "<b>fett" not in out
+
+
+def test_identical_diffs_are_merged_into_one_entry():
+    d = ["+gleiche neue Zeile hier"]
+    changes = [
+        {"name": "Lang STT", "url": "https://a/l?tabs=stt", "group": "A", "diff": d, "extra": 0},
+        {"name": "Lang TTS", "url": "https://a/l?tabs=tts", "group": "A", "diff": d, "extra": 0},
+        {"name": "Andere", "url": "https://a/o", "group": "A", "diff": ["+etwas anderes"], "extra": 0},
+        {"name": "Lang B", "url": "https://b/l", "group": "B", "diff": d, "extra": 0},
+    ]
+    assert len(check.merge_variants(changes)) == 3
+    out, text = check.render_html(changes), check.render_text(changes)
+    assert out.count("Lang TTS") == 0 and "https://a/l?tabs=tts" in out
+    assert "3 Seiten geändert" in out and "Gleicher Inhalt auch unter" in text
