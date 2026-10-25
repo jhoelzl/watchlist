@@ -43,7 +43,7 @@ export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
     const s = status[u.url] ?? {}
     return {
       url: u.url,
-      name: s.name || u.name || u.url,
+      name: u.name || s.name || u.url,
       group: groupOf(u.grp),
       checked: s.checked ?? '',
       changed: s.changed ?? '',

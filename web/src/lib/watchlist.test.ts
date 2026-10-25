@@ -21,6 +21,11 @@ describe('watchlist helpers', () => {
     expect(entries[1]).toMatchObject({ name: 'B', group: 'G', status: 'pending', checked: '' })
   })
 
+  it('gesetzter Name hat Vorrang vor dem Seitentitel aus dem Status', () => {
+    const e = toEntries([{ url: 'https://a', name: 'Mein Name', grp: '' }], { 'https://a': { name: 'Seitentitel', status: 'ok' } })
+    expect(e[0].name).toBe('Mein Name')
+  })
+
   it('filters by text, group and status', () => {
     const e = entry({ status: 'warn', error: 'wenig' })
     expect(matches({ ...e, text: e.error }, 'WENIG', '', '')).toBe(true)
