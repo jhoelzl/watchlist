@@ -325,3 +325,23 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .sort-btn { all: unset; cursor: pointer; text-transform: inherit; letter-spacing: inherit; font: inherit; color: inherit; }
 .sort-btn:hover, .sort-btn:focus-visible { color: var(--text); text-decoration: underline; }
+
+.diff-tools { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.diff-tools .check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-left: 6px; }
+.diff-tools .check input { width: auto; height: auto; }
+.side-diff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-top: 10px; background: var(--subtle); border-radius: 8px; overflow: hidden; font-size: 12px; font-family: ui-monospace, monospace; }
+.side-head { padding: 6px 12px; font: 600 11px/1.4 inherit; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+.side-cell { padding: 0 12px; white-space: pre-wrap; word-break: break-word; }
+.side-cell:nth-child(odd) { border-right: 1px solid var(--line); }
+.side-cell.empty { background: transparent; }
+.side-hunk { grid-column: 1 / -1; padding: 2px 12px; color: var(--muted); background: rgba(127, 127, 127, .12); }
+.side-diff .del { color: #82071e; background: #ffebe9; }
+.side-diff .add { color: #116329; background: #e6ffec; }
+.side-diff .del mark { color: inherit; font-weight: 600; background: #ffc1ba; border-radius: 2px; }
+.side-diff .add mark { color: inherit; font-weight: 600; background: #abf2bc; border-radius: 2px; }
+@media (prefers-color-scheme: dark) {
+  .side-diff .del { color: #fca5a5; background: #3a1616; }
+  .side-diff .add { color: #86efac; background: #14301d; }
+  .side-diff .del mark { background: #7a2a2a; }
+  .side-diff .add mark { background: #1f6f3a; }
+}

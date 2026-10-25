@@ -176,6 +176,53 @@ export function annotateDiff(lines: string[]): Segment[][] {
   return lines.map((line, idx) => result[idx] ?? [{ text: line, changed: false }])
 }
 
+export type SideRow = { kind: 'hunk' | 'ctx' | 'chg'; left: Segment[] | null; right: Segment[] | null }
+
+function stripSign(segs: Segment[]): Segment[] {
+  const [first, ...rest] = segs
+  const text = first.text.slice(1)
+  return text ? [{ ...first, text }, ...rest] : rest
+}
+
+/** Diff-Zeilen als Zeilenpaare für die Ansicht Alt/Neu; Hunk-Köpfe (@@) bleiben eigene Zeilen. */
+export function sideBySide(lines: string[]): SideRow[] {
+  const ann = annotateDiff(lines)
+  const rows: SideRow[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (line.startsWith('@@')) {
+      rows.push({ kind: 'hunk', left: ann[i], right: null })
+      i++
+    } else if (line.startsWith('-') || line.startsWith('+')) {
+      let j = i
+      while (j < lines.length && lines[j].startsWith('-')) j++
+      let k = j
+      while (k < lines.length && lines[k].startsWith('+')) k++
+      const dels = j - i
+      const adds = k - j
+      if (dels === 0) {
+        for (let n = i; n < k; n++) rows.push({ kind: 'chg', left: null, right: stripSign(ann[n]) })
+        i = k
+        continue
+      }
+      for (let n = 0; n < Math.max(dels, adds); n++) {
+        rows.push({
+          kind: 'chg',
+          left: n < dels ? stripSign(ann[i + n]) : null,
+          right: n < adds ? stripSign(ann[j + n]) : null,
+        })
+      }
+      i = k
+    } else {
+      const seg = [{ text: line.startsWith(' ') ? line.slice(1) : line, changed: false }]
+      rows.push({ kind: 'ctx', left: seg, right: seg })
+      i++
+    }
+  }
+  return rows
+}
+
 export function countLines(diff: string, sign: '+' | '-'): number {
   return diff.split('\n').filter((l) => l.startsWith(sign) && !l.startsWith(sign.repeat(3))).length
 }

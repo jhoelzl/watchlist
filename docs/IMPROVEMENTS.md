@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 47 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 49 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 7)
 
@@ -48,7 +48,6 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 ## 4. Dashboard
 
 - 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
-- ⚪ **Seitenweise Diff-Ansicht:** Nebeneinander (Alt/Neu) zusätzlich zum Inline-Diff, Umschalter „nur geänderte Zeilen“. (M)
 - ⚪ **Als gelesen markieren** im Tab „Letzte Änderungen“ mit Zähler für Ungelesenes. (M)
 - ⚪ **Accessibility:** `aria-label` für Filter, Tastaturbedienung der Diffs, Status nicht nur über Farbe, Fokusreihenfolge im Formular. (S)
 - ⚪ **Laufhistorie:** Dauer und Fehlerquote der letzten Läufe anzeigen. (M)
@@ -132,6 +131,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Fehlerserie im Dashboard | Badge „N Läufe in Folge“ bei Fehlern (aus `streak`), ab 6 Läufen „Dauerhaft kaputt“ (gleiche Schwelle wie `STUCK_AFTER` in `check.py`) und neuer Filter „Dauerhaft kaputt“ |
 | Sortierbare Spalten | Klick auf Status, Seite, Zuletzt geprüft oder Zuletzt geändert sortiert innerhalb der Gruppen (aufsteigend, absteigend, Standard). Leere Zeiten bleiben am Ende, die Sortierung steht im URL-Hash (`o=-changed`) und wird gemerkt |
 | Verlauf nachladen | Unter „Letzte Änderungen“ lädt „Ältere Einträge laden“ je 100 weitere Einträge per Keyset (`id < letzte id`), auch im Verlauf einer einzelnen Seite |
+| Diff-Ansicht Alt/Neu | Jeder Eintrag hat Umschalter „Inline“ / „Alt/Neu“ (zwei Spalten, ersetzte Zeilen gepaart, Wortmarkierung) und „nur geänderte Zeilen“. Helfer `sideBySide` |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

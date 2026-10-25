@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -250,6 +250,21 @@ describe('Fehlerserie', () => {
   it('Filter stuck', () => {
     expect(matches({ ...e('error', 6), text: '' }, '', '', 'stuck')).toBe(true)
     expect(matches({ ...e('error', 2), text: '' }, '', '', 'stuck')).toBe(false)
+  })
+})
+
+describe('sideBySide', () => {
+  const txt = (r: { left: { text: string }[] | null; right: { text: string }[] | null }) => [r.left?.map((x) => x.text).join('') ?? null, r.right?.map((x) => x.text).join('') ?? null]
+  it('paart ersetzte Zeilen und lässt Rest leer', () => {
+    const rows = sideBySide(['@@ -1,3 +1,4 @@', ' gleich', '-alt eins', '-alt zwei', '+neu eins'])
+    expect(rows.map((r) => r.kind)).toEqual(['hunk', 'ctx', 'chg', 'chg'])
+    expect(txt(rows[1])).toEqual(['gleich', 'gleich'])
+    expect(txt(rows[2])).toEqual(['alt eins', 'neu eins'])
+    expect(txt(rows[3])).toEqual(['alt zwei', null])
+  })
+  it('reine Einfügungen stehen rechts', () => {
+    const rows = sideBySide(['+a', '+b'])
+    expect(rows.map(txt)).toEqual([[null, 'a'], [null, 'b']])
   })
 })
 
