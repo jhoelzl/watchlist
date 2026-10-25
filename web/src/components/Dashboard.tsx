@@ -134,10 +134,9 @@ export function Dashboard() {
           <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy'}>
             {check.state === 'busy' ? 'Starte …' : 'Jetzt prüfen'}
           </button>
-          <button className="btn" onClick={() => void load().then(setResult)}>Aktualisieren</button>
         </div>
       </div>
-      {check.state === 'started' && <p className="muted">Prüfung gestartet. Sie dauert etwa eine Minute, die Ansicht aktualisiert sich nach 90 Sekunden (oder „Aktualisieren“).</p>}
+      {check.state === 'started' && <p className="muted">Prüfung gestartet. Sie dauert etwa eine Minute, die Ansicht lädt sich nach 90 Sekunden automatisch neu.</p>}
       {check.state === 'running' && <p className="muted">Es läuft bereits eine Prüfung.</p>}
       {check.state === 'error' && <p className="error">Prüfung konnte nicht gestartet werden: {check.message}</p>}
       <div className="summary">
