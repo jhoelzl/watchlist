@@ -36,8 +36,7 @@ async function load(): Promise<Load> {
 
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'auto', js: false }
 
-function AddUrl({ entries, onAdded }: { entries: Entry[]; onAdded: () => void }) {
-  const [open, setOpen] = useState(false)
+function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: boolean; setOpen: (open: boolean) => void; onAdded: () => void }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -55,7 +54,7 @@ function AddUrl({ entries, onAdded }: { entries: Entry[]; onAdded: () => void })
     setOpen(false)
     onAdded()
   }
-  if (!open) return <button className="btn primary" onClick={() => setOpen(true)}>URL hinzufügen</button>
+  if (!open) return null
   return (
     <form className="panel add-panel" onSubmit={(e) => { e.preventDefault(); void submit() }}>
       <label className="grow">URL<input type="url" placeholder="https://…" value={form.url} onChange={(e) => set({ url: e.target.value })} required autoFocus /></label>
@@ -80,6 +79,7 @@ export function Dashboard() {
   const [status, setStatus] = useState<StatusFilter>('')
   const [check, setCheck] = useState<{ state: 'idle' | 'busy' | 'started' | 'running' } | { state: 'error'; message: string }>({ state: 'idle' })
   const [period, setPeriod] = useState<Period>('')
+  const [adding, setAdding] = useState(false)
   const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>('urls')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   useEffect(() => { void load().then(setResult) }, [])
@@ -132,6 +132,7 @@ export function Dashboard() {
           <p>{data?.updated ? `Zuletzt aktualisiert: ${new Date(data.updated).toLocaleString('de-AT')}` : 'Noch kein Lauf'}</p>
         </div>
         <div className="intro-actions">
+          <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>URL hinzufügen</button>
           <button className="btn primary" onClick={() => void checkNow()} disabled={check.state === 'busy'}>
             {check.state === 'busy' ? 'Starte …' : 'Jetzt prüfen'}
           </button>
@@ -158,7 +159,7 @@ export function Dashboard() {
       </div>}
       {tab === 'urls' && (
         <>
-      <AddUrl entries={data?.entries ?? []} onAdded={() => void load().then(setResult)} />
+      <AddUrl entries={data?.entries ?? []} open={adding} setOpen={setAdding} onAdded={() => void load().then(setResult)} />
       <div className="filter-bar">
         {STATUS_FILTERS.map(([value, label]) => (
           <button key={value} className={`filter-pill${status === value ? ' active' : ''}`} onClick={() => setStatus(value)}>
