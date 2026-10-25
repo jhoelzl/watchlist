@@ -21,7 +21,7 @@ Mit `SUPABASE_URL` und `SUPABASE_SERVICE_KEY` (Umgebungsvariablen bzw. Repo-Secr
 2. Project Settings → API Keys: **Project URL** als `SUPABASE_URL` und den **service_role**-Key als `SUPABASE_SERVICE_KEY` verwenden. Der Anon-Key reicht nicht, er darf wegen RLS nichts lesen oder schreiben. Der service_role-Key ist geheim (umgeht RLS): nur in `.env` und als Secret, nie im Frontend.
 3. Lokal migrieren (einmalig, wiederholbar): `uv run --env-file .env migrate.py --state-dir state` (Ordner mit den bisherigen Snapshots; nicht nötig, wenn du bei null anfängst).
 4. Beide Werte als Repo-Secrets eintragen. Der Workflow arbeitet nur noch mit Supabase und kennt `urls.yml` nicht. `urls.yml` ist nicht im Repo.
-5. Neue URLs: `uv run --env-file .env add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector` (`auto` = Bereich automatisch erkennen), `js`, `ignore`, `only_added`, `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
+5. Neue URLs: `uv run --env-file .env add.py <url>` schreibt direkt in `watchlist_urls`. Einträge lassen sich auch im Supabase-Table-Editor pflegen (`options` enthält `selector` (`auto` = Bereich automatisch erkennen), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, `ignore_robots`; `active = false` pausiert eine URL; gemeinsame Optionen in `watchlist_settings` unter dem Schlüssel `defaults`).
 
 ### Dashboard mit Login (`web/`)
 
@@ -31,7 +31,7 @@ Vite + React + `supabase-js`, Anmeldung per E-Mail und Passwort wie in der App s
 - Lokal: `cd web`, `.env.example` nach `.env` kopieren und `VITE_SUPABASE_URL` sowie `VITE_SUPABASE_ANON_KEY` (Publishable/Anon-Key, **nicht** der Secret-Key) eintragen, dann `npm ci && npm run dev`. Prüfen mit `npm run lint`, `npm test`, `npm run build`.
 - GitHub Pages: Secret `SUPABASE_ANON_KEY` (Publishable-Key) anlegen und die Variable `ENABLE_PAGES=true` setzen. Der eigene Workflow `pages.yml` baut dann `web/` und veröffentlicht `web/dist` (bei jedem Push auf `web/**` und manuell). Er ist unabhängig vom Prüflauf. Die Seite ist öffentlich erreichbar, zeigt aber ohne Anmeldung keine Daten. Der statische Export im Dateimodus wird nicht mehr veröffentlicht.
 - Tab „Gruppen“: Gruppen anlegen, umbenennen, URLs zuordnen und auflösen. Das ändert `grp` an den URLs und braucht die Policy `admins update urls` aus `supabase/schema.sql` (einmal im SQL-Editor ausführen).
-- URLs bearbeiten: Der Stift in der URL-Tabelle öffnet ein Formular für Name, Gruppe, Selector, JavaScript, `ignore`, `only_added` und Pausieren. Pausierte URLs werden nicht geprüft und erscheinen als „Pausiert“. Auch das braucht die Policy `admins update urls`.
+- URLs bearbeiten: Der Stift in der URL-Tabelle öffnet ein Formular für Name, Gruppe, Selector, JavaScript, Prüfintervall, `ignore`, `only_added` und Pausieren. Pausierte URLs werden nicht geprüft und erscheinen als „Pausiert“. Auch das braucht die Policy `admins update urls`.
 - Verlauf pro Seite: Der Uhr-Button (⏱) in der URL-Tabelle zeigt nur die Änderungen dieser Seite (bis zu 500 aus der Datenbank).
 - Der Filterzustand (Tab, Gruppe, Status, Zeitraum, Suche) steht im URL-Hash, die Ansicht ist teilbar und bleibt beim Neuladen.
 - Gruppen-Tab: Reihenfolge, Farbe, Icon, leere Gruppen und Sammelaktion „Alle pausieren/fortsetzen“. Dafür einmal den Block `watchlist_groups` aus `supabase/schema.sql` im SQL-Editor ausführen.
@@ -55,6 +55,7 @@ urls:
     selector: main             # optional, nur dieser CSS-Bereich; "auto" wählt main/article/[role=main] selbst, sonst ganze Seite
     ignore: ['\d{2}:\d{2}']    # optional, Regex wird vor dem Vergleich entfernt
     only_added: true           # optional, Mail zeigt nur neue Zeilen
+    interval: weekly           # optional, daily oder weekly: seltener prüfen (Standard: bei jedem Lauf); Probleme werden trotzdem jedes Mal geprüft
     js: true                   # optional, Seite mit Playwright (Chromium) rendern
     min_ratio: 0.3             # optional, Textwächter (0 = aus), siehe unten
     ignore_robots: true        # optional, robots.txt-Sperre übergehen

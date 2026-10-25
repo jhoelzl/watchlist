@@ -576,3 +576,44 @@ def test_run_stores_run_summary(env, monkeypatch):
     check.run()
     runs = json.loads((tmp / "state" / "runs.json").read_text())
     assert len(runs) == 1 and runs[0]["total"] == 1 and runs[0]["errors"] == 0
+
+
+def test_is_due_respects_interval_and_problems():
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime(2026, 10, 25, 18, 0, tzinfo=UTC)
+    ok = {"status": "ok", "checked": (now - timedelta(hours=12)).strftime("%Y-%m-%d %H:%M UTC")}
+    assert check.is_due({}, ok, now)
+    assert not check.is_due({"interval": "daily"}, ok, now)
+    assert not check.is_due({"interval": "weekly"}, ok, now)
+    old = {"status": "ok", "checked": (now - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M UTC")}
+    assert check.is_due({"interval": "daily"}, old, now)
+    assert not check.is_due({"interval": "weekly"}, old, now)
+    week = {"status": "ok", "checked": (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M UTC")}
+    assert check.is_due({"interval": "weekly"}, week, now)
+    assert check.is_due({"interval": "weekly"}, {**ok, "status": "error"}, now)
+    assert check.is_due({"interval": "weekly"}, ok, now, has_snapshot=False)
+    assert check.is_due({"interval": "weekly"}, {}, now)
+
+
+def test_invalid_interval_is_config_error():
+    assert check.config_errors({"interval": "monthly"})
+    assert not check.config_errors({"interval": "weekly"})
+
+
+def test_run_skips_url_not_yet_due(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://b\n    interval: weekly\n")
+    calls = []
+
+    def fake_fetch(url, opts, cond=None):
+        calls.append(url)
+        return "T", "text", False, {}
+
+    monkeypatch.setattr(check, "fetch", fake_fetch)
+    assert check.run() is True
+    assert check.run() is True
+    assert calls == ["https://b"]
+    status = json.loads((tmp / "state" / "status.json").read_text())
+    assert status["https://b"]["status"] == "new"
+    assert status["https://b"]["checked"]

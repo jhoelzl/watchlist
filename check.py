@@ -32,6 +32,8 @@ MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
 DIFF_CONTEXT = 3
 MAX_HISTORY = 100
 MAX_RUNS = 30
+# Mindestabstand pro interval-Option. Knapp unter 1 Tag bzw. 1 Woche, damit der Takt der Läufe (06:00/18:00) nicht davonläuft.
+INTERVAL_HOURS = {"daily": 20, "weekly": 160}
 DEFAULT_GROUP = "Allgemein"
 ROBOTS_AGENT = "watchlist"
 # Textwächter: Eine Seite mit vorher mind. GUARD_MIN_CHARS Zeichen, die unter
@@ -549,9 +551,23 @@ NESTED_QUANTIFIER = re.compile(r"\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]")
 MAX_PATTERN_LENGTH = 300
 
 
+def is_due(opts, prev, now, has_snapshot=True):
+    """Ob die URL in diesem Lauf geprüft wird. Ohne interval immer; Probleme und neue URLs werden nie übersprungen."""
+    hours = INTERVAL_HOURS.get(opts.get("interval"))
+    if not hours or not has_snapshot or prev.get("status") not in ("ok", "new"):
+        return True
+    try:
+        last = datetime.strptime(prev.get("checked", ""), "%Y-%m-%d %H:%M UTC").replace(tzinfo=UTC)
+    except ValueError:
+        return True
+    return now - last >= timedelta(hours=hours)
+
+
 def config_errors(opts):
     """Prüft die ignore-Regex einer URL. Liefert eine Liste verständlicher Fehlermeldungen (leer = alles gut)."""
     errors = []
+    if opts.get("interval") not in (None, *INTERVAL_HOURS):
+        errors.append(f"interval muss daily oder weekly sein: {opts.get('interval')!r}")
     for pattern in opts.get("ignore", []):
         if not isinstance(pattern, str):
             errors.append(f"ignore-Eintrag ist kein Text: {pattern!r}")
@@ -772,6 +788,8 @@ def _run(store):
         url = opts["url"]
         cached = http_cache.get(url, {})
         snap_exists = hashlib.sha1(url.encode()).hexdigest()[:16] in snapshot_keys
+        if not is_due(opts, old_status.get(url, {}), now, snap_exists):
+            continue
         jobs.append((opts, cached if snap_exists and cached.get("config") == config_hash(opts) else {}))
     fetched = fetch_all(jobs)
 
@@ -789,6 +807,12 @@ def _run(store):
             "code": "",
         }
         status[url] = entry
+        if url not in fetched and not config_errors(opts):
+            status[url] = {**prev, "name": entry["name"], "group": entry["group"]}
+            if url in http_cache:
+                new_cache[url] = http_cache[url]
+            print(f"[ÜBERSPRUNGEN] {entry['name']} (interval: {opts.get('interval')})")
+            continue
         errors = config_errors(opts)
         if errors:
             msg = "Konfigurationsfehler: " + "; ".join(errors)

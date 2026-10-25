@@ -198,6 +198,8 @@ describe('URLs bearbeiten', () => {
   })
   it('lehnt ungültige Regex ab', () => {
     expect('error' in applyEdit({}, { ...toEditForm(entry), ignore: '(' })).toBe(true)
+    expect(applyEdit({}, { ...toEditForm(entry), selector: '', ignore: '', interval: 'weekly' })).toEqual({ options: { interval: 'weekly' } })
+    expect(applyEdit({ interval: 'daily' }, { ...toEditForm(entry), selector: '', ignore: '', interval: '' })).toEqual({ options: {} })
   })
   it('pausierte URLs bekommen den Status "paused"', () => {
     expect(toEntries([{ url: 'https://a', name: null, grp: null, active: false }], { 'https://a': { status: 'ok' } })[0].status).toBe('paused')

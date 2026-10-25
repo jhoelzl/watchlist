@@ -227,6 +227,9 @@ function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: () => voi
       <label className="grow">Name<input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="Seitentitel" /></label>
       <label>Gruppe<input value={form.group} onChange={(e) => set({ group: e.target.value })} /></label>
       <label className="grow">Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto, CSS-Selector oder leer = ganze Seite" /></label>
+      <label>Prüfung<select value={form.interval} onChange={(e) => set({ interval: e.target.value })}>
+        <option value="">Bei jedem Lauf</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich</option>
+      </select></label>
       <label className="grow">Ignore (ein Regex pro Zeile)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="z. B. Last updated.*" /></label>
       {suggestions.length > 0 && (
         <div className="grow suggestions">

@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 98 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 7)
 
@@ -32,7 +32,6 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 - 🟡 **Weitere Kanäle:** ntfy.sh (einfachster Weg für Push aufs Handy), Slack/Teams/Discord-Webhook, Telegram. Konfigurierbar über Secrets und `options`, auch pro Gruppe. (M)
 - 🟡 **Digest-Modus:** Optional tägliche Zusammenfassung statt sofortiger Mail, pro Gruppe oder URL (`notify: daily|immediate`). (M)
 - 🟡 **Keyword-/Regex-Trigger:** `notify_if: 'Salzburg|Python'` löst die Mail nur aus, wenn neue Zeilen passen (Jobs, Events). Im Dashboard als Feld im Formular. (S)
-- 🟡 **Pro-URL-Intervall:** `interval: daily|weekly`, damit selten ändernde Seiten seltener geprüft werden. (M)
 - 🟡 **Empfänger pro Gruppe:** `MAIL_TO` pro Gruppe überschreibbar. (S)
 - ⚪ **JSON- und PDF-Quellen** unterstützen (JSON-Pfad, PDF-Text). (L)
 - ⚪ **Screenshots bei JS-Seiten** als Artefakt, hilft bei Layout-Problemen. (M)
@@ -132,6 +131,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Diff-Ansicht Alt/Neu | Jeder Eintrag hat Umschalter „Inline“ / „Alt/Neu“ (zwei Spalten, ersetzte Zeilen gepaart, Wortmarkierung) und „nur geänderte Zeilen“. Helfer `sideBySide` |
 | Laufhistorie | `check.py` speichert pro Lauf Dauer, URL-Anzahl, Fehler, Warnungen und Änderungen (`record_run`, Dokument `runs`, letzte `MAX_RUNS=30`). Das Dashboard zeigt im Tab URLs eine aufklappbare Tabelle mit Ø-Dauer und Fehlerquote. Die Anzeige füllt sich ab dem nächsten Lauf |
 | Ignore-Vorschläge | Beim Bearbeiten einer URL sucht `suggestIgnores` im Verlauf (letzte 50 Änderungen) nach Zeilen mit Ziffern, die in mindestens 2 Änderungen nur in den Zahlen abweichen (Datum, Zähler, Zeitstempel), und bietet passende `ignore`-Regex zum Übernehmen an. Bereits abgedeckte Muster fehlen in der Liste |
+| Pro-URL-Intervall | Option `interval: daily\|weekly` (Mindestabstand 20 h bzw. 160 h, `is_due`). Übersprungene URLs behalten Status und Cache. URLs mit Problem, ohne Snapshot oder ohne letzte Prüfung werden immer geprüft. Im Bearbeiten-Formular als „Prüfung“ wählbar, ungültige Werte sind ein Konfigurationsfehler |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
