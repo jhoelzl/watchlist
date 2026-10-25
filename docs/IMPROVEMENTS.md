@@ -2,20 +2,19 @@
 
 Offene Verbesserungen nach Bereich, dazu eine Liste des bereits Erledigten. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 42 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `web/` (React, Supabase), 96 Python- und 44 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
-## Nächste Schritte (Top 8)
+## Nächste Schritte (Top 7)
 
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
-| 1 | Fehlerserie (`streak`) im Dashboard anzeigen, Filter „Dauerhaft kaputt“ | Dashboard | 🟡 | S |
-| 2 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
-| 3 | `check.py` in Module aufteilen, `run()` entflechten, Annotationen, mypy `strict` | Refactoring | 🟡 | L |
-| 4 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
-| 5 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
-| 6 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
-| 7 | Sortierbare Spalten und Toasts statt `window.confirm` | Dashboard | 🟡 | S |
-| 8 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
+| 1 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
+| 2 | `check.py` in Module aufteilen, `run()` entflechten, Annotationen, mypy `strict` | Refactoring | 🟡 | L |
+| 3 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
+| 4 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
+| 5 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
+| 6 | Sortierbare Spalten und Toasts statt `window.confirm` | Dashboard | 🟡 | S |
+| 7 | Rechte im Dashboard mit zweitem Konto verifizieren | Security | 🔴 | S |
 
 ---
 
@@ -48,7 +47,6 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 
 ## 4. Dashboard
 
-- 🟡 **Fehlerserie anzeigen:** `streak` liegt im Status und ist im Typ vorhanden, wird aber nicht angezeigt. Dauerhaft kaputte Seiten hervorheben, Filter „Dauerhaft kaputt“. (S)
 - 🟡 **Sortierung:** Spalten sortierbar (zuletzt geändert, zuletzt geprüft, Status). Gruppen sind bereits alphabetisch. (S)
 - 🟡 **Toasts statt `window.confirm`/`alert`:** Löschen mit „Rückgängig“ (Soft-Delete über `active = false`), Fehlermeldungen als Hinweisleiste. (S)
 - 🟡 **Lazy-Load/Pagination** des Verlaufs, falls `MAX_HISTORY` wächst. (M)
@@ -133,6 +131,7 @@ Stand: `check.py` 927 Zeilen, `store.py` 321, `add.py` 196, Web-Dashboard in `we
 | Retry mit Jitter, dauerhafte Fehler | Wartezeit zwischen Wiederholungen bekommt bis zu 25 % Zufall. 404/410 werden sofort als „dauerhafter Fehler“ gemeldet (kein Retry) und lösen die Warn-Mail schon nach 2 statt 3 Läufen aus |
 | CONTRIBUTING.md | Setup, Tests, Stil, Daten und Doku-Pflege in `CONTRIBUTING.md`, in der README verlinkt |
 | Edge Functions abgesichert | `watchlist-trigger-check` und `watchlist-preview` erlauben CORS nur für `https://jhoelzl.github.io` (und `localhost:5173` für die Entwicklung), fremde Origins bekommen 403. Der Start einer Prüfung ist auf einen pro Minute begrenzt (429) |
+| Fehlerserie im Dashboard | Badge „N Läufe in Folge“ bei Fehlern (aus `streak`), ab 6 Läufen „Dauerhaft kaputt“ (gleiche Schwelle wie `STUCK_AFTER` in `check.py`) und neuer Filter „Dauerhaft kaputt“ |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |

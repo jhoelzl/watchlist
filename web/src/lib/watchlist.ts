@@ -25,7 +25,11 @@ export type Change = {
   extra: number
 }
 
-export type StatusFilter = '' | Status | 'problem'
+export type StatusFilter = '' | Status | 'problem' | 'stuck'
+
+// Gleicher Wert wie STUCK_AFTER in check.py: Läufe in Folge, ab denen eine Seite als dauerhaft kaputt gilt
+export const STUCK_AFTER = 6
+export const isStuck = (e: { status?: Status; streak?: number }) => (e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) >= STUCK_AFTER
 
 export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'Neu', error: 'Fehler', warn: 'Zu wenig Text', pending: 'Noch nicht geprüft', paused: 'Pausiert' }
 
@@ -57,7 +61,7 @@ export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
 }
 
 export function matches(
-  item: { name?: string | null; url: string; text?: string; group: string; status?: Status },
+  item: { name?: string | null; url: string; text?: string; group: string; status?: Status; streak?: number },
   query: string,
   group: string,
   status: StatusFilter,
@@ -65,7 +69,8 @@ export function matches(
   const q = query.trim().toLowerCase()
   if (group && item.group !== group) return false
   if (status && item.status !== undefined) {
-    const ok = status === 'problem' ? item.status === 'error' || item.status === 'warn' : item.status === status
+    const ok =
+      status === 'problem' ? item.status === 'error' || item.status === 'warn' : status === 'stuck' ? isStuck(item) : item.status === status
     if (!ok) return false
   }
   return !q || `${item.name ?? ''} ${item.url} ${item.text ?? ''}`.toLowerCase().includes(q)
@@ -343,7 +348,7 @@ export type Tab = 'urls' | 'changes' | 'groups'
 export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string }
 export const DEFAULT_VIEW: ViewState = { tab: 'urls', group: '', status: '', period: '', query: '' }
 const TABS: Tab[] = ['urls', 'changes', 'groups']
-const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem']
+const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
 // Format: #t=changes&g=Azure&s=problem&p=7d&q=text. Altes Mail-Format #changes[:URL] bleibt gültig.

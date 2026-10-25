@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -236,6 +236,20 @@ describe('group order', () => {
     expect(moveGroup(['a', 'b'], 'a', -1)).toEqual(['a', 'b'])
     expect(isHexColor('#2563eb')).toBe(true)
     expect(isHexColor('red;x')).toBe(false)
+  })
+})
+
+describe('Fehlerserie', () => {
+  const e = (status: Entry['status'], streak?: number) => ({ url: 'u', name: 'n', group: 'G', checked: '', changed: '', error: '', status, streak }) as Entry
+  it('dauerhaft kaputt ab 6 Läufen', () => {
+    expect(isStuck(e('error', 6))).toBe(true)
+    expect(isStuck(e('warn', 7))).toBe(true)
+    expect(isStuck(e('error', 5))).toBe(false)
+    expect(isStuck(e('ok', 9))).toBe(false)
+  })
+  it('Filter stuck', () => {
+    expect(matches({ ...e('error', 6), text: '' }, '', '', 'stuck')).toBe(true)
+    expect(matches({ ...e('error', 2), text: '' }, '', '', 'stuck')).toBe(false)
   })
 })
 
