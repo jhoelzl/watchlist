@@ -3,11 +3,11 @@ import type { Preview } from '../../../supabase/functions/watchlist-preview/anal
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
-  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
+  HISTORY_LIMIT, PAGE_HISTORY_LIMIT, buildHash, dailyCounts, sparkBars, SPARK_DAYS, pickView, readPrefs, writePrefs, PERIODS, STATUS_LABEL, annotateDiff, applyEdit, buildRow, countLines, dayLabel, diffClass, exportUrls, fragmentUrl, parseImport, toEditForm, groupByDay, inPeriod, orderGroups, isHexColor, runPhase, type RunInfo, type GroupMeta, groupOf, matches, toEntries,
   type Change, type DbUrl, type EditForm, type Entry, type Period, type StatusFilter, type UrlRow,
 } from '../lib/watchlist'
 
-type Data = { entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
+type Data = { freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
@@ -18,11 +18,13 @@ async function load(): Promise<Load> {
   const admin = await supabase.from('watchlist_admins').select('user_id').maybeSingle()
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
-  const [urls, status, history, groupRows] = await Promise.all([
+  const since = new Date(Date.now() - SPARK_DAYS * 86_400_000).toISOString()
+  const [urls, status, history, groupRows, freqRows] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
     supabase.from('watchlist_groups').select('name, position, color, icon'),
+    supabase.from('watchlist_history').select('url, time').gte('created_at', since).limit(5000),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
@@ -32,10 +34,23 @@ async function load(): Promise<Load> {
       entries: toEntries((urls.data ?? []) as UrlRow[], status.data?.value ?? {}),
       changes: (history.data ?? []) as Change[],
       updated: status.data?.updated_at ?? null,
+      freq: ((freqRows.data ?? []) as { url: string; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[r.url] ??= []).push(r.time); return acc }, {}),
       metas: (groupRows.data ?? []) as GroupMeta[],
       groupsReady: !groupRows.error,
     },
   }
+}
+
+function Spark({ times }: { times: string[] }) {
+  const counts = useMemo(() => dailyCounts(times), [times])
+  const total = counts.reduce((a, b) => a + b, 0)
+  if (!total) return <span className="muted">-</span>
+  return (
+    <svg className="spark" width="90" height="18" role="img" aria-label={`${total} Änderungen in ${SPARK_DAYS} Tagen`}>
+      <title>{total} Änderungen in {SPARK_DAYS} Tagen</title>
+      {sparkBars(counts).map((b) => <rect key={b.x} x={b.x} y={b.y} width={b.w} height={b.h} rx="1" />)}
+    </svg>
+  )
 }
 
 type PreviewState =
@@ -390,7 +405,7 @@ export function Dashboard() {
               </span>
             </button>
             {!collapsed.has(name) && <table>
-              <thead><tr><th>Status</th><th>Seite</th><th>Zuletzt geprüft</th><th>Zuletzt geändert</th><th></th></tr></thead>
+              <thead><tr><th>Status</th><th>Seite</th><th>Zuletzt geprüft</th><th>Zuletzt geändert</th><th>Letzte {SPARK_DAYS} Tage</th><th></th></tr></thead>
               <tbody>
                 {items.map((e) => (
                   <Fragment key={e.url}>
@@ -402,6 +417,7 @@ export function Dashboard() {
                     </td>
                     <td>{e.checked || '-'}</td>
                     <td>{e.changed || '-'}</td>
+                    <td><Spark times={data?.freq[e.url] ?? []} /></td>
                     <td className="row-actions">
                       <button className="icon-btn" title="Verlauf dieser Seite" aria-label={`Verlauf von ${e.name}`} onClick={() => showHistory(e.url)}>⏱</button>
                       <button className="icon-btn" title="Bearbeiten" aria-label={`${e.name} bearbeiten`} onClick={() => setEditing(editing === e.url ? null : e.url)}>✎</button>
@@ -409,7 +425,7 @@ export function Dashboard() {
                     </td>
                   </tr>
                   {editing === e.url && (
-                    <tr className="edit-row"><td colSpan={5}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load().then(setResult) }} /></td></tr>
+                    <tr className="edit-row"><td colSpan={6}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void load().then(setResult) }} /></td></tr>
                   )}
                   </Fragment>
                 ))}

@@ -309,3 +309,5 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .group-icon { margin-right: 6px; }
 .icon-input { width: 64px; }
+
+.spark { display: block; fill: var(--accent, #2563eb); }

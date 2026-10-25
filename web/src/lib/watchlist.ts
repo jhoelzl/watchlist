@@ -440,3 +440,26 @@ export function readPrefs(): Prefs | null {
 export function writePrefs(prefs: Prefs): void {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* Speicher gesperrt oder voll */ }
 }
+
+export const SPARK_DAYS = 30
+
+/** Änderungen pro Tag der letzten `days` Tage (älteste zuerst, letzter Wert = heute). */
+export function dailyCounts(times: string[], now: Date = new Date(), days = SPARK_DAYS): number[] {
+  const counts = Array.from({ length: days }, () => 0)
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  for (const t of times) {
+    const at = parseStamp(t)
+    if (!at) continue
+    const day = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate())
+    const ago = Math.round((today - day) / 86_400_000)
+    if (ago >= 0 && ago < days) counts[days - 1 - ago]++
+  }
+  return counts
+}
+
+/** Balken-Sparkline als SVG-Rechtecke (x, y, Höhe) in einer Fläche von width x height. */
+export function sparkBars(counts: number[], width = 90, height = 18): { x: number; y: number; w: number; h: number }[] {
+  const max = Math.max(...counts, 1)
+  const w = width / counts.length
+  return counts.flatMap((c, i) => (c ? [{ x: i * w, y: height - Math.max(2, (c / max) * height), w: Math.max(w - 1, 1), h: Math.max(2, (c / max) * height) }] : []))
+}

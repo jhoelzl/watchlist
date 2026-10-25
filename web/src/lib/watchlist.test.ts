@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, pickView, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, pickView, dailyCounts, sparkBars, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -253,5 +253,17 @@ describe('pickView', () => {
     expect(pickView('#t=changes', stored).tab).toBe('changes')
     expect(pickView('', stored).tab).toBe('groups')
     expect(pickView('', null).tab).toBe('urls')
+  })
+})
+
+describe('sparkline', () => {
+  const now = new Date('2026-10-25T12:00:00Z')
+  it('zählt Änderungen pro Tag', () => {
+    const c = dailyCounts(['2026-10-25 06:00 UTC', '2026-10-25 18:00 UTC', '2026-10-24 06:00 UTC', '2026-01-01 06:00 UTC', 'kaputt'], now, 7)
+    expect(c).toEqual([0, 0, 0, 0, 0, 1, 2])
+  })
+  it('Balken nur für Tage mit Änderungen', () => {
+    expect(sparkBars([0, 2, 1], 30, 10)).toHaveLength(2)
+    expect(sparkBars([0, 0], 30, 10)).toEqual([])
   })
 })
