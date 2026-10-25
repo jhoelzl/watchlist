@@ -100,7 +100,8 @@ export function Dashboard() {
     setCheck({ state: 'busy' })
     const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check')
     if (error || res?.error) {
-      return setCheck({ state: 'error', message: res?.error ?? error?.message ?? 'Unbekannter Fehler' })
+      const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
+      return setCheck({ state: 'error', message: res?.error ?? body?.error ?? error?.message ?? 'Unbekannter Fehler' })
     }
     setCheck({ state: res?.status === 'running' ? 'running' : 'started' })
     setTimeout(() => void load().then(setResult), 90_000)
