@@ -312,9 +312,9 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .spark { display: block; fill: var(--accent, #2563eb); }
 
-/* Spalten: Sparkline und drei Icon-Buttons brauchen Platz */
+/* Spalten: Sparkline und vier Icon-Buttons brauchen Platz */
 .composer-section th:nth-child(5), .composer-section td:nth-child(5) { width: 110px; }
-.composer-section th:last-child, .composer-section td:last-child { width: 120px; padding: 0 10px 0 0; text-align: right; }
+.composer-section th:last-child, .composer-section td:last-child { width: 156px; padding: 0 14px 0 0; text-align: right; }
 .menu > summary.btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }
 .intro-actions { align-items: center; }
 @media (max-width: 720px) {
