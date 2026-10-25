@@ -293,6 +293,11 @@ function feedEntryLink(line: string): string {
   return line.split(' | ').slice(1).map((p) => p.trim()).find((p) => /^https?:\/\/\S+$/.test(p)) ?? ''
 }
 
+/** Wie Pythons urllib.parse.quote(safe="") plus %2D: encodeURIComponent lässt zusätzlich !'()* stehen. */
+function encodeFragment(text: string): string {
+  return encodeURIComponent(text).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`).replaceAll('-', '%2D')
+}
+
 /** Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment der längsten schlichten Zeile. */
 export function fragmentUrl(url: string, diff: string): string {
   const added = diff.split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++')).map((l) => l.slice(1))
@@ -312,7 +317,7 @@ export function fragmentUrl(url: string, diff: string): string {
     }
   }
   if (!best) return url
-  return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeURIComponent(best).replaceAll('-', '%2D')}`
+  return `${url}${url.includes('#') ? ':~:text=' : '#:~:text='}${encodeFragment(best)}`
 }
 
 export const DEFAULT_GROUP = 'Allgemein'

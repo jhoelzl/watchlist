@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 101 Python- und 54 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 123 Python- und 76 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 6)
 
@@ -51,7 +51,6 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 ## 5. Refactoring
 
-- 🟡 **Python ↔ TypeScript angleichen:** `annotateDiff`, `fragmentUrl`, `countLines` und `groupOf` existieren doppelt. Per Test mit identischen Fällen (gemeinsame Fixture-Datei) abgleichen, damit sie nicht auseinanderlaufen. (S)
 - 🟡 **`Dashboard.tsx` zerlegen** (488 Zeilen; `GroupsPanel` ist schon ausgelagert): `UrlsTab`, `ChangesTab`, `AddUrl`, `useWatchlist` (Laden, Aktionen) in eigene Dateien. (S)
 - ⚪ **Konfigurationsschema** mit klaren Fehlern bei Tippfehlern (`selektor:`), unbekannten Optionen und falschen Typen, auch beim Speichern im Dashboard. (M)
 - ⚪ **Konstanten** in einem `Settings`-Objekt bündeln (`MAX_HISTORY`, `STORE_DIFF_LINES`, `MAIL_DIFF_LINES`, `DIFF_CONTEXT`, `MAX_WORKERS`, `STUCK_AFTER`). Das Dashboard liest `HISTORY_LIMIT` getrennt davon, beide müssen zusammenpassen. (S)

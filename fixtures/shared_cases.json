@@ -1,0 +1,389 @@
+{
+ "group_of": [
+  {
+   "input": null,
+   "expected": "Allgemein"
+  },
+  {
+   "input": "",
+   "expected": "Allgemein"
+  },
+  {
+   "input": "Azure",
+   "expected": "Azure"
+  }
+ ],
+ "counts": [
+  {
+   "diff": [
+    "+a",
+    "-b"
+   ],
+   "expected": [
+    1,
+    1
+   ]
+  },
+  {
+   "diff": [
+    "--- alt",
+    "+++ neu",
+    "@@ -1 +1 @@",
+    "-x",
+    "+y",
+    "+z"
+   ],
+   "expected": [
+    2,
+    1
+   ]
+  },
+  {
+   "diff": [],
+   "expected": [
+    0,
+    0
+   ]
+  },
+  {
+   "diff": [
+    "+++ keine Zeile",
+    "---- vier Striche",
+    "+-plus minus"
+   ],
+   "expected": [
+    1,
+    0
+   ]
+  }
+ ],
+ "fragment": [
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+Neue Stellenausschreibung Entwickler"
+   ],
+   "expected": "https://x.at/p#:~:text=Neue%20Stellenausschreibung%20Entwickler"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "-alt",
+    "+kurz"
+   ],
+   "expected": "https://x.at/p"
+  },
+  {
+   "url": "https://x.at/p#top",
+   "diff": [
+    "+Neue Stellenausschreibung Entwickler"
+   ],
+   "expected": "https://x.at/p#top:~:text=Neue%20Stellenausschreibung%20Entwickler"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+Preis: 12,50 € (neu)!",
+    "+Einfacher Text ohne Sonderzeichen hier"
+   ],
+   "expected": "https://x.at/p#:~:text=Einfacher%20Text%20ohne%20Sonderzeichen%20hier"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+It's a well-known trick (really)!"
+   ],
+   "expected": "https://x.at/p#:~:text=It%27s%20a%20well%2Dknown%20trick%20%28really%29%21"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+2026-10-25 | Release 1.2 | https://x.at/r/12 | Notes"
+   ],
+   "expected": "https://x.at/r/12"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+Zeile mit Umlauten: Größe Änderung Übersicht"
+   ],
+   "expected": "https://x.at/p#:~:text=Zeile%20mit%20Umlauten%3A%20Gr%C3%B6%C3%9Fe%20%C3%84nderung%20%C3%9Cbersicht"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+Ein sehr langer Text der weit über die acht Wörter hinausgeht und nie komplett im Fragment steht"
+   ],
+   "expected": "https://x.at/p#:~:text=Ein%20sehr%20langer%20Text%20der%20weit%20%C3%BCber%20die"
+  },
+  {
+   "url": "https://x.at/p",
+   "diff": [
+    "+   ",
+    " +x"
+   ],
+   "expected": "https://x.at/p"
+  }
+ ],
+ "annotate": [
+  {
+   "diff": [
+    "-Preis 10 EUR",
+    "+Preis 12 EUR"
+   ],
+   "expected": [
+    [
+     [
+      "-",
+      false
+     ],
+     [
+      "Preis ",
+      false
+     ],
+     [
+      "10",
+      true
+     ],
+     [
+      " EUR",
+      false
+     ]
+    ],
+    [
+     [
+      "+",
+      false
+     ],
+     [
+      "Preis ",
+      false
+     ],
+     [
+      "12",
+      true
+     ],
+     [
+      " EUR",
+      false
+     ]
+    ]
+   ]
+  },
+  {
+   "diff": [
+    "-Version 1.2.3 veröffentlicht",
+    "+Version 1.2.4 veröffentlicht",
+    "@@ -1 +1 @@",
+    " Kontext"
+   ],
+   "expected": [
+    [
+     [
+      "-",
+      false
+     ],
+     [
+      "Version 1.2.",
+      false
+     ],
+     [
+      "3",
+      true
+     ],
+     [
+      " veröffentlicht",
+      false
+     ]
+    ],
+    [
+     [
+      "+",
+      false
+     ],
+     [
+      "Version 1.2.",
+      false
+     ],
+     [
+      "4",
+      true
+     ],
+     [
+      " veröffentlicht",
+      false
+     ]
+    ],
+    [
+     [
+      "@@ -1 +1 @@",
+      false
+     ]
+    ],
+    [
+     [
+      " Kontext",
+      false
+     ]
+    ]
+   ]
+  },
+  {
+   "diff": [
+    "-komplett anders hier",
+    "+nichts gemeinsam dort"
+   ],
+   "expected": [
+    [
+     [
+      "-",
+      false
+     ],
+     [
+      "komplett",
+      true
+     ],
+     [
+      " ",
+      false
+     ],
+     [
+      "anders",
+      true
+     ],
+     [
+      " ",
+      false
+     ],
+     [
+      "hier",
+      true
+     ]
+    ],
+    [
+     [
+      "+",
+      false
+     ],
+     [
+      "nichts",
+      true
+     ],
+     [
+      " ",
+      false
+     ],
+     [
+      "gemeinsam",
+      true
+     ],
+     [
+      " ",
+      false
+     ],
+     [
+      "dort",
+      true
+     ]
+    ]
+   ]
+  },
+  {
+   "diff": [
+    "+nur neu",
+    "-nur alt"
+   ],
+   "expected": [
+    [
+     [
+      "+nur neu",
+      false
+     ]
+    ],
+    [
+     [
+      "-nur alt",
+      false
+     ]
+    ]
+   ]
+  },
+  {
+   "diff": [
+    "-a",
+    "-b",
+    "+c"
+   ],
+   "expected": [
+    [
+     [
+      "-a",
+      false
+     ]
+    ],
+    [
+     [
+      "-b",
+      false
+     ]
+    ],
+    [
+     [
+      "+c",
+      false
+     ]
+    ]
+   ]
+  },
+  {
+   "diff": [
+    "@@ -1,2 +1,2 @@",
+    " ctx",
+    "-Alt: eins zwei drei",
+    "+Alt: eins zwei vier"
+   ],
+   "expected": [
+    [
+     [
+      "@@ -1,2 +1,2 @@",
+      false
+     ]
+    ],
+    [
+     [
+      " ctx",
+      false
+     ]
+    ],
+    [
+     [
+      "-",
+      false
+     ],
+     [
+      "Alt: eins zwei ",
+      false
+     ],
+     [
+      "drei",
+      true
+     ]
+    ],
+    [
+     [
+      "+",
+      false
+     ],
+     [
+      "Alt: eins zwei ",
+      false
+     ],
+     [
+      "vier",
+      true
+     ]
+    ]
+   ]
+  }
+ ]
+}

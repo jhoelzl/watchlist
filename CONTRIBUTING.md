@@ -31,6 +31,7 @@ cd web && npx tsc -b && npm run lint && npm test
 ```
 
 - Python-Tests liegen in `tests/`, Web-Tests (Vitest, ohne DOM) neben dem Code in `web/src/lib/`. Reine Logik gehört in Funktionen, die ohne Browser testbar sind.
+- Was es in Python und TypeScript doppelt gibt (`annotate_diff`/`annotateDiff`, `fragment_url`/`fragmentUrl`, `diff_counts`/`countLines`, `group_of`/`groupOf`), prüfen beide Seiten gegen `fixtures/shared_cases.json` (`tests/test_shared_cases.py`, `web/src/lib/shared.test.ts`). Neuer Fall: in die JSON-Datei eintragen, beide Tests müssen grün bleiben.
 - Neue Funktionen und Fehlerfälle bekommen einen Test. Netzwerk und Mails werden in Tests gemockt.
 - `uv run pre-commit run --all-files` führt alle Hooks von Hand aus. CI (`tests.yml`) prüft dasselbe plus `uv audit` und `npm audit`.
 

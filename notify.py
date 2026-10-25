@@ -41,10 +41,14 @@ def merge_variants(changes: list[Change]) -> list[Change]:
     return list(merged.values())
 
 
+def group_of(group: str | None) -> str:
+    return group or DEFAULT_GROUP
+
+
 def group_changes(changes: list[Change]) -> dict[str, list[Change]]:
     groups: dict[str, list[Change]] = {}
     for c in changes:
-        groups.setdefault(c.get("group") or DEFAULT_GROUP, []).append(c)
+        groups.setdefault(group_of(c.get("group")), []).append(c)
     return groups
 
 
@@ -238,11 +242,11 @@ def send_heartbeat(
     ]
     groups: dict[str, list[int]] = {}
     for s in status.values():
-        groups.setdefault(s.get("group") or DEFAULT_GROUP, [0, 0, 0])[0] += 1
+        groups.setdefault(group_of(s.get("group")), [0, 0, 0])[0] += 1
     for h in recent:
-        groups.setdefault(h.get("group") or DEFAULT_GROUP, [0, 0, 0])[1] += 1
+        groups.setdefault(group_of(h.get("group")), [0, 0, 0])[1] += 1
     for _, s in failing:
-        groups[s.get("group") or DEFAULT_GROUP][2] += 1
+        groups[group_of(s.get("group"))][2] += 1
     lines += [f"- {g}: {n} / {c} / {p}" for g, (n, c, p) in sorted(groups.items())]
     lines += ["", "Letzte Änderungen:"] + [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
     if not recent:
