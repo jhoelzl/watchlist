@@ -20,7 +20,19 @@ repos:
         types: [python]
       - id: mypy
         name: mypy
-        entry: uv run --frozen mypy check.py add.py dashboard.py
+        entry: uv run --frozen mypy check.py add.py dashboard.py store.py migrate.py
         language: system
         types: [python]
+        pass_filenames: false
+      - id: web-lint
+        name: web oxlint
+        entry: npm --prefix web run lint
+        language: system
+        files: ^web/src/
+        pass_filenames: false
+      - id: web-tsc
+        name: web tsc
+        entry: bash -c 'cd web && npx tsc -b'
+        language: system
+        files: ^web/(src/|tsconfig.*|package.*)
         pass_filenames: false

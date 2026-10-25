@@ -98,7 +98,7 @@ uv run pytest                         # Tests
 uv run ruff check .                   # Lint
 uv run ruff format .                  # Formatieren (CI prüft mit --check)
 uv run mypy check.py add.py dashboard.py  # Typcheck
-uv run pre-commit install             # einmalig: ruff, ruff format und mypy vor jedem Commit
+uv run pre-commit install             # einmalig pro Klon: gitleaks, ruff, mypy, bei Änderungen in web/ auch oxlint und tsc
 uv run pre-commit run --all-files     # alle Hooks von Hand
 uv audit --preview-features audit-command  # bekannte Schwachstellen in Abhängigkeiten
 ```

@@ -111,7 +111,6 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 - ⚪ **Tests für `dashboard.build`:** Escaping, Gruppen, leere Historie, XSS-Fälle in Name und Diff. (S)
 - ⚪ **Property-Tests** (Hypothesis, fast-check) für `make_diff`, `annotate_diff`, `fragment_url`, `clean` und Regex-Ignore. (M)
 - ⚪ **Konfigurationsprüfung in CI:** `check.py --validate` ohne Netzwerkzugriff (Duplikate, ungültige Regex, unbekannte Optionen). (S)
-- ⚪ **pre-commit** ist eingerichtet, aber nicht automatisch aktiv (einmal `uv run pre-commit install` pro Klon). Für `web/` fehlen Hooks (Lint, `tsc`). (S)
 
 ## 8. Dokumentation
 
@@ -133,6 +132,7 @@ Stand: `check.py` 817 Zeilen, `store.py` 321, `add.py` 196, `dashboard.py` 118 (
 | Dashboard-Link | Jede Mail verlinkt `#changes` und pro Eintrag `#changes:<URL>`. Das Dashboard öffnet den Tab und springt zum Eintrag. Basis-URL per `DASHBOARD_URL` überschreibbar |
 | Plain-Text-Mail | Gleiche Struktur wie HTML: Zusammenfassung, Gruppen, +/−-Zähler, Sprunglink, Dashboard-Link, Varianten |
 | Fehlercodes statt Textsuche | `CheckError(message, code)` und `error_code(ex)`, `HINTS` ist ein Dict nach Code. Der Code steht auch im Status (`code`) |
+| pre-commit für web/ | Hooks `web oxlint` und `web tsc` in `.pre-commit-config.yaml`, mypy deckt alle Module ab. Aktivierung bleibt einmal pro Klon (`uv run pre-commit install`), CI prüft alles ohnehin |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
