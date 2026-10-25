@@ -1,0 +1,8 @@
+{
+  "max_history": 100,
+  "store_diff_lines": 500,
+  "mail_diff_lines": 60,
+  "diff_context": 3,
+  "max_workers": 6,
+  "stuck_after": 6
+}

@@ -1,4 +1,5 @@
 import { parse, stringify } from 'yaml'
+import settings from '../../../settings.json'
 
 export type Status = 'ok' | 'new' | 'error' | 'warn' | 'pending' | 'paused'
 
@@ -27,8 +28,8 @@ export type Change = {
 
 export type StatusFilter = '' | Status | 'problem' | 'stuck'
 
-// Gleicher Wert wie STUCK_AFTER in check.py: Läufe in Folge, ab denen eine Seite als dauerhaft kaputt gilt
-export const STUCK_AFTER = 6
+// Läufe in Folge, ab denen eine Seite als dauerhaft kaputt gilt (settings.json)
+export const STUCK_AFTER = settings.stuck_after
 export const isStuck = (e: { status?: Status; streak?: number }) => (e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) >= STUCK_AFTER
 
 export const STATUS_LABEL: Record<Status, string> = { ok: 'OK', new: 'Neu', error: 'Fehler', warn: 'Zu wenig Text', pending: 'Noch nicht geprüft', paused: 'Pausiert' }
@@ -246,7 +247,7 @@ export function runStats(runs: RunRecord[]): { avgSeconds: number; errorRate: nu
   }
 }
 
-export const HISTORY_LIMIT = 100
+export const HISTORY_LIMIT = settings.max_history
 export const PAGE_HISTORY_LIMIT = 500
 
 export type Period = '' | 'today' | '7d' | '30d'

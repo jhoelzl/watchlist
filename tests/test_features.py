@@ -12,6 +12,7 @@ import diffing
 import errors
 import fetch
 import notify
+from settings import SETTINGS
 
 
 class FakeResp:
@@ -314,7 +315,7 @@ def test_fetch_all_runs_in_parallel_and_respects_host_limit(monkeypatch):
     assert set(result) == {o["url"] for o, _ in jobs}
     assert result["https://a.example/3"][1] == "https://a.example/3"
     assert running["a_max"] <= fetch.MAX_PER_HOST
-    assert 1 < running["max"] <= fetch.MAX_WORKERS
+    assert 1 < running["max"] <= SETTINGS.max_workers
 
 
 def test_fetch_all_returns_exceptions_per_url(monkeypatch):
@@ -424,7 +425,7 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
             "status": "error",
             "error": "Timeout",
             "code": "timeout",
-            "streak": notify.STUCK_AFTER,
+            "streak": SETTINGS.stuck_after,
         },
         "https://c": {"name": "C", "group": "", "status": "error", "error": "404 Client Error", "streak": 1},
     }

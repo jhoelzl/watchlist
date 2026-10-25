@@ -8,11 +8,10 @@ import requests
 
 from diffing import annotate_diff, diff_counts, fragment_url
 from models import Change, HistoryEntry, Options, UrlStatus
+from settings import SETTINGS
 
-MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
 DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Umgebungsvariable DASHBOARD_URL
 DEFAULT_GROUP = "Allgemein"
-STUCK_AFTER = 6  # Läufe in Folge (bei 2 Läufen pro Tag = 3 Tage), ab denen eine Seite als dauerhaft kaputt gilt
 
 
 def safe_link(url: str) -> str:
@@ -24,8 +23,8 @@ def safe_link(url: str) -> str:
 
 
 def mail_view(change: Change) -> tuple[list[str], int]:
-    """Diff für die Mail: gekürzt auf MAIL_DIFF_LINES, der Rest zählt zu "weitere Zeilen"."""
-    diff = change["diff"][:MAIL_DIFF_LINES]
+    """Diff für die Mail: gekürzt auf die Mail-Zeilengrenze, der Rest zählt zu "weitere Zeilen"."""
+    diff = change["diff"][: SETTINGS.mail_diff_lines]
     return diff, change["extra"] + len(change["diff"]) - len(diff)
 
 
@@ -251,11 +250,11 @@ def send_heartbeat(
     lines += ["", "Letzte Änderungen:"] + [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
     if not recent:
         lines.append("- keine")
-    stuck = [(u, s) for u, s in failing if s.get("streak", 0) >= STUCK_AFTER]
+    stuck = [(u, s) for u, s in failing if s.get("streak", 0) >= SETTINGS.stuck_after]
     lines += ["", f"Seiten mit Problemen (Fehler/zu wenig Text): {len(failing)}"]
     lines += [f"- {s['name']}: {s['error']}" for _, s in failing]
     if stuck:
-        lines += ["", f"Dauerhaft kaputt (seit mindestens {STUCK_AFTER} Läufen in Folge):"]
+        lines += ["", f"Dauerhaft kaputt (seit mindestens {SETTINGS.stuck_after} Läufen in Folge):"]
         for u, s in stuck:
             lines.append(with_hint(f"- {s['name']} ({u}): {s['error']} [{s['streak']} Läufe]", s.get("code")))
     send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))

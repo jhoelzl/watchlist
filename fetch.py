@@ -11,12 +11,12 @@ import requests
 from errors import CheckError, error_code, status_code_name
 from models import Options, Validators
 from parse import extract
+from settings import SETTINGS
 
 ROBOTS_AGENT = "watchlist"
 RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
 MAX_RETRY_AFTER = 30
 RETRY_JITTER = 0.25  # bis zu +25 % Zufall auf die Wartezeit, damit Wiederholungen nicht im Gleichschritt laufen
-MAX_WORKERS = 6  # parallele Abrufe insgesamt
 MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 FetchResult = tuple[str | None, str | None, bool, Validators]  # (Titel, Text, ist_feed, Validatoren); Text None bei 304
@@ -196,7 +196,7 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
         return {}
     _browser_pool = BrowserPool() if any(o.get("js") for o, _ in jobs) else None
     try:
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        with ThreadPoolExecutor(max_workers=SETTINGS.max_workers) as pool:
             return dict(pool.map(lambda job: work(*job), jobs))
     finally:
         if _browser_pool is not None:

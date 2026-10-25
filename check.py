@@ -16,12 +16,12 @@ from errors import error_code
 from fetch import FetchResult, fetch_all
 from models import Change, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
+from settings import SETTINGS
 from store import FileStore, PgStore, open_store
 
 ROOT = Path(__file__).parent
 # Im Workflow liegen state/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
-MAX_HISTORY = 100
 MAX_RUNS = 30
 # Textwächter: Eine Seite mit vorher mind. GUARD_MIN_CHARS Zeichen, die unter
 # min_ratio (Standard 30 %) schrumpft, gilt als Fehlabruf (Cookie-Wand, Bot-Block).
@@ -119,7 +119,7 @@ def _run(store: Store) -> bool:
         http_cache=store.doc("http", {}),
     )
     entries = merge_config(store.raw_config())
-    history = store.history(MAX_HISTORY)
+    history = store.history(SETTINGS.max_history)
     new_history: list[HistoryEntry] = []
     meta = store.doc("meta", {})
 
@@ -132,14 +132,14 @@ def _run(store: Store) -> bool:
     ok &= send_change_mail(store, st, history, new_history)
     ok &= send_problem_mail(store, st)
 
-    history = history[-MAX_HISTORY:]
+    history = history[-SETTINGS.max_history :]
     try:
         send_heartbeat(now, entries, st.status, history, meta)
     except Exception as ex:
         ok = False
         print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
     store.set_doc("status", st.status)
-    store.add_history(new_history, MAX_HISTORY)
+    store.add_history(new_history, SETTINGS.max_history)
     store.set_doc("meta", meta)
     store.set_doc("http", st.new_cache)
     store.set_doc("runs", record_run(store.doc("runs", []), st.stamp, time.monotonic() - started, st.status, len(st.changes), ok))

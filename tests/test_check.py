@@ -11,6 +11,7 @@ import errors
 import fetch
 import notify
 import parse
+from settings import SETTINGS
 
 HTML = """
 <html><head><title> Meine   Seite </title><style>x{}</style></head>
@@ -80,8 +81,8 @@ def test_make_diff_only_added_ignores_removals():
 def test_make_diff_truncates():
     new = "\n".join(f"zeile {i}" for i in range(600))
     diff, extra = diffing.make_diff("", new, only_added=True)
-    assert len(diff) == diffing.STORE_DIFF_LINES
-    assert extra == 600 - diffing.STORE_DIFF_LINES
+    assert len(diff) == SETTINGS.store_diff_lines
+    assert extra == 600 - SETTINGS.store_diff_lines
 
 
 def test_default_ignore_removes_last_updated():
@@ -186,7 +187,7 @@ def test_mail_shows_short_diff_and_summary():
     text = notify.render_text(changes)
     assert text.startswith("2 Seiten geändert in 2 Gruppen")
     assert "zeile 59" in text and "zeile 60" not in text
-    assert f"und {5 + 100 - notify.MAIL_DIFF_LINES} weitere Zeilen" in text
+    assert f"und {5 + 100 - SETTINGS.mail_diff_lines} weitere Zeilen" in text
     html_out = notify.render_html(changes)
     assert 'href="#g1"' in html_out and 'id="c1"' in html_out
     assert "2 Seiten geändert in 2 Gruppen" in html_out

@@ -2,8 +2,7 @@ import difflib
 import re
 import urllib.parse
 
-STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
-DIFF_CONTEXT = 3
+from settings import SETTINGS
 
 Segment = tuple[str, bool]  # (Text, geändert)
 
@@ -14,9 +13,13 @@ def make_diff(old: str, new: str, only_added: bool) -> tuple[list[str], int]:
         seen = set(old_l)
         diff = ["+" + l for l in new_l if l not in seen]
     else:
-        diff = [l for l in difflib.unified_diff(old_l, new_l, lineterm="", n=DIFF_CONTEXT) if not l.startswith(("---", "+++"))]
-    extra = max(0, len(diff) - STORE_DIFF_LINES)
-    return diff[:STORE_DIFF_LINES], extra
+        diff = [
+            l
+            for l in difflib.unified_diff(old_l, new_l, lineterm="", n=SETTINGS.diff_context)
+            if not l.startswith(("---", "+++"))
+        ]
+    extra = max(0, len(diff) - SETTINGS.store_diff_lines)
+    return diff[: SETTINGS.store_diff_lines], extra
 
 
 PLAIN_SNIPPET = re.compile(r"[\w .,'\-]+")
