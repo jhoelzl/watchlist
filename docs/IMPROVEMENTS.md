@@ -9,7 +9,7 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 | # | Idee | Bereich | Prio | Aufwand |
 |---|------|---------|------|---------|
 | 1 | Weitere Kanäle (ntfy/Slack/Teams) und Digest-Modus | Features | 🟡 | M |
-| 2 | `check_url` mit Ergebnis-Objekt, Annotationen, mypy `strict` | Refactoring | 🟡 | M |
+| 2 | Annotationen, mypy `strict` | Refactoring | 🟡 | M |
 | 3 | Tests für `RestStore`, `add.py`, Edge Functions und Web-Komponenten | Qualität | 🟡 | M |
 | 4 | `timeout-minutes` und Alarm bei Workflow-Ausfall für `check.yml` | Betrieb | 🟡 | S |
 | 5 | Backup der Datenbank (wöchentlicher Export als Artefakt) | Betrieb | 🟡 | S |
@@ -52,7 +52,6 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 
 ## 5. Refactoring
 
-- 🟡 **`run()` weiter entflechten:** `check_url` und `RunState` gibt es seit der Aufteilung. Offen: `check_url` liefert ein Ergebnis-Objekt statt den Zustand zu verändern. (S)
 - 🟡 **Typisierung abschließen:** Dicts (`entry`, `change`, `opts`) durch `TypedDict` oder `dataclass` ersetzen und Funktionen annotieren. Danach `strict = true`. (M)
 - 🟡 **Python ↔ TypeScript angleichen:** `annotateDiff`, `fragmentUrl`, `countLines` und `groupOf` existieren doppelt. Per Test mit identischen Fällen (gemeinsame Fixture-Datei) abgleichen, damit sie nicht auseinanderlaufen. (S)
 - 🟡 **`Dashboard.tsx` zerlegen** (488 Zeilen; `GroupsPanel` ist schon ausgelagert): `UrlsTab`, `ChangesTab`, `AddUrl`, `useWatchlist` (Laden, Aktionen) in eigene Dateien. (S)
@@ -125,7 +124,8 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 | Laufhistorie | `check.py` speichert pro Lauf Dauer, URL-Anzahl, Fehler, Warnungen und Änderungen (`record_run`, Dokument `runs`, letzte `MAX_RUNS=30`). Das Dashboard zeigt im Tab URLs eine aufklappbare Tabelle mit Ø-Dauer und Fehlerquote. Die Anzeige füllt sich ab dem nächsten Lauf |
 | Ignore-Vorschläge | Beim Bearbeiten einer URL sucht `suggestIgnores` im Verlauf (letzte 50 Änderungen) nach Zeilen mit Ziffern, die in mindestens 2 Änderungen nur in den Zahlen abweichen (Datum, Zähler, Zeitstempel), und bietet passende `ignore`-Regex zum Übernehmen an. Bereits abgedeckte Muster fehlen in der Liste |
 | Pro-URL-Intervall | Option `interval: daily\|weekly` (Mindestabstand 20 h bzw. 160 h, `is_due`). Übersprungene URLs behalten Status und Cache. URLs mit Problem, ohne Snapshot oder ohne letzte Prüfung werden immer geprüft. Im Bearbeiten-Formular als „Prüfung“ wählbar, ungültige Werte sind ein Konfigurationsfehler |
-| `check.py` aufgeteilt | `config.py` (Optionen, `config_errors`, `is_due`), `fetch.py` (HTTP, Retry, robots, Playwright, `fetch_all`), `parse.py` (Feed/HTML, `ignore`, `auto_root`), `diffing.py` (`make_diff`, `annotate_diff`, `fragment_url`), `notify.py` (Resend, Mails, `HINTS`, Heartbeat), `errors.py` (`CheckError`, Fehlercodes). `check.py` bleibt Orchestrierung; `run()` ist in `check_url`, `record_failure`, `record_short_text`, `send_change_mail` und `send_problem_mail` mit dem Laufzustand `RunState` zerlegt |
+| `check.py` aufgeteilt | `config.py` (Optionen, `config_errors`, `is_due`), `fetch.py` (HTTP, Retry, robots, Playwright, `fetch_all`), `parse.py` (Feed/HTML, `ignore`, `auto_root`), `diffing.py` (`make_diff`, `annotate_diff`, `fragment_url`), `notify.py` (Resend, Mails, `HINTS`, Heartbeat), `errors.py` (`CheckError`, Fehlercodes). `check.py` bleibt Orchestrierung; `run()` läuft in drei Phasen: sammeln (`check_url` liefert pro URL ein `Result`, `apply_result` übernimmt es in `RunState` und Store), senden (`send_change_mail`, `send_problem_mail`), speichern |
+| `run()` entflochten | `check_url(store, st, opts, fetched) -> Result` verändert nichts mehr selbst: Status, Zähler, Snapshot, Cache, Änderung und Warnung stehen im `Result` (Dataclass), `apply_result` führt sie aus |
 | Speicher in Supabase | `store.py` (`FileStore`, `PgStore`, `RestStore`), Schema `supabase/schema.sql` mit Präfix `watchlist_`, `migrate.py`. Workflow nutzt `SUPABASE_URL` und `SUPABASE_SERVICE_KEY`. `urls.yml` und der Branch `state` sind entfernt, der Workflow committet nichts mehr |
 | Persönliche Daten aus dem Repo | `urls.yml` und `import_urls.sql` stehen in `.gitignore`, `urls.example.yml` ist die Vorlage. Historie auf einen Initial-Commit gesquasht, Backup liegt außerhalb des Repos. Repo ist öffentlich |
 | Web-Dashboard | `web/` (Vite, React, Supabase-Login mit Freigabeliste `watchlist_admins`, RLS), Deploy per `pages.yml` auf GitHub Pages |
@@ -154,5 +154,5 @@ Stand: `check.py` 306 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 1. URLs im Dashboard bearbeiten und pausieren, Fehlerserie anzeigen, Rückmeldung nach „Jetzt prüfen“.
 2. `timeout-minutes`, Benachrichtigung bei Workflow-Ausfall, Backup und Web-Prüfungen in CI.
 3. Tab-Varianten zusammenfassen, danach ntfy und Digest-Modus.
-4. `check_url` mit Ergebnis-Objekt, TypedDict, Annotationen, danach `strict = true`.
+4. TypedDict und Annotationen, danach `strict = true`.
 5. Tests für `RestStore`, `add.py`, Edge Function und Web-Komponenten, Coverage in CI.

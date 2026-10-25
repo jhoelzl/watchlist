@@ -34,7 +34,7 @@ PERMANENT_ALERT_AFTER = 2
 
 @dataclass
 class RunState:
-    """Zwischenstand eines Laufs: wird von den Prüfschritten gefüllt und danach für Mail und Speichern gelesen."""
+    """Zwischenstand eines Laufs: wird in „sammeln“ gefüllt und danach für „senden“ und „speichern“ gelesen."""
 
     stamp: str
     old_status: dict[str, Any]
@@ -45,6 +45,19 @@ class RunState:
     problems: list[dict[str, Any]] = field(default_factory=list)
     pending: list[dict[str, Any]] = field(default_factory=list)
     config_bad: list[str] = field(default_factory=list)
+
+
+@dataclass
+class Result:
+    """Ergebnis der Prüfung einer URL. Die Änderungen an Store und Laufzustand führt apply_result aus."""
+
+    entry: dict[str, Any]
+    cache: dict[str, Any] | None = None  # neuer HTTP-Cache-Eintrag
+    snapshot: str | None = None  # Text, der sofort als Snapshot gespeichert wird
+    pending: dict[str, Any] | None = None  # Änderung, die erst nach dem Mailversand übernommen wird
+    problem: dict[str, Any] | None = None  # Warnung, die per Mail gemeldet wird
+    config_error: str | None = None
+    counters: list[tuple[Any, ...]] = field(default_factory=list)  # ("set", key, name, n) oder ("clear", key, name)
 
 
 def url_key(url):
@@ -105,7 +118,7 @@ def _run(store):
     print(f"Prüfe {len(entries)} URL(s)...")
     fetched = fetch_all(plan_jobs(store, entries, st.old_status, st.http_cache, now))
     for opts in entries:
-        check_url(store, st, opts, fetched)
+        apply_result(store, st, opts["url"], check_url(store, st, opts, fetched))
 
     ok = not st.config_bad
     ok &= send_change_mail(store, st, history, new_history)
@@ -128,7 +141,7 @@ def _run(store):
 
 
 def check_url(store, st, opts, fetched):
-    """Wertet das Abrufergebnis einer URL aus und trägt Status, Änderungen und Probleme in den Laufzustand ein."""
+    """Wertet das Abrufergebnis einer URL aus. Liest nur aus Store und Laufzustand, alle Änderungen stehen im Result."""
     url = opts["url"]
     prev = st.old_status.get(url, {})
     entry = {
@@ -140,45 +153,42 @@ def check_url(store, st, opts, fetched):
         "error": "",
         "code": "",
     }
-    st.status[url] = entry
+    res = Result(entry)
+    cached = st.http_cache.get(url, {})
     errors = config_errors(opts)
     if not errors and url not in fetched:
-        st.status[url] = {**prev, "name": entry["name"], "group": entry["group"]}
-        if url in st.http_cache:
-            st.new_cache[url] = st.http_cache[url]
+        res.entry = {**prev, "name": entry["name"], "group": entry["group"]}
+        res.cache = cached if url in st.http_cache else None
         print(f"[ÜBERSPRUNGEN] {entry['name']} (interval: {opts.get('interval')})")
-        return
+        return res
     if errors:
         msg = "Konfigurationsfehler: " + "; ".join(errors)
         entry.update(status="error", error=msg[:300], code="config", checked=prev.get("checked", "-"))
-        st.config_bad.append(f"{url}\n  {msg}")
+        res.config_error = f"{url}\n  {msg}"
         print(f"[KONFIG]    {url}: {msg}")
-        return
+        return res
     result = fetched[url]
-    if isinstance(result, Exception):
-        record_failure(store, st, entry, prev, url, result)
-        return
-    title, text, feed, validators = result
     key = url_key(url)
-    cached = st.http_cache.get(url, {})
-    store.clear_counter(key, "fail")
+    if isinstance(result, Exception):
+        return failed_result(store, res, prev, url, result)
+    title, text, feed, validators = result
+    res.counters.append(("clear", key, "fail"))
 
     if text is None:
-        store.clear_counter(key, "short")
-        st.new_cache[url] = cached
+        res.counters.append(("clear", key, "short"))
+        res.cache = cached
         print(f"[UNVERÄNDERT] {entry['name']} [304 Not Modified, nicht neu geladen]")
-        return
+        return res
 
     name = opts.get("name") or title or url
     entry["name"] = name
     kind = "Feed" if feed else "Seite"
     old = store.snapshot(key)
     if is_too_short(old, text, opts):
-        record_short_text(store, st, entry, prev, url, name, kind, old, text)
-        return
-    store.clear_counter(key, "short")
+        return short_text_result(store, res, prev, url, name, kind, old, text)
+    res.counters.append(("clear", key, "short"))
 
-    cfg = config_hash(opts)
+    new_cache = {**validators, "config": config_hash(opts)} if validators else None
     if old is None:
         entry["status"] = "new"
         hint = " - ACHTUNG: sehr wenig Text, Selector prüfen" if len(text) < 200 else ""
@@ -190,40 +200,29 @@ def check_url(store, st, opts, fetched):
         diff, extra = make_diff(old, text, opts.get("only_added", feed))
         if diff:
             change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
-            st.changes.append(change)
             # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
-            st.pending.append(
-                {
-                    "change": change,
-                    "key": key,
-                    "text": text,
-                    "entry": entry,
-                    "cache": {**validators, "config": cfg} if validators else None,
-                }
-            )
-            if cached:
-                st.new_cache[url] = cached
-            return
+            res.pending = {"change": change, "key": key, "text": text, "entry": entry, "cache": new_cache}
+            res.cache = cached or None
+            return res
         print("            (nur entfernte Zeilen, keine Mail)")
-    store.set_snapshot(key, url, text)
-    if validators:
-        st.new_cache[url] = {**validators, "config": cfg}
+    res.snapshot = text
+    res.cache = new_cache
+    return res
 
 
-def record_failure(store, st, entry, prev, url, ex):
+def failed_result(store, res, prev, url, ex):
     key = url_key(url)
     n = store.counter(key, "fail") + 1
-    store.set_counter(key, "fail", n)
-    entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
+    res.counters.append(("set", key, "fail", n))
+    res.entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
     print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
     if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
-        st.problems.append(
-            {
-                "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),
-                "counter": (key, "fail"),
-                "value": n,
-            }
-        )
+        res.problem = {
+            "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),
+            "counter": (key, "fail"),
+            "value": n,
+        }
+    return res
 
 
 def is_too_short(old, text, opts):
@@ -231,21 +230,41 @@ def is_too_short(old, text, opts):
     return old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio
 
 
-def record_short_text(store, st, entry, prev, url, name, kind, old, text):
+def short_text_result(store, res, prev, url, name, kind, old, text):
     key = url_key(url)
     n = store.counter(key, "short") + 1
-    store.set_counter(key, "short", n)
+    res.counters.append(("set", key, "short", n))
     msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
-    entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
+    res.entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
     print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
     if n == GUARD_ALERT_AFTER:
-        st.problems.append(
-            {
-                "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "content"),
-                "counter": (key, "short"),
-                "value": n,
-            }
-        )
+        res.problem = {
+            "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "content"),
+            "counter": (key, "short"),
+            "value": n,
+        }
+    return res
+
+
+def apply_result(store, st, url, res):
+    """Phase „sammeln“: übernimmt das Ergebnis einer URL in Store und Laufzustand."""
+    st.status[url] = res.entry
+    for op in res.counters:
+        if op[0] == "set":
+            store.set_counter(op[1], op[2], op[3])
+        else:
+            store.clear_counter(op[1], op[2])
+    if res.snapshot is not None:
+        store.set_snapshot(url_key(url), url, res.snapshot)
+    if res.cache is not None:
+        st.new_cache[url] = res.cache
+    if res.pending:
+        st.changes.append(res.pending["change"])
+        st.pending.append(res.pending)
+    if res.problem:
+        st.problems.append(res.problem)
+    if res.config_error:
+        st.config_bad.append(res.config_error)
 
 
 def send_change_mail(store, st, history, new_history):
