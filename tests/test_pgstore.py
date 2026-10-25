@@ -7,7 +7,10 @@ from pathlib import Path
 import pytest
 
 import check
+import config
+import fetch
 import migrate
+import notify
 from store import FileStore, PgStore
 
 SCHEMA = Path(__file__).parent.parent / "supabase" / "schema.sql"
@@ -43,7 +46,7 @@ def test_store_roundtrip(db):
     db.add_url({"url": "https://a", "name": "A", "group": "G", "selector": "main", "ignore": ["x"]})
     db.add_url({"url": "https://b"})
     db.set_defaults({"ignore": ["d"]})
-    entries = check.merge_config(db.raw_config())
+    entries = config.merge_config(db.raw_config())
     assert [e["url"] for e in entries] == ["https://a", "https://b"]
     assert entries[0]["selector"] == "main" and entries[0]["group"] == "G" and entries[0]["ignore"] == ["d", "x"]
     with pytest.raises(Exception, match="duplicate"):
@@ -75,10 +78,10 @@ def test_run_uses_database(db, tmp_path, monkeypatch):
     db.add_url({"url": "https://a", "group": "G"})
     pages = iter(["eins", "zwei"])
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
-    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", next(pages), False, {}))
     sent = []
-    monkeypatch.setattr(check, "send_mail", lambda subject, text, html_body=None: sent.append(subject))
+    monkeypatch.setattr(notify, "send_mail", lambda subject, text, html_body=None: sent.append(subject))
     assert check.run()
     assert check.run()
     assert len(sent) == 1 and "geändert" in sent[0]
@@ -102,7 +105,7 @@ def test_migrate_from_files(db, tmp_path):
     assert migrate.migrate(files, db) == {"urls": 0, "snapshots": 1, "counters": 1, "history": 0}  # idempotent
     assert db.snapshot(key) == "text a" and db.counter(key, "fail") == 2
     assert db.doc("meta", {}) == {"heartbeat": "2026-10"}
-    assert [e["url"] for e in check.merge_config(db.raw_config())] == ["https://a", "https://b"]
+    assert [e["url"] for e in config.merge_config(db.raw_config())] == ["https://a", "https://b"]
     assert len(db.history(10)) == 1
 
 
@@ -110,10 +113,10 @@ def test_add_writes_to_database(db, monkeypatch):
     import add
 
     html = "<html><head><title>Seite</title></head><body><main>" + "Text " * 80 + "</main></body></html>"
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
-    monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: (html, {}))
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: (html, {}))
     add.main(["https://neu.example/", "--group", "G", "-y"])
-    entry = check.merge_config(db.raw_config())[0]
+    entry = config.merge_config(db.raw_config())[0]
     assert entry["url"] == "https://neu.example/" and entry["group"] == "G" and entry["selector"] == "main"
     with pytest.raises(SystemExit, match="Schon vorhanden"):
         add.main(["https://neu.example/", "-y"])

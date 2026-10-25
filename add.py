@@ -9,6 +9,9 @@ import yaml
 from bs4 import BeautifulSoup
 
 import check
+import config
+import fetch
+import parse
 from store import FileStore, open_store
 
 
@@ -17,10 +20,10 @@ def suggest_selector(body):
     soup = BeautifulSoup(body, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
-    node = check.auto_root(soup)
+    node = parse.auto_root(soup)
     if node is soup:
         return None
-    return next(s for s in check.CANDIDATE_SELECTORS if soup.select_one(s) is node)
+    return next(s for s in parse.CANDIDATE_SELECTORS if soup.select_one(s) is node)
 
 
 FEED_TYPES = ("application/rss+xml", "application/atom+xml")
@@ -81,14 +84,14 @@ def ask(prompt, default, assume_yes):
 def prepare(args, entries):
     """Seite abrufen, Feed/Selector/Name/Gruppe bestimmen. Beendet das Programm bei Fehlern."""
     print(f"Rufe {args.url} ab...")
-    if not args.js and not check.robots_allowed(args.url, {}):
+    if not args.js and not fetch.robots_allowed(args.url, {}):
         sys.exit("robots.txt verbietet den Abruf. Trage die URL manuell mit 'ignore_robots: true' ein.")
     try:
-        body, _ = check.fetch_body(args.url, args.js)
+        body, _ = fetch.fetch_body(args.url, args.js)
     except Exception as ex:
         sys.exit(f"Abruf fehlgeschlagen: {ex}")
 
-    feed = check.is_feed(body)
+    feed = parse.is_feed(body)
     if not feed:
         feeds = find_feeds(body, args.url)
         if feeds:
@@ -100,29 +103,29 @@ def prepare(args, entries):
                 feed_url = feeds[int(choice) - 1]
                 if any(e["url"] == feed_url for e in entries):
                     sys.exit(f"Schon vorhanden: {feed_url}")
-                if not check.robots_allowed(feed_url, {}):
+                if not fetch.robots_allowed(feed_url, {}):
                     sys.exit("robots.txt verbietet den Abruf des Feeds.")
                 try:
-                    feed_body, _ = check.fetch_body(feed_url, False)
+                    feed_body, _ = fetch.fetch_body(feed_url, False)
                 except Exception as ex:
                     sys.exit(f"Feed-Abruf fehlgeschlagen: {ex}")
-                if not check.is_feed(feed_body):
+                if not parse.is_feed(feed_body):
                     sys.exit(f"{feed_url} ist kein gültiger Feed.")
                 args.url, body, feed, args.js = feed_url, feed_body, True, False
             elif args.yes and not args.feed:
                 print("Tipp: mit --feed wird der Feed statt der Seite überwacht.")
     selector = None
     if feed:
-        title, text = check.parse_feed(body)
+        title, text = parse.parse_feed(body)
         print(f"Feed erkannt: {title!r}, {len(text.splitlines())} Einträge")
     else:
-        title = check.parse_html(body, None)[0]
+        title = parse.parse_html(body, None)[0]
         selector = args.selector if args.selector else suggest_selector(body)
         if args.selector == "none":
             selector = None
         if selector:
             print(f"Selector-Vorschlag: {selector}")
-        text = check.parse_html(body, selector)[1]
+        text = parse.parse_html(body, selector)[1]
         print(f"Titel: {title!r}, {len(text)} Zeichen Text")
         if len(text) < 200:
             print("WARNUNG: sehr wenig Text. Vielleicht braucht die Seite --js oder einen anderen Selector.")
@@ -137,7 +140,7 @@ def prepare(args, entries):
 
 def add_to_database(args, store):
     """Gleicher Ablauf wie bei urls.yml, nur das Speichern geht in die Datenbank."""
-    entries = check.merge_config(store.raw_config())
+    entries = config.merge_config(store.raw_config())
     if any(e["url"] == args.url for e in entries):
         sys.exit(f"Schon vorhanden: {args.url}")
     prepared = prepare(args, entries)
@@ -170,7 +173,7 @@ def main(argv=None):
             return add_to_database(args, store)
         finally:
             store.close()
-    entries = check.load_config(path)
+    entries = config.load_config(path)
     if any(e["url"] == args.url for e in entries):
         sys.exit(f"Schon vorhanden: {args.url}")
 
@@ -182,7 +185,7 @@ def main(argv=None):
     original = path.read_text()
     append_entry(path, block)
     try:
-        ok = any(e["url"] == args.url for e in check.load_config(path))
+        ok = any(e["url"] == args.url for e in config.load_config(path))
     except yaml.YAMLError:
         ok = False
     if not ok:

@@ -5,13 +5,17 @@ from test_features import FakeResp, env, set_pages, status_of  # noqa: F401
 
 import add
 import check
+import config
+import errors
+import fetch
+import notify
 
 
 @pytest.fixture
 def sleeps(monkeypatch):
     calls = []
-    monkeypatch.setattr(check.time, "sleep", calls.append)
-    monkeypatch.setattr(check.random, "uniform", lambda a, b: 0)
+    monkeypatch.setattr(fetch.time, "sleep", calls.append)
+    monkeypatch.setattr(fetch.random, "uniform", lambda a, b: 0)
     return calls
 
 
@@ -24,38 +28,38 @@ def sequence(monkeypatch, items):
             raise item
         return item
 
-    monkeypatch.setattr(check.requests, "get", fake)
+    monkeypatch.setattr(fetch.requests, "get", fake)
 
 
 def test_retry_on_5xx_then_ok(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(503), FakeResp(200, "ok")])
-    assert check.get_with_retry("https://a", {}).text == "ok"
+    assert fetch.get_with_retry("https://a", {}).text == "ok"
     assert sleeps == [2]
 
 
 def test_retry_on_connection_error(monkeypatch, sleeps):
-    sequence(monkeypatch, [check.requests.ConnectionError(), check.requests.Timeout(), FakeResp(200, "ok")])
-    assert check.get_with_retry("https://a", {}).status_code == 200
+    sequence(monkeypatch, [fetch.requests.ConnectionError(), fetch.requests.Timeout(), FakeResp(200, "ok")])
+    assert fetch.get_with_retry("https://a", {}).status_code == 200
     assert sleeps == [2, 5]
 
 
 def test_no_retry_on_404_or_304(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(404)])
-    assert check.get_with_retry("https://a", {}).status_code == 404
+    assert fetch.get_with_retry("https://a", {}).status_code == 404
     sequence(monkeypatch, [FakeResp(304)])
-    assert check.get_with_retry("https://a", {}).status_code == 304
+    assert fetch.get_with_retry("https://a", {}).status_code == 304
     assert sleeps == []
 
 
 def test_retry_gives_up(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(500), FakeResp(502), FakeResp(503)])
     with pytest.raises(RuntimeError, match="3 Versuchen"):
-        check.get_with_retry("https://a", {})
+        fetch.get_with_retry("https://a", {})
 
 
 def test_retry_after_header_capped(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(429, headers={"Retry-After": "999"}), FakeResp(200)])
-    check.get_with_retry("https://a", {})
+    fetch.get_with_retry("https://a", {})
     assert sleeps == [30]
 
 
@@ -72,7 +76,7 @@ def failing_mail(monkeypatch, fail_count):
             raise RuntimeError("Resend 500")
         sent.append(subject)
 
-    monkeypatch.setattr(check, "send_mail", send)
+    monkeypatch.setattr(notify, "send_mail", send)
     return sent
 
 
@@ -99,7 +103,7 @@ def test_problem_alert_repeats_after_mail_failure(env, monkeypatch):
     def boom(url, opts, cond=None):
         raise RuntimeError("down")
 
-    monkeypatch.setattr(check, "fetch", boom)
+    monkeypatch.setattr(fetch, "fetch", boom)
     results = [check.run() for _ in range(check.FAIL_ALERT_AFTER + 1)]
     assert results == [True] * (check.FAIL_ALERT_AFTER - 1) + [False, True]
     assert len(sent) == 2 and sent[1] == "Watchlist: Probleme beim Abruf"
@@ -126,27 +130,27 @@ def test_add_main_feed_flag(tmp_path, monkeypatch):
     f = tmp_path / "urls.yml"
     f.write_text("urls:\n  - url: https://other\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     page = '<html><head><link rel="alternate" type="application/rss+xml" href="/f.xml"></head><body>x</body></html>'
     rss = (
         "<?xml version='1.0'?><rss><channel><title>T</title><item><title>A</title><link>https://x/1</link></item></channel></rss>"
     )
-    monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: (rss if url.endswith(".xml") else page, {}))
+    monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: (rss if url.endswith(".xml") else page, {}))
     add.main(["https://x/blog", "--feed", "-y"])
-    assert [e["url"] for e in check.load_config(f)] == ["https://other", "https://x/f.xml"]
+    assert [e["url"] for e in config.load_config(f)] == ["https://other", "https://x/f.xml"]
 
 
 def test_retry_wait_has_jitter(monkeypatch, sleeps):
-    monkeypatch.setattr(check.random, "uniform", lambda a, b: b)
+    monkeypatch.setattr(fetch.random, "uniform", lambda a, b: b)
     sequence(monkeypatch, [FakeResp(503), FakeResp(200)])
-    check.get_with_retry("https://a", {})
+    fetch.get_with_retry("https://a", {})
     assert sleeps == [2.5]
 
 
 def test_404_is_permanent_error(monkeypatch, sleeps):
     sequence(monkeypatch, [FakeResp(404)])
-    with pytest.raises(check.CheckError, match="dauerhafter Fehler") as ei:
-        check.fetch_body("https://a", False)
+    with pytest.raises(errors.CheckError, match="dauerhafter Fehler") as ei:
+        fetch.fetch_body("https://a", False)
     assert ei.value.code == "http_404" and sleeps == []
 
 
@@ -154,9 +158,9 @@ def test_permanent_error_alerts_earlier(env, monkeypatch):
     tmp, sent = env
 
     def boom(url, opts, cond=None):
-        raise check.CheckError("Seite nicht mehr vorhanden (HTTP 404), dauerhafter Fehler", "http_404")
+        raise errors.CheckError("Seite nicht mehr vorhanden (HTTP 404), dauerhafter Fehler", "http_404")
 
-    monkeypatch.setattr(check, "fetch", boom)
+    monkeypatch.setattr(fetch, "fetch", boom)
     check.run()
     assert sent == []
     check.run()

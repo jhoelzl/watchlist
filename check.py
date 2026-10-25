@@ -1,746 +1,54 @@
-import difflib
+"""Orchestrierung eines Prüflaufs. Die Bausteine liegen in config, fetch, parse, diffing und notify."""
+
 import hashlib
-import html
-import json
 import os
-import random
-import re
 import sys
-import threading
 import time
-import urllib.parse
-import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
 
-import requests
-import yaml
-from bs4 import BeautifulSoup, Tag
-
+import notify
+from config import config_errors, config_hash, is_due, merge_config
+from diffing import make_diff
+from errors import error_code
+from fetch import fetch_all
+from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
 from store import open_store
 
 ROOT = Path(__file__).parent
 # Im Workflow liegen state/ auf dem Branch "state" (ausgecheckt in einem eigenen Verzeichnis).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
-STORE_DIFF_LINES = 500  # so viele Diff-Zeilen werden gespeichert (Dashboard)
-DASHBOARD_URL = "https://jhoelzl.github.io/watchlist/"  # überschreibbar per Umgebungsvariable DASHBOARD_URL
-MAIL_DIFF_LINES = 60  # und so viele davon stehen in der Mail
-DIFF_CONTEXT = 3
 MAX_HISTORY = 100
 MAX_RUNS = 30
-# Mindestabstand pro interval-Option. Knapp unter 1 Tag bzw. 1 Woche, damit der Takt der Läufe (06:00/18:00) nicht davonläuft.
-INTERVAL_HOURS = {"daily": 20, "weekly": 160}
-DEFAULT_GROUP = "Allgemein"
-ROBOTS_AGENT = "watchlist"
 # Textwächter: Eine Seite mit vorher mind. GUARD_MIN_CHARS Zeichen, die unter
 # min_ratio (Standard 30 %) schrumpft, gilt als Fehlabruf (Cookie-Wand, Bot-Block).
 GUARD_MIN_CHARS = 500
 DEFAULT_MIN_RATIO = 0.3
 GUARD_ALERT_AFTER = 2
 FAIL_ALERT_AFTER = 3
-STUCK_AFTER = 6  # Läufe in Folge (bei 2 Läufen pro Tag = 3 Tage), ab denen eine Seite als dauerhaft kaputt gilt
-RETRY_DELAYS = (2, 5)  # Wartezeit in Sekunden vor dem 2. und 3. Versuch
-MAX_RETRY_AFTER = 30
-RETRY_JITTER = 0.25  # bis zu +25 % Zufall auf die Wartezeit, damit Wiederholungen nicht im Gleichschritt laufen
 PERMANENT_CODES = {"http_404", "http_410"}  # Seite gibt es nicht mehr: kein Abwarten nötig
 PERMANENT_ALERT_AFTER = 2
-MAX_WORKERS = 6  # parallele Abrufe insgesamt
-MAX_PER_HOST = 2  # gleichzeitige Abrufe pro Host (Rücksicht auf Server)
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "de,en;q=0.8"}
 
 
-def clean(s):
-    return re.sub(r"\s+", " ", s or "").strip()
+@dataclass
+class RunState:
+    """Zwischenstand eines Laufs: wird von den Prüfschritten gefüllt und danach für Mail und Speichern gelesen."""
 
+    stamp: str
+    old_status: dict[str, Any]
+    http_cache: dict[str, Any]
+    status: dict[str, Any] = field(default_factory=dict)
+    new_cache: dict[str, Any] = field(default_factory=dict)
+    changes: list[dict[str, Any]] = field(default_factory=list)
+    problems: list[dict[str, Any]] = field(default_factory=list)
+    pending: list[dict[str, Any]] = field(default_factory=list)
+    config_bad: list[str] = field(default_factory=list)
 
-def drop_blank_lines(text):
-    return "\n".join(l for l in (l.strip() for l in text.splitlines()) if l)
 
-
-def is_feed(body):
-    head = body[:1000].lower()
-    return "<rss" in head or "<feed" in head or "<rdf:rdf" in head
-
-
-def parse_feed(body):
-    """Liefert (Titel, Text) mit einer Zeile pro Eintrag."""
-    root = ET.fromstring(body.encode("utf-8"))
-    for el in root.iter():
-        el.tag = el.tag.split("}")[-1]
-
-    def txt(el, *names):
-        for n in names:
-            c = el.find(n)
-            if c is not None and (c.text or "").strip():
-                value = c.text
-                if "<" in value:
-                    value = BeautifulSoup(value, "html.parser").get_text(" ")
-                return clean(value)
-        return ""
-
-    channel = root.find("channel")
-    title = txt(channel if channel is not None else root, "title")
-    lines = []
-    for item in list(root.iter("item")) + list(root.iter("entry")):
-        link = txt(item, "link")
-        if not link:
-            l = item.find("link")
-            link = l.get("href", "") if l is not None else ""
-        date = txt(item, "updated", "pubDate", "published", "date")
-        summary = txt(item, "summary", "description", "content")[:500]
-        lines.append(" | ".join(p for p in (date, txt(item, "title"), link, summary) if p))
-    return title, "\n".join(lines)
-
-
-AUTO_SELECTOR = "auto"
-CANDIDATE_SELECTORS = ["main", "article", "[role=main]", "#main-content", "#content"]
-SELECTOR_MIN_SHARE = 0.2  # Ein Selector muss mindestens so viel Text liefern wie die ganze Seite * Anteil
-
-
-def auto_root(soup):
-    """Erster Kandidat, der existiert und nicht fast leer ist, sonst die ganze Seite."""
-    total = len(clean(soup.get_text(" ")))
-    for sel in CANDIDATE_SELECTORS:
-        node = soup.select_one(sel)
-        if node is not None and total and len(clean(node.get_text(" "))) >= total * SELECTOR_MIN_SHARE:
-            return node
-    return soup
-
-
-def parse_html(body, selector):
-    soup = BeautifulSoup(body, "html.parser")
-    title = clean(soup.title.get_text()) if soup.title else ""
-    for tag in soup(["script", "style", "noscript", "svg"]):
-        tag.decompose()
-    root: BeautifulSoup | Tag = soup
-    if selector == AUTO_SELECTOR:
-        root = auto_root(soup)
-    elif selector:
-        found = soup.select_one(selector)
-        if found is None:
-            raise CheckError(f"Selector nicht gefunden: {selector}", "selector")
-        root = found
-    return title, drop_blank_lines("\n".join(clean(l) for l in root.get_text("\n").splitlines()))
-
-
-def robots_allowed(url, cache):
-    """Prüft robots.txt pro Host (einmal pro Lauf). Fehlt die Datei oder ist sie nicht lesbar, ist alles erlaubt."""
-    parts = urlparse(url)
-    base = f"{parts.scheme}://{parts.netloc}"
-    if base not in cache:
-        rp = RobotFileParser()
-        try:
-            r = requests.get(f"{base}/robots.txt", headers=HEADERS, timeout=15)
-            if r.status_code == 200:
-                rp.parse(r.text.splitlines())
-            else:
-                rp.parse([])  # leere Regeln: alles erlaubt
-        except requests.RequestException:
-            rp.parse([])
-        cache[base] = rp
-    return cache[base].can_fetch(ROBOTS_AGENT, url)
-
-
-def config_hash(opts):
-    relevant = {k: opts.get(k) for k in ("selector", "ignore", "js")}
-    return hashlib.sha1(json.dumps(relevant, sort_keys=True).encode()).hexdigest()[:12]
-
-
-def get_with_retry(url, headers):
-    """GET mit Wiederholung bei Netzwerkfehlern, Timeouts, 429 und 5xx. Andere 4xx werden sofort zurückgegeben."""
-    last = None
-    last_code = ""
-    delay = 0
-    for attempt in range(len(RETRY_DELAYS) + 1):
-        if attempt:
-            wait = round(delay + random.uniform(0, delay * RETRY_JITTER), 1)
-            print(f"            Wiederholung {attempt}/{len(RETRY_DELAYS)} in {wait}s ({last})")
-            time.sleep(wait)
-        delay = RETRY_DELAYS[attempt] if attempt < len(RETRY_DELAYS) else 0
-        try:
-            resp = requests.get(url, headers=headers, timeout=30)
-        except (requests.ConnectionError, requests.Timeout) as ex:
-            last = type(ex).__name__
-            last_code = error_code(ex)
-            continue
-        if resp.status_code == 429 or resp.status_code >= 500:
-            last = f"HTTP {resp.status_code}"
-            last_code = status_code_name(resp.status_code)
-            retry_after = resp.headers.get("Retry-After", "")
-            if retry_after.isdigit():
-                delay = min(int(retry_after), MAX_RETRY_AFTER)
-            continue
-        return resp
-    raise CheckError(f"Abruf nach {len(RETRY_DELAYS) + 1} Versuchen fehlgeschlagen ({last})", last_code)
-
-
-class BrowserPool:
-    """Ein Chromium für alle js-Seiten eines Laufs. Starten erst beim ersten Bedarf.
-
-    Playwrights Sync-API ist an den Thread gebunden, der sie startet. Deshalb laufen alle Aufrufe
-    über einen eigenen Ein-Thread-Executor, egal aus welchem Worker sie kommen (das serialisiert sie auch).
-    """
-
-    def __init__(self) -> None:
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="browser")
-        self._playwright: Any = None
-        self._browser: Any = None
-
-    def content(self, url: str) -> str:
-        return self._executor.submit(self._content, url).result()
-
-    def close(self) -> None:
-        try:
-            self._executor.submit(self._stop).result()
-        finally:
-            self._executor.shutdown()
-
-    def _start(self) -> None:
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError:
-            raise RuntimeError("js: true braucht Playwright (uv run --extra js check.py)") from None
-        self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch()
-
-    def _stop(self) -> None:
-        try:
-            if self._browser is not None:
-                self._browser.close()
-        finally:
-            if self._playwright is not None:
-                self._playwright.stop()
-            self._browser = self._playwright = None
-
-    def _content(self, url: str) -> str:
-        if self._browser is not None and not self._browser.is_connected():
-            self._stop()  # Browser abgestürzt: beim nächsten Aufruf neu starten
-        if self._browser is None:
-            self._start()
-        page = self._browser.new_page(user_agent=USER_AGENT)
-        try:
-            page.goto(url, wait_until="networkidle", timeout=60000)
-            return str(page.content())
-        finally:
-            page.close()
-
-
-_browser_pool: BrowserPool | None = None  # wird von fetch_all pro Lauf gesetzt
-
-
-def fetch_body(url, js, cond=None):
-    """Liefert (Body, Validatoren). Body ist None, wenn der Server 304 antwortet."""
-    if js:
-        if _browser_pool is not None:
-            return _browser_pool.content(url), {}
-        pool = BrowserPool()  # Einzelaufruf (z. B. add.py): eigener Browser, danach wieder schließen
-        try:
-            return pool.content(url), {}
-        finally:
-            pool.close()
-    headers = dict(HEADERS)
-    cond = cond or {}
-    if cond.get("etag"):
-        headers["If-None-Match"] = cond["etag"]
-    if cond.get("last_modified"):
-        headers["If-Modified-Since"] = cond["last_modified"]
-    resp = get_with_retry(url, headers)
-    if resp.status_code == 304:
-        return None, cond
-    if resp.status_code in (404, 410):
-        raise CheckError(
-            f"Seite nicht mehr vorhanden (HTTP {resp.status_code}), dauerhafter Fehler", status_code_name(resp.status_code)
-        )
-    resp.raise_for_status()
-    if "charset" not in resp.headers.get("Content-Type", "").lower():
-        resp.encoding = "utf-8"
-    validators = {
-        "etag": resp.headers.get("ETag"),
-        "last_modified": resp.headers.get("Last-Modified"),
-    }
-    return resp.text, {k: v for k, v in validators.items() if v}
-
-
-def fetch(url, opts, cond=None):
-    """Liefert (Titel, Text, ist_feed, Validatoren). Text ist None bei 304 Not Modified."""
-    body, validators = fetch_body(url, opts.get("js", False), cond)
-    if body is None:
-        return None, None, False, validators
-    feed = is_feed(body)
-    title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
-    for pattern in opts.get("ignore", []):
-        text = re.sub(pattern, "", text)
-    return title, drop_blank_lines(text), feed, validators
-
-
-def make_diff(old, new, only_added):
-    old_l, new_l = old.splitlines(), new.splitlines()
-    if only_added:
-        seen = set(old_l)
-        diff = ["+" + l for l in new_l if l not in seen]
-    else:
-        diff = [l for l in difflib.unified_diff(old_l, new_l, lineterm="", n=DIFF_CONTEXT) if not l.startswith(("---", "+++"))]
-    extra = max(0, len(diff) - STORE_DIFF_LINES)
-    return diff[:STORE_DIFF_LINES], extra
-
-
-PLAIN_SNIPPET = re.compile(r"[\w .,'\-]+")
-
-
-def feed_entry_link(line):
-    """Feed-Zeilen heißen "Datum | Titel | Link | Zusammenfassung": der Eintragslink ist das bessere Ziel."""
-    for part in line.split(" | ")[1:]:
-        if re.fullmatch(r"https?://\S+", part.strip()):
-            return part.strip()
-    return ""
-
-
-def fragment_url(url, diff):
-    """Sprungziel zur geänderten Stelle: bei Feeds der Eintragslink, sonst Textfragment (#:~:text=).
-
-    Gewählt wird die hinzugefügte Zeile mit dem längsten Textanfang ohne Sonderzeichen (die sind für das
-    Textfragment fehleranfällig), sonst die längste überhaupt.
-    """
-    added = [line[1:] for line in diff if line.startswith("+") and not line.startswith("+++")]
-    for line in added:
-        link = feed_entry_link(line)
-        if link:
-            return link
-    best = ("", False)
-    for line in added:
-        snippet = " ".join(line.split()[:8])[:80].strip()
-        if len(snippet) < 8:
-            continue
-        plain = PLAIN_SNIPPET.fullmatch(snippet) is not None
-        if (plain, len(snippet)) > (best[1], len(best[0])):
-            best = (snippet, plain)
-    if not best[0]:
-        return url
-    encoded = urllib.parse.quote(best[0], safe="").replace("-", "%2D")
-    return f"{url}{':~:text=' if '#' in url else '#:~:text='}{encoded}"
-
-
-def safe_link(url):
-    """Verlinkt nur http(s)-URLs; alles andere (z. B. javascript:) bleibt reiner Text."""
-    esc = html.escape(url)
-    if urllib.parse.urlsplit(url.strip()).scheme.lower() in ("http", "https"):
-        return f'<a href="{esc}">{esc}</a>'
-    return esc
-
-
-def mail_view(change):
-    """Diff für die Mail: gekürzt auf MAIL_DIFF_LINES, der Rest zählt zu "weitere Zeilen"."""
-    diff = change["diff"][:MAIL_DIFF_LINES]
-    return diff, change["extra"] + len(change["diff"]) - len(diff)
-
-
-TOKEN = re.compile(r"\s+|\w+|[^\w\s]")
-
-
-def word_segments(old, new):
-    """Teilt zwei ersetzte Zeilen in (Text, geändert)-Stücke, damit nur die tatsächlich geänderten Wörter hervorgehoben werden."""
-    a, b = TOKEN.findall(old), TOKEN.findall(new)
-    out_old: list[tuple[str, bool]] = []
-    out_new: list[tuple[str, bool]] = []
-    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
-        if op == "equal":
-            out_old.append(("".join(a[i1:i2]), False))
-            out_new.append(("".join(b[j1:j2]), False))
-        else:
-            if i2 > i1:
-                out_old.append(("".join(a[i1:i2]), True))
-            if j2 > j1:
-                out_new.append(("".join(b[j1:j2]), True))
-    return out_old, out_new
-
-
-def annotate_diff(diff):
-    """Je Diff-Zeile eine Liste aus (Text, geändert)-Stücken. Aufeinanderfolgende -/+ Blöcke werden zeilenweise verglichen."""
-    result: list[list[tuple[str, bool]] | None] = [None] * len(diff)
-    i = 0
-    while i < len(diff):
-        if diff[i].startswith("-"):
-            j = i
-            while j < len(diff) and diff[j].startswith("-"):
-                j += 1
-            k = j
-            while k < len(diff) and diff[k].startswith("+"):
-                k += 1
-            for n in range(min(j - i, k - j)):
-                old, new = diff[i + n][1:], diff[j + n][1:]
-                if difflib.SequenceMatcher(None, old, new, autojunk=False).quick_ratio() >= 0.5:
-                    o, w = word_segments(old, new)
-                    result[i + n] = [("-", False), *o]
-                    result[j + n] = [("+", False), *w]
-            i = k
-        else:
-            i += 1
-    return [r if r is not None else [(line, False)] for r, line in zip(result, diff, strict=True)]
-
-
-def diff_counts(diff):
-    return (
-        sum(1 for l in diff if l.startswith("+") and not l.startswith("+++")),
-        sum(1 for l in diff if l.startswith("-") and not l.startswith("---")),
-    )
-
-
-def merge_variants(changes):
-    """Fasst Einträge mit identischem Diff in derselben Gruppe zusammen (z. B. Tab-Varianten ?tabs=stt|tts)."""
-    merged: dict[tuple[Any, ...], dict[str, Any]] = {}
-    for c in changes:
-        key = (c.get("group"), tuple(c["diff"]), c["extra"])
-        if key in merged:
-            merged[key]["variants"].append(c["url"])
-        else:
-            merged[key] = {**c, "variants": []}
-    return list(merged.values())
-
-
-def group_changes(changes):
-    groups: dict[str, list[dict[str, Any]]] = {}
-    for c in changes:
-        groups.setdefault(c.get("group") or DEFAULT_GROUP, []).append(c)
-    return groups
-
-
-def summary_line(changes):
-    pages, groups = len(changes), len(group_changes(changes))
-    return f"{pages} Seite{'n' if pages != 1 else ''} geändert in {groups} Gruppe{'n' if groups != 1 else ''}"
-
-
-def dashboard_link(url=None):
-    """Link auf den Tab "Letzte Änderungen", mit URL direkt zum passenden Eintrag."""
-    base = os.environ.get("DASHBOARD_URL") or DASHBOARD_URL
-    return f"{base}#changes" + (f":{urllib.parse.quote(url, safe='')}" if url else "")
-
-
-def subject_for(changes):
-    shown = merge_variants(changes)
-    if len(shown) == 1:
-        return f"Watchlist: {shown[0]['name']} geändert"
-    names = [c["name"] for c in shown]
-    head = ", ".join(names[:3]) + (", …" if len(names) > 3 else "")
-    groups = list(group_changes(shown))
-    tail = f" ({', '.join(groups[:3])}{', …' if len(groups) > 3 else ''})" if len(groups) > 1 else ""
-    return f"Watchlist: {len(shown)} Änderungen: {head}{tail}"[:150]
-
-
-def render_text(changes):
-    changes = merge_variants(changes)
-    out = [summary_line(changes), ""] if len(changes) > 1 else []
-    for group, items in group_changes(changes).items():
-        out.append(f"=== {group} ===")
-        for c in items:
-            diff, extra = mail_view(c)
-            added, removed = diff_counts(c["diff"])
-            jump = fragment_url(c["url"], c["diff"])
-            out.append(f"{c['name']} (+{added} -{removed})\n{c['url']}")
-            if jump != c["url"]:
-                out.append(f"Zur geänderten Stelle: {jump}")
-            out.append(f"Im Dashboard: {dashboard_link(c['url'])}")
-            if c.get("variants"):
-                out.append("Gleicher Inhalt auch unter:")
-                out += [f"  {v}" for v in c["variants"]]
-            out.append("")
-            out += diff
-            if extra:
-                out.append(f"... und {extra} weitere Zeilen (vollständig im Dashboard)")
-            out.append("")
-    out.append(f"Alle Änderungen im Dashboard: {dashboard_link()}")
-    return "\n".join(out).strip()
-
-
-def render_html(changes):
-    changes = merge_variants(changes)
-    parts = ['<div style="font-family:-apple-system,Segoe UI,sans-serif;font-size:14px">']
-    grouped = group_changes(changes)
-    if len(changes) > 1:
-        parts.append(
-            f'<p style="margin:0 0 8px"><strong>{summary_line(changes)}</strong></p><ul style="margin:0 0 8px;padding-left:20px">'
-        )
-        n = 0
-        for gi, (group, items) in enumerate(grouped.items()):
-            links = []
-            for c in items:
-                links.append(f'<a href="#c{n}">{html.escape(c["name"])}</a>')
-                n += 1
-            parts.append(f'<li><a href="#g{gi}"><strong>{html.escape(group)}</strong></a>: {", ".join(links)}</li>')
-        parts.append("</ul>")
-    n = 0
-    for gi, (group, items) in enumerate(grouped.items()):
-        parts.append(f'<h2 id="g{gi}" style="margin:28px 0 0;border-bottom:1px solid #d8dee4">{html.escape(group)}</h2>')
-        for c in items:
-            diff, extra = mail_view(c)
-            added, removed = diff_counts(c["diff"])
-            jump = fragment_url(c["url"], c["diff"])
-            jump_link = (
-                f' &middot; <a href="{html.escape(jump)}">zur geänderten Stelle</a>'
-                if jump != c["url"] and safe_link(jump).startswith("<a")
-                else ""
-            )
-            dash = f' &middot; <a href="{html.escape(dashboard_link(c["url"]))}">im Dashboard</a>'
-            more = "".join(f"<br>{safe_link(v)}" for v in c.get("variants", []))
-            if more:
-                more = f'<span style="color:#6e7781;font-size:12px">Gleicher Inhalt auch unter:{more}</span>'
-                more = f'<p style="margin:0 0 8px">{more}</p>'
-            parts.append(
-                f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
-                f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
-                f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
-                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}{dash}</p>{more}'
-                '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
-                'word-break:break-word;font-size:12px">'
-            )
-            n += 1
-            for l, segments in zip(diff, annotate_diff(diff), strict=True):
-                style = ""
-                mark = ""
-                if l.startswith("+"):
-                    style = "background:#e6ffec;color:#116329"
-                    mark = "background:#abf2bc;font-weight:600"
-                elif l.startswith("-"):
-                    style = "background:#ffebe9;color:#82071e"
-                    mark = "background:#ffc1ba;font-weight:600"
-                elif l.startswith("@@"):
-                    style = "color:#6e7781"
-                body = "".join(
-                    f'<span style="{mark}">{html.escape(s)}</span>' if changed else html.escape(s) for s, changed in segments
-                )
-                parts.append(f'<div style="{style}">{body or "&nbsp;"}</div>')
-            if extra:
-                parts.append(f'<div style="color:#6e7781">... und {extra} weitere Zeilen (vollständig im Dashboard)</div>')
-            parts.append("</pre>")
-    parts.append(
-        f'<p style="margin:24px 0 0"><a href="{html.escape(dashboard_link())}">Alle Änderungen im Dashboard</a></p></div>'
-    )
-    return "".join(parts)
-
-
-def send_mail(subject, text, html_body=None):
-    key = os.environ.get("RESEND_API_KEY")
-    if not key:
-        print("RESEND_API_KEY fehlt, Mail wird nur ausgegeben:\n", subject, "\n", text)
-        return
-    payload = {
-        "from": os.environ.get("MAIL_FROM") or "onboarding@resend.dev",
-        "to": [os.environ["MAIL_TO"]],
-        "subject": subject,
-        "text": text,
-    }
-    if html_body:
-        payload["html"] = html_body
-    r = requests.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {key}"},
-        json=payload,
-        timeout=30,
-    )
-    if not r.ok:
-        raise RuntimeError(f"Resend {r.status_code}: {r.text}")
-    print(f"Mail gesendet: {subject} (Resend-ID {r.json().get('id')})")
-
-
-# Quantifizierte Gruppe mit Quantifizierer, z. B. (a+)+ oder (.*)*: klassisches Muster für katastrophales Backtracking.
-NESTED_QUANTIFIER = re.compile(r"\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]")
-MAX_PATTERN_LENGTH = 300
-
-
-def is_due(opts, prev, now, has_snapshot=True):
-    """Ob die URL in diesem Lauf geprüft wird. Ohne interval immer; Probleme und neue URLs werden nie übersprungen."""
-    hours = INTERVAL_HOURS.get(opts.get("interval"))
-    if not hours or not has_snapshot or prev.get("status") not in ("ok", "new"):
-        return True
-    try:
-        last = datetime.strptime(prev.get("checked", ""), "%Y-%m-%d %H:%M UTC").replace(tzinfo=UTC)
-    except ValueError:
-        return True
-    return now - last >= timedelta(hours=hours)
-
-
-def config_errors(opts):
-    """Prüft die ignore-Regex einer URL. Liefert eine Liste verständlicher Fehlermeldungen (leer = alles gut)."""
-    errors = []
-    if opts.get("interval") not in (None, *INTERVAL_HOURS):
-        errors.append(f"interval muss daily oder weekly sein: {opts.get('interval')!r}")
-    for pattern in opts.get("ignore", []):
-        if not isinstance(pattern, str):
-            errors.append(f"ignore-Eintrag ist kein Text: {pattern!r}")
-            continue
-        if len(pattern) > MAX_PATTERN_LENGTH:
-            errors.append(f"ignore-Regex zu lang ({len(pattern)} > {MAX_PATTERN_LENGTH} Zeichen): {pattern[:40]}...")
-            continue
-        try:
-            re.compile(pattern)
-        except re.error as ex:
-            errors.append(f"ungültige ignore-Regex {pattern!r}: {ex}")
-            continue
-        if NESTED_QUANTIFIER.search(pattern):
-            errors.append(
-                f"ignore-Regex {pattern!r} kann katastrophal langsam werden (verschachtelte Quantifizierer, z. B. (a+)+)"
-            )
-    return errors
-
-
-def load_config(path):
-    return merge_config(yaml.safe_load(path.read_text()) or [])
-
-
-def merge_config(raw):
-    """Akzeptiert eine reine Liste oder {defaults: {...}, urls: [...]}."""
-    defaults, urls = ({}, raw) if isinstance(raw, list) else (raw.get("defaults") or {}, raw.get("urls") or [])
-    entries = []
-    for e in urls:
-        e = {"url": e} if isinstance(e, str) else dict(e)
-        merged = {**defaults, **e}
-        merged["ignore"] = as_list(defaults.get("ignore")) + as_list(e.get("ignore"))
-        entries.append(merged)
-    return entries
-
-
-def as_list(value):
-    """Ein einzelner Text (statt Liste) zählt als ein Eintrag und wird nicht in Zeichen zerlegt."""
-    if value is None:
-        return []
-    return [value] if isinstance(value, str) else list(value)
-
-
-class CheckError(RuntimeError):
-    """Abruf- oder Prüffehler mit stabilem Code, über den der Hinweis (HINTS) gewählt wird."""
-
-    def __init__(self, message, code):
-        super().__init__(message)
-        self.code = code
-
-
-HINT_CONTENT = (
-    "Vermutlich Cookie-Wand, Bot-Block oder per JavaScript geladene Inhalte: 'js: true' probieren oder Selector prüfen."
-)
-HINTS = {
-    "robots": "Die Seite verbietet automatische Abrufe. Nur wenn das erlaubt ist: 'ignore_robots: true' setzen.",
-    "selector": (
-        "Der Selector passt nicht mehr (Seite umgebaut?) oder die Inhalte kommen per JavaScript: Selector prüfen oder 'js: true'."
-    ),
-    "content": HINT_CONTENT + " Mit 'min_ratio' lässt sich der Textwächter anpassen.",
-    "http_403": "Der Server blockt den Abruf (Bot-Schutz?): 'js: true' probieren.",
-    "http_401": "Die Seite verlangt eine Anmeldung und ist so nicht überwachbar.",
-    "http_404": "Die Seite gibt es nicht mehr oder die URL hat sich geändert: URL in urls.yml prüfen.",
-    "http_410": "Die Seite wurde entfernt: URL in urls.yml prüfen oder Eintrag löschen.",
-    "http_429": "Rate-Limit: Der Server drosselt die Abrufe, meist hilft Abwarten.",
-    "timeout": "Der Server antwortet zu langsam oder gar nicht: Abwarten, bei Dauerproblem URL prüfen oder 'js: true' probieren.",
-    "connection": "Keine Verbindung zum Server (DNS, Netzwerk, Zertifikat): Host und URL prüfen.",
-    "http_5xx": "Serverfehler auf der Gegenseite: meist vorübergehend, Abwarten.",
-    "config": "Eintrag in urls.yml korrigieren (siehe Meldung).",
-}
-
-
-def status_code_name(status):
-    return "http_5xx" if status >= 500 else f"http_{status}"
-
-
-def error_code(ex):
-    """Stabiler Fehlercode zu einer Exception, leer wenn unbekannt."""
-    if isinstance(ex, CheckError):
-        return ex.code
-    if isinstance(ex, requests.HTTPError) and ex.response is not None:
-        return status_code_name(ex.response.status_code)
-    if isinstance(ex, requests.Timeout):
-        return "timeout"
-    if isinstance(ex, requests.ConnectionError):
-        return "connection"
-    return ""
-
-
-def hint_for(code):
-    """Kurzer Hinweis zu Ursache und Abhilfe passend zum Fehlercode, sonst leer."""
-    return HINTS.get(code or "", "")
-
-
-def with_hint(text, code):
-    hint = hint_for(code)
-    return f"{text}\n  Tipp: {hint}" if hint else text
-
-
-def send_heartbeat(now, entries, status, history, meta):
-    month = now.strftime("%Y-%m")
-    if "heartbeat" not in meta:
-        meta["heartbeat"] = month
-        return
-    if meta["heartbeat"] == month:
-        return
-    since = (now - timedelta(days=31)).strftime("%Y-%m-%d")
-    recent = [h for h in history if h["time"][:10] >= since]
-    failing = [(u, s) for u, s in status.items() if s["status"] in ("error", "warn")]
-    lines = [
-        f"Watchlist läuft. {len(entries)} Seite(n) werden geprüft.",
-        f"Änderungen in den letzten 31 Tagen: {len(recent)}",
-        "",
-        "Pro Gruppe (Seiten / Änderungen / Probleme):",
-    ]
-    groups: dict[str, list[int]] = {}
-    for s in status.values():
-        groups.setdefault(s.get("group") or DEFAULT_GROUP, [0, 0, 0])[0] += 1
-    for h in recent:
-        groups.setdefault(h.get("group") or DEFAULT_GROUP, [0, 0, 0])[1] += 1
-    for _, s in failing:
-        groups[s.get("group") or DEFAULT_GROUP][2] += 1
-    lines += [f"- {g}: {n} / {c} / {p}" for g, (n, c, p) in sorted(groups.items())]
-    lines += ["", "Letzte Änderungen:"] + [f"- {h['time'][:10]} {h['name']}" for h in recent[-15:]]
-    if not recent:
-        lines.append("- keine")
-    stuck = [(u, s) for u, s in failing if s.get("streak", 0) >= STUCK_AFTER]
-    lines += ["", f"Seiten mit Problemen (Fehler/zu wenig Text): {len(failing)}"]
-    lines += [f"- {s['name']}: {s['error']}" for _, s in failing]
-    if stuck:
-        lines += ["", f"Dauerhaft kaputt (seit mindestens {STUCK_AFTER} Läufen in Folge):"]
-        for u, s in stuck:
-            lines.append(with_hint(f"- {s['name']} ({u}): {s['error']} [{s['streak']} Läufe]", s.get("code")))
-    send_mail(f"Watchlist: Lebenszeichen {month}", "\n".join(lines))
-    meta["heartbeat"] = month
-
-
-def fetch_all(jobs):
-    """Ruft alle Seiten parallel ab. jobs: [(opts, cond)]. Liefert {url: Ergebnis-Tupel oder Exception}.
-
-    Pro Host laufen höchstens MAX_PER_HOST Abrufe gleichzeitig. Seiten mit js: true laufen nacheinander
-    (ein gemeinsamer Playwright-Browser pro Lauf, siehe BrowserPool). Die Auswertung bleibt seriell und deterministisch in run().
-    """
-    robots: dict[str, RobotFileParser] = {}
-    robots_lock, js_lock = threading.Lock(), threading.Lock()
-    host_limits = {urlparse(o["url"]).netloc: threading.Semaphore(MAX_PER_HOST) for o, _ in jobs}
-
-    def work(opts, cond):
-        url = opts["url"]
-        with host_limits[urlparse(url).netloc]:
-            try:
-                if not opts.get("ignore_robots"):
-                    with robots_lock:
-                        allowed = robots_allowed(url, robots)
-                    if not allowed:
-                        raise CheckError("robots.txt verbietet den Abruf (ignore_robots: true zum Überschreiben)", "robots")
-                if opts.get("js"):
-                    with js_lock:
-                        return url, fetch(url, opts, cond)
-                return url, fetch(url, opts, cond)
-            except Exception as ex:
-                return url, ex
-
-    global _browser_pool
-    if not jobs:
-        return {}
-    _browser_pool = BrowserPool() if any(o.get("js") for o, _ in jobs) else None
-    try:
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-            return dict(pool.map(lambda job: work(*job), jobs))
-    finally:
-        if _browser_pool is not None:
-            _browser_pool.close()
-        _browser_pool = None
+def url_key(url):
+    return hashlib.sha1(url.encode()).hexdigest()[:16]
 
 
 def run():
@@ -765,21 +73,8 @@ def record_run(runs, stamp, seconds, status, changes, ok):
     return [*runs, entry][-MAX_RUNS:]
 
 
-def _run(store):
-    started = time.monotonic()
-    now = datetime.now(UTC)
-    stamp = now.strftime("%Y-%m-%d %H:%M UTC")
-    entries = merge_config(store.raw_config())
-    old_status = store.doc("status", {})
-    history = store.history(MAX_HISTORY)
-    new_history = []
-    meta = store.doc("meta", {})
-    status, changes, problems, pending = {}, [], [], []
-    config_bad = []
-    http_cache = store.doc("http", {})
-    new_cache = {}
-
-    print(f"Prüfe {len(entries)} URL(s)...")
+def plan_jobs(store, entries, old_status, http_cache, now):
+    """Welche URLs in diesem Lauf abgerufen werden (gültige Konfiguration, Intervall erreicht) und mit welchen Validatoren."""
     jobs = []
     snapshot_keys = store.snapshot_keys()
     for opts in entries:
@@ -787,173 +82,216 @@ def _run(store):
             continue
         url = opts["url"]
         cached = http_cache.get(url, {})
-        snap_exists = hashlib.sha1(url.encode()).hexdigest()[:16] in snapshot_keys
+        snap_exists = url_key(url) in snapshot_keys
         if not is_due(opts, old_status.get(url, {}), now, snap_exists):
             continue
         jobs.append((opts, cached if snap_exists and cached.get("config") == config_hash(opts) else {}))
-    fetched = fetch_all(jobs)
+    return jobs
 
+
+def _run(store):
+    started = time.monotonic()
+    now = datetime.now(UTC)
+    st = RunState(
+        stamp=now.strftime("%Y-%m-%d %H:%M UTC"),
+        old_status=store.doc("status", {}),
+        http_cache=store.doc("http", {}),
+    )
+    entries = merge_config(store.raw_config())
+    history = store.history(MAX_HISTORY)
+    new_history: list[dict[str, Any]] = []
+    meta = store.doc("meta", {})
+
+    print(f"Prüfe {len(entries)} URL(s)...")
+    fetched = fetch_all(plan_jobs(store, entries, st.old_status, st.http_cache, now))
     for opts in entries:
-        url = opts["url"]
-        key = hashlib.sha1(url.encode()).hexdigest()[:16]
-        prev = old_status.get(url, {})
-        entry = {
-            "name": opts.get("name") or prev.get("name") or url,
-            "group": opts.get("group") or "",
-            "checked": stamp,
-            "changed": prev.get("changed", ""),
-            "status": "ok",
-            "error": "",
-            "code": "",
-        }
-        status[url] = entry
-        if url not in fetched and not config_errors(opts):
-            status[url] = {**prev, "name": entry["name"], "group": entry["group"]}
-            if url in http_cache:
-                new_cache[url] = http_cache[url]
-            print(f"[ÜBERSPRUNGEN] {entry['name']} (interval: {opts.get('interval')})")
-            continue
-        errors = config_errors(opts)
-        if errors:
-            msg = "Konfigurationsfehler: " + "; ".join(errors)
-            entry.update(status="error", error=msg[:300], code="config", checked=prev.get("checked", "-"))
-            config_bad.append(f"{url}\n  {msg}")
-            print(f"[KONFIG]    {url}: {msg}")
-            continue
-        cfg = config_hash(opts)
-        cached = http_cache.get(url, {})
-        try:
-            result = fetched[url]
-            if isinstance(result, Exception):
-                raise result
-            title, text, feed, validators = result
-        except Exception as ex:
-            n = store.counter(key, "fail") + 1
-            store.set_counter(key, "fail", n)
-            entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
-            print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
-            if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
-                problems.append(
-                    {
-                        "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),
-                        "counter": (key, "fail"),
-                        "value": n,
-                    }
-                )
-            continue
-        store.clear_counter(key, "fail")
+        check_url(store, st, opts, fetched)
 
-        if text is None:
-            store.clear_counter(key, "short")
-            new_cache[url] = cached
-            print(f"[UNVERÄNDERT] {entry['name']} [304 Not Modified, nicht neu geladen]")
-            continue
-
-        name = opts.get("name") or title or url
-        entry["name"] = name
-        kind = "Feed" if feed else "Seite"
-        old = store.snapshot(key)
-
-        min_ratio = float(opts.get("min_ratio", DEFAULT_MIN_RATIO))
-        if old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio:
-            n = store.counter(key, "short") + 1
-            store.set_counter(key, "short", n)
-            msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
-            entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
-            print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
-            if n == GUARD_ALERT_AFTER:
-                problems.append(
-                    {
-                        "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "content"),
-                        "counter": (key, "short"),
-                        "value": n,
-                    }
-                )
-            continue
-        store.clear_counter(key, "short")
-
-        if old is None:
-            entry["status"] = "new"
-            hint = " - ACHTUNG: sehr wenig Text, Selector prüfen" if len(text) < 200 else ""
-            print(f"[NEU]       {name} [{kind}] (Baseline gespeichert, {len(text)} Zeichen{hint})")
-        elif old == text:
-            print(f"[UNVERÄNDERT] {name} [{kind}] ({len(text)} Zeichen)")
-        else:
-            print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
-            diff, extra = make_diff(old, text, opts.get("only_added", feed))
-            if diff:
-                change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
-                changes.append(change)
-                # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
-                pending.append(
-                    {
-                        "change": change,
-                        "key": key,
-                        "text": text,
-                        "entry": entry,
-                        "cache": {**validators, "config": cfg} if validators else None,
-                    }
-                )
-                if cached:
-                    new_cache[url] = cached
-                continue
-            print("            (nur entfernte Zeilen, keine Mail)")
-        store.set_snapshot(key, url, text)
-        if validators:
-            new_cache[url] = {**validators, "config": cfg}
-
-    ok = not config_bad
-    sent_ok = True
-    if changes:
-        subject = subject_for(changes)
-        print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
-        try:
-            send_mail(subject, render_text(changes), render_html(changes))
-        except Exception as ex:
-            sent_ok = ok = False
-            print(
-                f"[MAILFEHLER] {ex}\n  Snapshots der {len(pending)} geänderten Seite(n) bleiben unverändert, "
-                "die Änderung wird beim nächsten Lauf erneut erkannt."
-            )
-        for p in pending:
-            if sent_ok:
-                store.set_snapshot(p["key"], p["change"]["url"], p["text"])
-                p["entry"]["changed"] = stamp
-                record = {**p["change"], "time": stamp}
-                history.append(record)
-                new_history.append(record)
-                if p["cache"]:
-                    new_cache[p["change"]["url"]] = p["cache"]
-            else:
-                p["entry"].update(status="error", error="Änderung erkannt, Mailversand fehlgeschlagen (wird wiederholt)")
-    if problems:
-        try:
-            send_mail("Watchlist: Probleme beim Abruf", "\n\n".join(p["text"] for p in problems))
-        except Exception as ex:
-            ok = False
-            print(f"[MAILFEHLER] Problemmeldung konnte nicht gesendet werden: {ex}")
-            for p in problems:  # Zähler zurücksetzen, damit die Warnung beim nächsten Lauf erneut ausgelöst wird
-                store.set_counter(*p["counter"], p["value"] - 1)
+    ok = not st.config_bad
+    ok &= send_change_mail(store, st, history, new_history)
+    ok &= send_problem_mail(store, st)
 
     history = history[-MAX_HISTORY:]
     try:
-        send_heartbeat(now, entries, status, history, meta)
+        send_heartbeat(now, entries, st.status, history, meta)
     except Exception as ex:
         ok = False
         print(f"[MAILFEHLER] Lebenszeichen konnte nicht gesendet werden: {ex}")
-    store.set_doc("status", status)
+    store.set_doc("status", st.status)
     store.add_history(new_history, MAX_HISTORY)
     store.set_doc("meta", meta)
-    store.set_doc("http", new_cache)
-    store.set_doc("runs", record_run(store.doc("runs", []), stamp, time.monotonic() - started, status, len(changes), ok))
-    bad = sum(1 for s in status.values() if s["status"] in ("error", "warn"))
-    print(f"{len(entries)} geprüft, {len(changes)} geändert, {bad} mit Problemen")
+    store.set_doc("http", st.new_cache)
+    store.set_doc("runs", record_run(store.doc("runs", []), st.stamp, time.monotonic() - started, st.status, len(st.changes), ok))
+    bad = sum(1 for s in st.status.values() if s["status"] in ("error", "warn"))
+    print(f"{len(entries)} geprüft, {len(st.changes)} geändert, {bad} mit Problemen")
     return ok
+
+
+def check_url(store, st, opts, fetched):
+    """Wertet das Abrufergebnis einer URL aus und trägt Status, Änderungen und Probleme in den Laufzustand ein."""
+    url = opts["url"]
+    prev = st.old_status.get(url, {})
+    entry = {
+        "name": opts.get("name") or prev.get("name") or url,
+        "group": opts.get("group") or "",
+        "checked": st.stamp,
+        "changed": prev.get("changed", ""),
+        "status": "ok",
+        "error": "",
+        "code": "",
+    }
+    st.status[url] = entry
+    errors = config_errors(opts)
+    if not errors and url not in fetched:
+        st.status[url] = {**prev, "name": entry["name"], "group": entry["group"]}
+        if url in st.http_cache:
+            st.new_cache[url] = st.http_cache[url]
+        print(f"[ÜBERSPRUNGEN] {entry['name']} (interval: {opts.get('interval')})")
+        return
+    if errors:
+        msg = "Konfigurationsfehler: " + "; ".join(errors)
+        entry.update(status="error", error=msg[:300], code="config", checked=prev.get("checked", "-"))
+        st.config_bad.append(f"{url}\n  {msg}")
+        print(f"[KONFIG]    {url}: {msg}")
+        return
+    result = fetched[url]
+    if isinstance(result, Exception):
+        record_failure(store, st, entry, prev, url, result)
+        return
+    title, text, feed, validators = result
+    key = url_key(url)
+    cached = st.http_cache.get(url, {})
+    store.clear_counter(key, "fail")
+
+    if text is None:
+        store.clear_counter(key, "short")
+        st.new_cache[url] = cached
+        print(f"[UNVERÄNDERT] {entry['name']} [304 Not Modified, nicht neu geladen]")
+        return
+
+    name = opts.get("name") or title or url
+    entry["name"] = name
+    kind = "Feed" if feed else "Seite"
+    old = store.snapshot(key)
+    if is_too_short(old, text, opts):
+        record_short_text(store, st, entry, prev, url, name, kind, old, text)
+        return
+    store.clear_counter(key, "short")
+
+    cfg = config_hash(opts)
+    if old is None:
+        entry["status"] = "new"
+        hint = " - ACHTUNG: sehr wenig Text, Selector prüfen" if len(text) < 200 else ""
+        print(f"[NEU]       {name} [{kind}] (Baseline gespeichert, {len(text)} Zeichen{hint})")
+    elif old == text:
+        print(f"[UNVERÄNDERT] {name} [{kind}] ({len(text)} Zeichen)")
+    else:
+        print(f"[GEÄNDERT]  {name} [{kind}] ({len(old)} -> {len(text)} Zeichen)")
+        diff, extra = make_diff(old, text, opts.get("only_added", feed))
+        if diff:
+            change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
+            st.changes.append(change)
+            # Snapshot, Verlauf und Cache erst nach erfolgreichem Mailversand übernehmen
+            st.pending.append(
+                {
+                    "change": change,
+                    "key": key,
+                    "text": text,
+                    "entry": entry,
+                    "cache": {**validators, "config": cfg} if validators else None,
+                }
+            )
+            if cached:
+                st.new_cache[url] = cached
+            return
+        print("            (nur entfernte Zeilen, keine Mail)")
+    store.set_snapshot(key, url, text)
+    if validators:
+        st.new_cache[url] = {**validators, "config": cfg}
+
+
+def record_failure(store, st, entry, prev, url, ex):
+    key = url_key(url)
+    n = store.counter(key, "fail") + 1
+    store.set_counter(key, "fail", n)
+    entry.update(status="error", error=str(ex)[:200], code=error_code(ex), checked=prev.get("checked", "-"), streak=n)
+    print(f"[FEHLER]    {url} (Versuch {n} in Folge): {ex}")
+    if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
+        st.problems.append(
+            {
+                "text": with_hint(f"Abruf schlägt {n}x in Folge fehl: {url}\n  {ex}", error_code(ex)),
+                "counter": (key, "fail"),
+                "value": n,
+            }
+        )
+
+
+def is_too_short(old, text, opts):
+    min_ratio = float(opts.get("min_ratio", DEFAULT_MIN_RATIO))
+    return old is not None and len(old) >= GUARD_MIN_CHARS and len(text) < len(old) * min_ratio
+
+
+def record_short_text(store, st, entry, prev, url, name, kind, old, text):
+    key = url_key(url)
+    n = store.counter(key, "short") + 1
+    store.set_counter(key, "short", n)
+    msg = f"nur {len(text)} statt {len(old)} Zeichen (Cookie-Wand oder Bot-Block?)"
+    entry.update(status="warn", error=msg, code="content", checked=prev.get("checked", "-"), streak=n)
+    print(f"[WARNUNG]   {name} [{kind}] {msg}, Snapshot bleibt unverändert (Versuch {n} in Folge)")
+    if n == GUARD_ALERT_AFTER:
+        st.problems.append(
+            {
+                "text": with_hint(f"Seite liefert kaum Text ({n}x in Folge): {url}\n  {msg}", "content"),
+                "counter": (key, "short"),
+                "value": n,
+            }
+        )
+
+
+def send_change_mail(store, st, history, new_history):
+    """Versendet die Änderungsmail und übernimmt danach Snapshots, Verlauf und Cache. Liefert False bei Mailfehler."""
+    if not st.changes:
+        return True
+    print(f"Sende Änderungs-Mail an {os.environ.get('MAIL_TO', '?')}...")
+    sent_ok = True
+    try:
+        notify.send_mail(subject_for(st.changes), render_text(st.changes), render_html(st.changes))
+    except Exception as ex:
+        sent_ok = False
+        print(
+            f"[MAILFEHLER] {ex}\n  Snapshots der {len(st.pending)} geänderten Seite(n) bleiben unverändert, "
+            "die Änderung wird beim nächsten Lauf erneut erkannt."
+        )
+    for p in st.pending:
+        if sent_ok:
+            store.set_snapshot(p["key"], p["change"]["url"], p["text"])
+            p["entry"]["changed"] = st.stamp
+            record = {**p["change"], "time": st.stamp}
+            history.append(record)
+            new_history.append(record)
+            if p["cache"]:
+                st.new_cache[p["change"]["url"]] = p["cache"]
+        else:
+            p["entry"].update(status="error", error="Änderung erkannt, Mailversand fehlgeschlagen (wird wiederholt)")
+    return sent_ok
+
+
+def send_problem_mail(store, st):
+    if not st.problems:
+        return True
+    try:
+        notify.send_mail("Watchlist: Probleme beim Abruf", "\n\n".join(p["text"] for p in st.problems))
+    except Exception as ex:
+        print(f"[MAILFEHLER] Problemmeldung konnte nicht gesendet werden: {ex}")
+        for p in st.problems:  # Zähler zurücksetzen, damit die Warnung beim nächsten Lauf erneut ausgelöst wird
+            store.set_counter(*p["counter"], p["value"] - 1)
+        return False
+    return True
 
 
 def main(argv):
     if len(argv) >= 3 and argv[1] == "--alert":
-        send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
+        notify.send_mail("Watchlist: Workflow fehlgeschlagen", argv[2])
         return 0
     if len(argv) >= 2 and argv[1] == "--needs-js":
         store = open_store(STATE, ROOT / "urls.yml")

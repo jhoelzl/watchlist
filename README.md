@@ -78,7 +78,7 @@ Das Skript ruft die Seite ab, schlägt einen Selector (`main`, `article`, ...) u
 Meldungen, Mails, Kommentare und Doku sind auf Deutsch. Code-Bezeichner (Funktionen, Variablen, Konstanten, Optionsnamen in `urls.yml`) und Commit-Nachrichten sind auf Englisch.
 
 ## Rücksicht auf Server und Fehlabrufe
-- **Parallele Abrufe:** Die Seiten werden mit bis zu 6 Threads geladen, pro Host höchstens 2 gleichzeitig (`MAX_WORKERS`, `MAX_PER_HOST` in `check.py`). Seiten mit `js: true` laufen nacheinander. Die Auswertung, Mails und Snapshots bleiben seriell und in der Reihenfolge von `urls.yml`.
+- **Parallele Abrufe:** Die Seiten werden mit bis zu 6 Threads geladen, pro Host höchstens 2 gleichzeitig (`MAX_WORKERS`, `MAX_PER_HOST` in `fetch.py`). Seiten mit `js: true` laufen nacheinander. Die Auswertung, Mails und Snapshots bleiben seriell und in der Reihenfolge von `urls.yml`.
 - **robots.txt** wird pro Host einmal je Lauf geprüft. Verbietet sie eine URL, zählt das als Abruffehler (Override: `ignore_robots: true`). Fehlt die Datei oder ist sie nicht erreichbar, ist alles erlaubt.
 - **ETag / Last-Modified:** Antwortet der Server mit `304 Not Modified`, wird die Seite nicht neu geladen. Die Werte stehen in `state/http.json` (bzw. in Supabase). Ändert sich `selector`, `ignore` oder `js`, wird wieder voll geladen. Nicht alle Server unterstützen das (z. B. Google nur eingeschränkt).
 - **Textwächter:** Liefert eine Seite plötzlich unter 30 % des bisherigen Textes (nur bei Snapshots ab 500 Zeichen), gilt das als Fehlabruf (Cookie-Wand, Bot-Block). Der Snapshot bleibt unverändert, es gibt keine Änderungsmail, das Dashboard zeigt „Zu wenig Text", und nach dem 2. Lauf in Folge kommt eine Warnmail. Mit `min_ratio` anpassbar, `0` schaltet den Wächter für diese URL aus.

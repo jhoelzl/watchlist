@@ -2,7 +2,7 @@
 
 import json
 
-import check
+import config
 import migrate
 from store import FileStore, RestStore, open_store
 
@@ -83,7 +83,7 @@ def test_roundtrip():
     db.add_url({"url": "https://a", "name": "A", "group": "G", "selector": "main"})
     db.add_url({"url": "https://b", "js": True})
     db.set_defaults({"ignore": ["d"]})
-    entries = check.merge_config(db.raw_config())
+    entries = config.merge_config(db.raw_config())
     assert [e["url"] for e in entries] == ["https://a", "https://b"]
     assert entries[0]["group"] == "G" and entries[0]["selector"] == "main" and entries[0]["ignore"] == ["d"]
     assert entries[1]["js"] is True

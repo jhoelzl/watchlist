@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import check
+import config
 from store import COUNTER_KINDS, FileStore, PgStore, open_store
 
 
@@ -22,7 +23,7 @@ def migrate(files: FileStore, db: PgStore) -> dict[str, int]:
     raw = files.raw_config()
     defaults, urls = ({}, raw) if isinstance(raw, list) else (raw.get("defaults") or {}, raw.get("urls") or [])
     db.set_defaults(defaults)
-    known = {e["url"] for e in check.merge_config(db.raw_config())}
+    known = {e["url"] for e in config.merge_config(db.raw_config())}
     added = 0
     for e in urls:
         entry = {"url": e} if isinstance(e, str) else dict(e)

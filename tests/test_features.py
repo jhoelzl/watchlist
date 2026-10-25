@@ -7,6 +7,11 @@ import pytest
 
 import add
 import check
+import config
+import diffing
+import errors
+import fetch
+import notify
 
 
 class FakeResp:
@@ -20,25 +25,25 @@ class FakeResp:
 
 
 def robots_for(monkeypatch, status, body=""):
-    monkeypatch.setattr(check.requests, "get", lambda url, **kw: FakeResp(status, body))
+    monkeypatch.setattr(fetch.requests, "get", lambda url, **kw: FakeResp(status, body))
 
 
 def test_robots_disallow(monkeypatch):
     robots_for(monkeypatch, 200, "User-agent: *\nDisallow: /privat\n")
     cache = {}
-    assert not check.robots_allowed("https://x.de/privat/seite", cache)
-    assert check.robots_allowed("https://x.de/oeffentlich", cache)
+    assert not fetch.robots_allowed("https://x.de/privat/seite", cache)
+    assert fetch.robots_allowed("https://x.de/oeffentlich", cache)
 
 
 def test_robots_missing_or_error_allows(monkeypatch):
     robots_for(monkeypatch, 404)
-    assert check.robots_allowed("https://x.de/a", {})
+    assert fetch.robots_allowed("https://x.de/a", {})
 
     def boom(url, **kw):
-        raise check.requests.ConnectionError("down")
+        raise fetch.requests.ConnectionError("down")
 
-    monkeypatch.setattr(check.requests, "get", boom)
-    assert check.robots_allowed("https://x.de/a", {})
+    monkeypatch.setattr(fetch.requests, "get", boom)
+    assert fetch.robots_allowed("https://x.de/a", {})
 
 
 def test_robots_cached_per_host(monkeypatch):
@@ -48,10 +53,10 @@ def test_robots_cached_per_host(monkeypatch):
         calls.append(url)
         return FakeResp(200, "User-agent: *\nAllow: /\n")
 
-    monkeypatch.setattr(check.requests, "get", fake)
+    monkeypatch.setattr(fetch.requests, "get", fake)
     cache = {}
-    check.robots_allowed("https://x.de/a", cache)
-    check.robots_allowed("https://x.de/b", cache)
+    fetch.robots_allowed("https://x.de/a", cache)
+    fetch.robots_allowed("https://x.de/b", cache)
     assert calls == ["https://x.de/robots.txt"]
 
 
@@ -62,9 +67,9 @@ def test_conditional_headers_and_304(monkeypatch):
         seen.update(headers)
         return FakeResp(304)
 
-    monkeypatch.setattr(check.requests, "get", fake)
+    monkeypatch.setattr(fetch.requests, "get", fake)
     cond = {"etag": '"abc"', "last_modified": "Sun, 18 Oct 2026 11:08:28 GMT"}
-    body, val = check.fetch_body("https://x.de", False, cond)
+    body, val = fetch.fetch_body("https://x.de", False, cond)
     assert body is None and val == cond
     assert seen["If-None-Match"] == '"abc"'
     assert seen["If-Modified-Since"] == cond["last_modified"]
@@ -72,17 +77,17 @@ def test_conditional_headers_and_304(monkeypatch):
 
 def test_fetch_stores_validators(monkeypatch):
     monkeypatch.setattr(
-        check.requests,
+        fetch.requests,
         "get",
         lambda url, **kw: FakeResp(200, "<html><body>hi</body></html>", {"ETag": '"e1"'}),
     )
-    title, text, feed, val = check.fetch("https://x.de", {})
+    title, text, feed, val = fetch.fetch("https://x.de", {})
     assert text == "hi" and val == {"etag": '"e1"'}
 
 
 def test_config_hash_changes_with_selector():
-    assert check.config_hash({"selector": "main"}) != check.config_hash({"selector": "body"})
-    assert check.config_hash({"url": "a", "name": "x"}) == check.config_hash({"url": "b"})
+    assert config.config_hash({"selector": "main"}) != config.config_hash({"selector": "body"})
+    assert config.config_hash({"url": "a", "name": "x"}) == config.config_hash({"url": "b"})
 
 
 @pytest.fixture
@@ -90,15 +95,15 @@ def env(tmp_path, monkeypatch):
     (tmp_path / "urls.yml").write_text("urls:\n  - url: https://a\n    group: G\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
     monkeypatch.setattr(check, "STATE", tmp_path / "state")
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     sent = []
-    monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append((s, t)))
+    monkeypatch.setattr(notify, "send_mail", lambda s, t, h=None: sent.append((s, t)))
     return tmp_path, sent
 
 
 def set_pages(monkeypatch, pages):
     it = iter(pages)
-    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", next(it), False, {"etag": '"v"'}))
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", next(it), False, {"etag": '"v"'}))
 
 
 def status_of(tmp, url="https://a"):
@@ -145,7 +150,7 @@ def test_not_modified_keeps_snapshot_and_validators(env, monkeypatch):
     set_pages(monkeypatch, ["inhalt"])
     check.run()
     assert json.loads((tmp / "state" / "http.json").read_text())["https://a"]["etag"] == '"v"'
-    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: (None, None, False, cond))
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: (None, None, False, cond))
     check.run()
     assert sent == [] and status_of(tmp)["status"] == "ok"
     assert json.loads((tmp / "state" / "http.json").read_text())["https://a"]["etag"] == '"v"'
@@ -153,7 +158,7 @@ def test_not_modified_keeps_snapshot_and_validators(env, monkeypatch):
 
 def test_robots_block_is_an_error(env, monkeypatch):
     tmp, sent = env
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: False)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: False)
     check.run()
     st = status_of(tmp)
     assert st["status"] == "error" and "robots.txt" in st["error"]
@@ -162,7 +167,7 @@ def test_robots_block_is_an_error(env, monkeypatch):
 def test_ignore_robots_option(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    ignore_robots: true\n")
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: False)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: False)
     set_pages(monkeypatch, ["inhalt"])
     check.run()
     assert status_of(tmp)["status"] == "new"
@@ -196,13 +201,13 @@ def test_add_main_appends_and_keeps_comments(tmp_path, monkeypatch):
     f = tmp_path / "urls.yml"
     f.write_text("# Kommentar\ndefaults:\n  ignore: ['x']\n\nurls:\n  - url: https://a\n    group: Azure\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     page = "<html><title>T</title><body><main>" + "wort " * 100 + "</main></body></html>"
-    monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: (page, {}))
+    monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: (page, {}))
     add.main(["https://a/neu", "-y"])
     text = f.read_text()
     assert text.startswith("# Kommentar")
-    entries = check.load_config(f)
+    entries = config.load_config(f)
     assert [e["url"] for e in entries] == ["https://a", "https://a/neu"]
     assert entries[1]["selector"] == "main"
     with pytest.raises(SystemExit):
@@ -213,10 +218,10 @@ def test_add_main_list_format_and_rollback(tmp_path, monkeypatch):
     f = tmp_path / "urls.yml"
     f.write_text("- https://a\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
-    monkeypatch.setattr(check, "fetch_body", lambda url, js, cond=None: ("<body>" + "w " * 200 + "</body>", {}))
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "fetch_body", lambda url, js, cond=None: ("<body>" + "w " * 200 + "</body>", {}))
     add.main(["https://b", "-y", "--group", "G"])
-    assert [e["url"] for e in check.load_config(f)] == ["https://a", "https://b"]
+    assert [e["url"] for e in config.load_config(f)] == ["https://a", "https://b"]
 
     g = tmp_path / "urls2.yml"
     g.write_text("urls:\n  - url: https://a\nother: 1\n")
@@ -231,7 +236,7 @@ def test_add_main_list_format_and_rollback(tmp_path, monkeypatch):
 def test_add_blocked_by_robots(tmp_path, monkeypatch):
     (tmp_path / "urls.yml").write_text("- https://a\n")
     monkeypatch.setattr(check, "ROOT", tmp_path)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: False)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: False)
     with pytest.raises(SystemExit):
         add.main(["https://b", "-y"])
 
@@ -241,23 +246,23 @@ def test_add_blocked_by_robots(tmp_path, monkeypatch):
     [r"Last updated on\s*\S+", r"\d{2}:\d{2}", r"(Stand|Update): \d+", r"(a)?b"],
 )
 def test_config_errors_accepts_normal_patterns(pattern):
-    assert check.config_errors({"ignore": [pattern]}) == []
+    assert config.config_errors({"ignore": [pattern]}) == []
 
 
 @pytest.mark.parametrize("pattern", ["(unclosed", "[a-", "(a+)+$", "(.*)*x", "(\\d+\\s*)+"])
 def test_config_errors_rejects_bad_patterns(pattern):
-    assert len(check.config_errors({"ignore": [pattern]})) == 1
+    assert len(config.config_errors({"ignore": [pattern]})) == 1
 
 
 def test_config_errors_rejects_long_and_non_text():
-    assert check.config_errors({"ignore": ["a" * 301]})
-    assert check.config_errors({"ignore": [5]})
+    assert config.config_errors({"ignore": ["a" * 301]})
+    assert config.config_errors({"ignore": [5]})
 
 
 def test_load_config_single_string_ignore_is_not_split(tmp_path):
     f = tmp_path / "u.yml"
     f.write_text("urls:\n  - url: https://a\n    ignore: 'abc'\n")
-    assert check.load_config(f)[0]["ignore"] == ["abc"]
+    assert config.load_config(f)[0]["ignore"] == ["abc"]
 
 
 def test_invalid_ignore_marks_url_and_fails_run(env, monkeypatch):
@@ -269,7 +274,7 @@ def test_invalid_ignore_marks_url_and_fails_run(env, monkeypatch):
         fetched.append(url)
         return "T", "text", False, {}
 
-    monkeypatch.setattr(check, "fetch", fake_fetch)
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
     assert check.run() is False
     assert fetched == ["https://b"]
     status = json.loads((tmp / "state" / "status.json").read_text())
@@ -300,16 +305,16 @@ def test_fetch_all_runs_in_parallel_and_respects_host_limit(monkeypatch):
                 running["a"] -= 1
         return "T", url, False, {}
 
-    monkeypatch.setattr(check, "fetch", slow_fetch)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "fetch", slow_fetch)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     jobs = [({"url": f"https://a.example/{i}"}, {}) for i in range(6)] + [
         ({"url": f"https://b{i}.example/"}, {}) for i in range(4)
     ]
-    result = check.fetch_all(jobs)
+    result = fetch.fetch_all(jobs)
     assert set(result) == {o["url"] for o, _ in jobs}
     assert result["https://a.example/3"][1] == "https://a.example/3"
-    assert running["a_max"] <= check.MAX_PER_HOST
-    assert 1 < running["max"] <= check.MAX_WORKERS
+    assert running["a_max"] <= fetch.MAX_PER_HOST
+    assert 1 < running["max"] <= fetch.MAX_WORKERS
 
 
 def test_fetch_all_returns_exceptions_per_url(monkeypatch):
@@ -318,10 +323,10 @@ def test_fetch_all_returns_exceptions_per_url(monkeypatch):
             raise RuntimeError("kaputt")
         return "T", "ok", False, {}
 
-    monkeypatch.setattr(check, "fetch", fake_fetch)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: url != "https://r/blocked")
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: url != "https://r/blocked")
     jobs = [({"url": u}, {}) for u in ("https://a/good", "https://a/bad", "https://r/blocked")]
-    result = check.fetch_all(jobs)
+    result = fetch.fetch_all(jobs)
     assert result["https://a/good"][1] == "ok"
     assert str(result["https://a/bad"]) == "kaputt"
     assert "robots.txt" in str(result["https://r/blocked"])
@@ -343,14 +348,14 @@ def test_fetch_all_js_pages_run_one_at_a_time(monkeypatch):
             state["now"] -= 1
         return "T", "x", False, {}
 
-    monkeypatch.setattr(check, "fetch", fake_fetch)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
-    check.fetch_all([({"url": f"https://h{i}/", "js": True}, {}) for i in range(4)])
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
+    fetch.fetch_all([({"url": f"https://h{i}/", "js": True}, {}) for i in range(4)])
     assert state["max"] == 1
 
 
 def test_fetch_all_empty():
-    assert check.fetch_all([]) == {}
+    assert fetch.fetch_all([]) == {}
 
 
 @pytest.mark.parametrize(
@@ -369,13 +374,13 @@ def test_fetch_all_empty():
     ],
 )
 def test_hint_for_known_codes(code, expected):
-    assert expected in check.hint_for(code)
+    assert expected in notify.hint_for(code)
 
 
 def test_hint_for_unknown_code_is_empty():
-    assert check.hint_for("") == "" and check.hint_for(None) == ""
-    assert check.with_hint("Text", "unbekannt") == "Text"
-    assert check.with_hint("Text", "timeout").startswith("Text\n  Tipp: ")
+    assert notify.hint_for("") == "" and notify.hint_for(None) == ""
+    assert notify.with_hint("Text", "unbekannt") == "Text"
+    assert notify.with_hint("Text", "timeout").startswith("Text\n  Tipp: ")
 
 
 def test_error_code_classifies_exceptions():
@@ -383,20 +388,20 @@ def test_error_code_classifies_exceptions():
 
     resp = requests.Response()
     resp.status_code = 503
-    assert check.error_code(check.CheckError("x", "selector")) == "selector"
-    assert check.error_code(requests.HTTPError(response=resp)) == "http_5xx"
-    assert check.error_code(requests.Timeout()) == "timeout"
-    assert check.error_code(requests.ConnectionError()) == "connection"
-    assert check.error_code(ValueError("x")) == ""
+    assert errors.error_code(errors.CheckError("x", "selector")) == "selector"
+    assert errors.error_code(requests.HTTPError(response=resp)) == "http_5xx"
+    assert errors.error_code(requests.Timeout()) == "timeout"
+    assert errors.error_code(requests.ConnectionError()) == "connection"
+    assert errors.error_code(ValueError("x")) == ""
 
 
 def test_repeated_failure_mail_contains_hint(env, monkeypatch):
     tmp, sent = env
 
     def boom(url, opts, cond=None):
-        raise check.CheckError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "timeout")
+        raise errors.CheckError("Abruf nach 3 Versuchen fehlgeschlagen (Timeout)", "timeout")
 
-    monkeypatch.setattr(check, "fetch", boom)
+    monkeypatch.setattr(fetch, "fetch", boom)
     for _ in range(check.FAIL_ALERT_AFTER):
         check.run()
     subject, body = sent[-1]
@@ -410,7 +415,7 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
     from datetime import UTC, datetime
 
     sent = []
-    monkeypatch.setattr(check, "send_mail", lambda s, t, h=None: sent.append(t))
+    monkeypatch.setattr(notify, "send_mail", lambda s, t, h=None: sent.append(t))
     status = {
         "https://a": {"name": "A", "group": "Azure", "status": "ok"},
         "https://b": {
@@ -419,12 +424,12 @@ def test_heartbeat_groups_and_stuck_pages(monkeypatch):
             "status": "error",
             "error": "Timeout",
             "code": "timeout",
-            "streak": check.STUCK_AFTER,
+            "streak": notify.STUCK_AFTER,
         },
         "https://c": {"name": "C", "group": "", "status": "error", "error": "404 Client Error", "streak": 1},
     }
     hist = [{"time": "2026-11-02 06:00 UTC", "name": "A", "group": "Azure"}]
-    check.send_heartbeat(datetime(2026, 11, 3, tzinfo=UTC), [1, 2, 3], status, hist, {"heartbeat": "2026-10"})
+    notify.send_heartbeat(datetime(2026, 11, 3, tzinfo=UTC), [1, 2, 3], status, hist, {"heartbeat": "2026-10"})
     body = sent[0]
     assert "- Azure: 2 / 1 / 1" in body
     assert "- Allgemein: 1 / 0 / 1" in body
@@ -490,26 +495,26 @@ def install_fake_playwright(monkeypatch):
 
 def test_browser_started_once_per_run_and_closed(monkeypatch):
     log = install_fake_playwright(monkeypatch)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
     jobs = [({"url": f"https://h{i}.example/", "js": True}, {}) for i in range(4)]
-    result = check.fetch_all(jobs)
+    result = fetch.fetch_all(jobs)
     assert [result[o["url"]][1] for o, _ in jobs] == [f"https://h{i}.example/" for i in range(4)]
     assert log["launched"] == 1 and log["closed"] == 1 and log["stopped"] == 1
     assert len(log["threads"]) == 1  # alle Seiten im selben Thread (Playwright ist thread-gebunden)
-    assert check._browser_pool is None
+    assert fetch._browser_pool is None
 
 
 def test_no_browser_without_js_pages(monkeypatch):
     log = install_fake_playwright(monkeypatch)
-    monkeypatch.setattr(check, "robots_allowed", lambda url, cache: True)
-    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", "x", False, {}))
-    check.fetch_all([({"url": "https://a/"}, {})])
-    assert log["launched"] == 0 and check._browser_pool is None
+    monkeypatch.setattr(fetch, "robots_allowed", lambda url, cache: True)
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", "x", False, {}))
+    fetch.fetch_all([({"url": "https://a/"}, {})])
+    assert log["launched"] == 0 and fetch._browser_pool is None
 
 
 def test_browser_restarts_after_crash(monkeypatch):
     log = install_fake_playwright(monkeypatch)
-    pool = check.BrowserPool()
+    pool = fetch.BrowserPool()
     try:
         pool.content("https://a/")
         log["browsers"][0].connected = False
@@ -521,14 +526,14 @@ def test_browser_restarts_after_crash(monkeypatch):
 
 def test_single_js_fetch_outside_run_uses_own_browser(monkeypatch):
     log = install_fake_playwright(monkeypatch)
-    body, validators = check.fetch_body("https://a/", True)
+    body, validators = fetch.fetch_body("https://a/", True)
     assert "<main>" in body and validators == {}
     assert log["launched"] == 1 and log["closed"] == 1
 
 
 def test_browser_pool_without_playwright_gives_clear_error(monkeypatch):
     monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
-    pool = check.BrowserPool()
+    pool = fetch.BrowserPool()
     try:
         with pytest.raises(RuntimeError, match="Playwright"):
             pool.content("https://a/")
@@ -537,18 +542,18 @@ def test_browser_pool_without_playwright_gives_clear_error(monkeypatch):
 
 
 def test_annotate_diff_marks_changed_words():
-    segs = check.annotate_diff(["@@ -1 +1 @@", "-Preis: 10 Euro", "+Preis: 12 Euro", "-weg"])
+    segs = diffing.annotate_diff(["@@ -1 +1 @@", "-Preis: 10 Euro", "+Preis: 12 Euro", "-weg"])
     assert [s for s, changed in segs[1] if changed] == ["10"]
     assert [s for s, changed in segs[2] if changed] == ["12"]
     assert segs[3] == [("-weg", False)]
-    assert check.annotate_diff(["-alt komplett", "+ganz anders hier"])[0] == [("-alt komplett", False)]
+    assert diffing.annotate_diff(["-alt komplett", "+ganz anders hier"])[0] == [("-alt komplett", False)]
 
 
 def test_render_html_highlights_words_and_counts():
-    html = check.render_html([{"name": "X", "url": "https://a", "group": "G", "diff": ["-a 1", "+a 2"], "extra": 0}])
+    html = notify.render_html([{"name": "X", "url": "https://a", "group": "G", "diff": ["-a 1", "+a 2"], "extra": 0}])
     assert 'font-weight:600">1</span>' in html
     assert "+1" in html
-    assert check.diff_counts(["+a", "+b", "-c", "+++x"]) == (2, 1)
+    assert diffing.diff_counts(["+a", "+b", "-c", "+++x"]) == (2, 1)
 
 
 def test_record_run_keeps_last_runs_and_counts_errors():
@@ -572,7 +577,7 @@ def test_record_run_keeps_last_runs_and_counts_errors():
 def test_run_stores_run_summary(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://b\n")
-    monkeypatch.setattr(check, "fetch", lambda url, opts, cond=None: ("T", "text", False, {}))
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", "text", False, {}))
     check.run()
     runs = json.loads((tmp / "state" / "runs.json").read_text())
     assert len(runs) == 1 and runs[0]["total"] == 1 and runs[0]["errors"] == 0
@@ -583,22 +588,22 @@ def test_is_due_respects_interval_and_problems():
 
     now = datetime(2026, 10, 25, 18, 0, tzinfo=UTC)
     ok = {"status": "ok", "checked": (now - timedelta(hours=12)).strftime("%Y-%m-%d %H:%M UTC")}
-    assert check.is_due({}, ok, now)
-    assert not check.is_due({"interval": "daily"}, ok, now)
-    assert not check.is_due({"interval": "weekly"}, ok, now)
+    assert config.is_due({}, ok, now)
+    assert not config.is_due({"interval": "daily"}, ok, now)
+    assert not config.is_due({"interval": "weekly"}, ok, now)
     old = {"status": "ok", "checked": (now - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M UTC")}
-    assert check.is_due({"interval": "daily"}, old, now)
-    assert not check.is_due({"interval": "weekly"}, old, now)
+    assert config.is_due({"interval": "daily"}, old, now)
+    assert not config.is_due({"interval": "weekly"}, old, now)
     week = {"status": "ok", "checked": (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M UTC")}
-    assert check.is_due({"interval": "weekly"}, week, now)
-    assert check.is_due({"interval": "weekly"}, {**ok, "status": "error"}, now)
-    assert check.is_due({"interval": "weekly"}, ok, now, has_snapshot=False)
-    assert check.is_due({"interval": "weekly"}, {}, now)
+    assert config.is_due({"interval": "weekly"}, week, now)
+    assert config.is_due({"interval": "weekly"}, {**ok, "status": "error"}, now)
+    assert config.is_due({"interval": "weekly"}, ok, now, has_snapshot=False)
+    assert config.is_due({"interval": "weekly"}, {}, now)
 
 
 def test_invalid_interval_is_config_error():
-    assert check.config_errors({"interval": "monthly"})
-    assert not check.config_errors({"interval": "weekly"})
+    assert config.config_errors({"interval": "monthly"})
+    assert not config.config_errors({"interval": "weekly"})
 
 
 def test_run_skips_url_not_yet_due(env, monkeypatch):
@@ -610,7 +615,7 @@ def test_run_skips_url_not_yet_due(env, monkeypatch):
         calls.append(url)
         return "T", "text", False, {}
 
-    monkeypatch.setattr(check, "fetch", fake_fetch)
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
     assert check.run() is True
     assert check.run() is True
     assert calls == ["https://b"]

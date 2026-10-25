@@ -14,6 +14,13 @@ cd web && npm ci                      # Abhängigkeiten des Dashboards
 
 Secrets (Supabase, Resend) gehören nur in eine lokale `.env`, nie in den Code oder ins Repo. Für `check.py` mit Datenbank: `uv run --env-file .env check.py`. Ohne `RESEND_API_KEY` werden Mails nur ausgegeben. Für das Dashboard `web/.env.example` nach `web/.env` kopieren (nur der Publishable/Anon-Key, nie der Secret-Key).
 
+## Aufbau
+
+- `check.py`: Ablauf eines Laufs (`run`, `check_url`, Mails und Speichern)
+- `config.py`: Optionen laden und prüfen, `fetch.py`: Abruf (HTTP, Retry, robots, Playwright), `parse.py`: Feed/HTML zu Text
+- `diffing.py`: Diffs und Sprungziele, `notify.py`: Mails und Heartbeat, `errors.py`: `CheckError` und Fehlercodes
+- `store.py`: Speicher (Supabase oder Dateien), `add.py` und `migrate.py`: Hilfsskripte
+
 ## Tests und Prüfungen
 
 Vor jedem Commit:
