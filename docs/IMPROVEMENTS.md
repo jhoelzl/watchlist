@@ -2,7 +2,7 @@
 
 Offene Verbesserungen nach Bereich. Aufwand: **S** (< 1 h), **M** (einige Stunden), **L** (Tage). Priorität: 🔴 hoch, 🟡 mittel, ⚪ niedrig.
 
-Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 321, `add.py` 199, Web-Dashboard in `web/` (React, Supabase), 123 Python- und 76 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
+Stand: `check.py` 356 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, Web-Dashboard in `web/` (React, Supabase), 125 Python- und 78 Web-Tests. Daten liegen in Supabase (Tabellen `watchlist_*`). Das Repo ist öffentlich, persönliche Daten (URL-Liste) stehen nur in der Datenbank.
 
 ## Nächste Schritte (Top 6)
 
@@ -24,7 +24,7 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 - ⚪ **Redirect-/Schema-Kontrolle:** Nur `http`/`https` zulassen und Redirect-Ziele prüfen, weil URLs im Dashboard eingegeben werden können (SSRF auf interne Adressen ist auf GitHub-Runnern kaum relevant, lokal schon). (S)
 - ⚪ **Fehlertexte von Resend** (`r.text`) landen im Log. Sicherstellen, dass dort nie Header oder Keys erscheinen. (S)
 - ⚪ **Branch Protection für `main`** (Pull Requests, Status-Check `tests`). Kollidiert mit der Regel „direkt auf `main` pushen“ in `.github/copilot-instructions.md`. (S)
-- ⚪ **Key-Rotation dokumentieren:** Wo `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` und `GH_DISPATCH_TOKEN` gesetzt sind und wie man sie erneuert (Ablaufdatum des Tokens notieren). (S)
+- ⚪ **Key-Rotation dokumentieren:** Alle Secrets liegen im 1Password-Tresor `watchlist` (in GitHub bleibt nur `OP_SERVICE_ACCOUNT_TOKEN`). Offen: wie man Service-Account-Token, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY` und `GH_DISPATCH_TOKEN` (liegt als Supabase-Secret, nicht in 1Password) erneuert, mit Ablaufdatum des Tokens. (S)
 
 ## 2. Features
 
@@ -58,6 +58,8 @@ Stand: `check.py` 325 Zeilen (dazu `config.py`, `fetch.py`, `parse.py`, `diffing
 ## 6. Zuverlässigkeit und Betrieb
 
 - 🟡 **`timeout-minutes`** für den Job `check` setzen, damit ein hängender Playwright-Lauf nicht Stunden blockiert (derzeit nicht gesetzt). (S)
+- 🟡 **Seiten, die GitHub-Runner blockieren:** `buch.stadt-salzburg.at` antwortet nur von privaten IPs (ConnectTimeout bzw. `goto`-Timeout auf dem Runner). Optionen: Self-hosted Runner, Proxy oder lokaler launchd-Job. Bisher aus der Liste entfernt. (M)
+- ⚪ **Seiten mit A/B-Varianten:** `deepl.com/en/pro` liefert bei jedem Abruf zufällig eine von zwei Textvarianten, es gibt dauernd Änderungsmails (URL pausiert). Idee: Erkennen, wenn Snapshot ständig zwischen zwei Zuständen wechselt, und im Dashboard warnen oder automatisch pausieren. (M)
 - 🟡 **Laufdauer beobachten:** 52 URLs, viele auf `learn.microsoft.com` (`MAX_PER_HOST = 2`). Nach einigen Läufen Dauer prüfen, ggf. Limit oder Pause pro Host justieren. (S)
 - 🟡 **Benachrichtigung bei Workflow-Ausfall:** Scheitert `check.yml` selbst (Supabase down, Secret fehlt), kommt keine Mail. Zweiter Job mit `if: failure()` oder Überwachung „kein Lauf seit 36 h“. (S)
 - 🟡 **Backup der Datenbank:** Regelmäßiger Export von `watchlist_urls` und `watchlist_history` (z. B. wöchentlich als Artefakt). Das Supabase-Projekt ist geteilt. (S)
