@@ -5,6 +5,15 @@ import { AddUrl } from './AddUrl'
 import { EditUrl } from './EditUrl'
 import { RunsPanel } from './RunsPanel'
 
+function shortUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.hostname.replace(/^www\./, '') + (u.pathname === '/' ? '' : u.pathname.replace(/\/$/, ''))
+  } catch {
+    return url
+  }
+}
+
 const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Seite'], ['checked', 'Zuletzt geprüft'], ['changed', 'Zuletzt geändert']]
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
@@ -88,7 +97,9 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
               <tr className={e.active === false ? 'paused' : ''}>
                 <td><span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span></td>
                 <td>
-                  <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>
+                  {e.name === e.url
+                    ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Titel folgt nach der ersten Prüfung</div></>
+                    : <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>}
                   {e.error && <div className="muted">{e.error}</div>}
                   {(e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) > 1 && (
                     <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Seit mehreren Tagen dauerhaft kaputt' : undefined}>{isStuck(e) ? 'Dauerhaft kaputt, ' : ''}{e.streak} Läufe in Folge</span>
