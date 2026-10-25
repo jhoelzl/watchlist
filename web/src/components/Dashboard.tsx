@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { Preview } from '../../../supabase/functions/watchlist-preview/analyze.ts'
 import { supabase } from '../supabase'
 import { GroupsPanel } from './GroupsPanel'
 import {
@@ -34,6 +35,61 @@ async function load(): Promise<Load> {
   }
 }
 
+type PreviewState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'error'; message: string }
+  | { state: 'feed' }
+  | { state: 'ready'; data: Preview }
+
+function usePreview(url: string, selector: string, enabled: boolean): PreviewState {
+  const [preview, setPreview] = useState<PreviewState>({ state: 'idle' })
+  useEffect(() => {
+    if (!enabled || !/^https?:\/\/[^\s/]+\.[^\s/]+/i.test(url.trim())) {
+      setPreview({ state: 'idle' })
+      return
+    }
+    let stale = false
+    setPreview({ state: 'loading' })
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase.functions.invoke('watchlist-preview', { body: { url: url.trim(), selector } })
+      if (stale) return
+      if (error || data?.error) {
+        const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
+        return setPreview({ state: 'error', message: data?.error ?? body?.error ?? error?.message ?? 'Unbekannter Fehler' })
+      }
+      setPreview(data?.feed ? { state: 'feed' } : { state: 'ready', data: data as Preview })
+    }, 700)
+    return () => { stale = true; clearTimeout(timer) }
+  }, [url, selector, enabled])
+  return preview
+}
+
+function PreviewBox({ preview, js }: { preview: PreviewState; js: boolean }) {
+  if (preview.state === 'idle') return null
+  if (preview.state === 'loading') return <p className="preview muted">Vorschau wird geladen …</p>
+  if (preview.state === 'error') return <p className="preview warn">Vorschau nicht möglich: {preview.message}</p>
+  if (preview.state === 'feed') return <p className="preview ok">Feed erkannt: Einträge werden einzeln verglichen, kein Selector nötig.</p>
+  const d = preview.data
+  const share = d.total ? Math.round((d.chars / d.total) * 100) : 0
+  const bad = !d.found || d.chars < 200
+  return (
+    <div className={`preview ${bad ? 'warn' : 'ok'}`}>
+      <p>
+        {d.mode === 'selector' && !d.found
+          ? <>Selector <code>{d.selector}</code> wurde nicht gefunden.</>
+          : <><strong>{d.title || 'Ohne Titel'}</strong>: {d.selector ? <>erkannter Bereich <code>{d.selector}</code></> : 'ganze Seite'}, {d.chars} Zeichen ({share} % der Seite)</>}
+        {d.found && d.chars < 200 && ' – sehr wenig Text, Selector prüfen.'}
+      </p>
+      {d.sample && <p className="sample">{d.sample}{d.chars > 300 ? ' …' : ''}</p>}
+      {d.candidates.length > 0 && (
+        <p className="muted">Kandidaten: {d.candidates.map((c) => `${c.selector} (${c.chars})`).join(', ')}</p>
+      )}
+      {js && <p className="muted">Hinweis: Die Vorschau rendert kein JavaScript, bei „Mit JavaScript rendern“ kann das Ergebnis abweichen.</p>}
+    </div>
+  )
+}
+
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'auto', js: false }
 
 function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: boolean; setOpen: (open: boolean) => void; onAdded: () => void }) {
@@ -41,6 +97,7 @@ function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: b
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const groups = [...new Set(entries.map((e) => e.group))]
+  const preview = usePreview(form.url, form.selector, open)
   const set = (patch: Partial<typeof EMPTY_FORM>) => setForm((f) => ({ ...f, ...patch }))
   const submit = async () => {
     const built = buildRow(form, entries.map((e) => e.url), entries.length + 1)
@@ -63,6 +120,7 @@ function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: b
       <datalist id="groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
       <label>Selector<input value={form.selector} onChange={(e) => set({ selector: e.target.value })} placeholder="auto = passenden Bereich erkennen, leer = ganze Seite" /></label>
       <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Mit JavaScript rendern</label>
+      <PreviewBox preview={preview} js={form.js} />
       <div className="add-actions">
         <button className="btn primary" type="submit" disabled={busy}>Speichern</button>
         <button className="btn" type="button" onClick={() => { setOpen(false); setError('') }}>Abbrechen</button>

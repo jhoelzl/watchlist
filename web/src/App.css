@@ -279,3 +279,11 @@ p.muted:only-child, main > .muted { padding: 32px 0; text-align: center; }
 }
 .pill-count { margin-left: 6px; opacity: .65; font-size: 12px; font-variant-numeric: tabular-nums; }
 .filter-pill.active .pill-count { opacity: .85; }
+
+/* Selector-Vorschau im Formular */
+.preview { flex: 1 1 100%; margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; background: var(--surface-2, #f6f8fa); border: 1px solid var(--border, #d8dee4); }
+.preview p { margin: 0 0 4px; }
+.preview p:last-child { margin-bottom: 0; }
+.preview.ok { border-left: 4px solid #1a7f37; }
+.preview.warn { border-left: 4px solid #bf8700; }
+.preview .sample { color: #57606a; font-style: italic; overflow-wrap: anywhere; }
