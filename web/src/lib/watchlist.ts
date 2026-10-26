@@ -503,13 +503,13 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
   return { options: next }
 }
 
-export type Tab = 'urls' | 'changes' | 'groups'
+export type Tab = 'urls' | 'changes' | 'groups' | 'health'
 export type SortKey = '' | 'name' | 'status' | 'checked' | 'changed'
 export type Sort = { key: SortKey; desc: boolean }
 export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
 export const DEFAULT_VIEW: ViewState = { tab: 'changes', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
-const TABS: Tab[] = ['changes', 'urls', 'groups']
+const TABS: Tab[] = ['changes', 'urls', 'groups', 'health']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
@@ -699,3 +699,41 @@ export function sortEntries(items: Entry[], sort: Sort): Entry[] {
     return dir * x.localeCompare(y)
   })
 }
+
+/** Per-URL check history: h has one letter per check (o = ok, w = too little text, e = error), ms the fetch durations. */
+export type HealthRecord = { h: string; ms: number[] }
+
+export type HealthRow = { entry: Entry; checks: number; uptime: number | null; avgMs: number | null; stuck: boolean; noisy: boolean; results: string }
+
+export function healthRows(entries: Entry[], health: Record<string, HealthRecord>, noisy: Set<string>): HealthRow[] {
+  return entries
+    .filter((e) => e.active !== false)
+    .map((entry) => {
+      const rec = health[entry.url]
+      const results = rec?.h ?? ''
+      const ms = rec?.ms ?? []
+      return {
+        entry,
+        checks: results.length,
+        uptime: results.length ? ([...results].filter((c) => c === 'o').length / results.length) * 100 : null,
+        avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null,
+        stuck: isStuck(entry),
+        noisy: noisy.has(entry.url),
+        results,
+      }
+    })
+    .sort((a, b) => Number(b.stuck) - Number(a.stuck) || (a.uptime ?? 101) - (b.uptime ?? 101) || Number(b.noisy) - Number(a.noisy) || a.entry.name.localeCompare(b.entry.name))
+}
+
+export function healthSummary(rows: HealthRow[]): { uptime: number | null; avgMs: number | null; stuck: number; noisy: number } {
+  const checked = rows.filter((r) => r.uptime !== null)
+  const timed = rows.filter((r) => r.avgMs !== null)
+  return {
+    uptime: checked.length ? checked.reduce((a, r) => a + (r.uptime ?? 0), 0) / checked.length : null,
+    avgMs: timed.length ? Math.round(timed.reduce((a, r) => a + (r.avgMs ?? 0), 0) / timed.length) : null,
+    stuck: rows.filter((r) => r.stuck).length,
+    noisy: rows.filter((r) => r.noisy).length,
+  }
+}
+
+export const formatMs = (ms: number | null): string => (ms === null ? '-' : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`)

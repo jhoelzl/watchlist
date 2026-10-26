@@ -79,7 +79,7 @@ create policy "admins read history" on watchlist_history for select to authentic
 
 drop policy if exists "admins read state" on watchlist_state;
 create policy "admins read state" on watchlist_state for select to authenticated
-  using (key = 'status' and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+  using (key in ('status', 'runs', 'health') and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
 
 -- Authorize your account (replace the email; the account must already be registered):
 -- insert into watchlist_admins (user_id) select id from auth.users where email = 'you@example.com' on conflict do nothing;

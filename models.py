@@ -84,6 +84,11 @@ class Problem(TypedDict):
     value: int
 
 
+class HealthEntry(TypedDict):
+    h: str
+    ms: list[int]
+
+
 class RunSummary(TypedDict):
     time: str
     seconds: float

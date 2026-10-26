@@ -14,8 +14,8 @@ from config import config_errors, config_hash, is_due, merge_config
 from diagnose import DIAGNOSE_AFTER, diagnose
 from diffing import make_diff
 from errors import error_code
-from fetch import FetchResult, capture_screenshots, fetch_all
-from models import Change, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
+from fetch import FETCH_MS, FetchResult, capture_screenshots, fetch_all
+from models import Change, HealthEntry, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
 from settings import SETTINGS
 from store import FileStore, PgStore, open_store
@@ -25,6 +25,8 @@ ROOT = Path(__file__).parent
 # In the workflow, state/ lives on the "state" branch (checked out into a separate directory).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
 MAX_RUNS = 30
+HEALTH_CHECKS = 60  # Results kept per URL for the health view.
+HEALTH_TIMES = 30  # Fetch durations kept per URL.
 # Content guard: a page that previously had at least GUARD_MIN_CHARS characters and drops below
 # min_ratio (30% by default) is treated as a failed fetch (cookie wall or bot block).
 GUARD_MIN_CHARS = 500
@@ -94,6 +96,23 @@ def record_run(
     return [*runs, entry][-MAX_RUNS:]
 
 
+def record_health(
+    health: dict[str, HealthEntry], status: dict[str, UrlStatus], fetched: set[str], times: dict[str, int], keep: set[str]
+) -> dict[str, HealthEntry]:
+    """Per-URL history for the health view: "h" holds one letter per fetched check (o = ok, w = too little text, e = error)
+    and "ms" the fetch durations. URLs outside `keep` (deleted from the configuration) are dropped."""
+    out: dict[str, HealthEntry] = {u: h for u, h in health.items() if u in keep}
+    for url in fetched:
+        s = status.get(url)
+        if s is None or url not in keep:
+            continue
+        cur = out.get(url, {"h": "", "ms": []})
+        letter = {"error": "e", "warn": "w"}.get(s["status"], "o")
+        ms = [*cur["ms"], times[url]] if url in times and letter == "o" else cur["ms"]
+        out[url] = {"h": (cur["h"] + letter)[-HEALTH_CHECKS:], "ms": ms[-HEALTH_TIMES:]}
+    return out
+
+
 def plan_jobs(
     store: Store,
     entries: list[Options],
@@ -145,6 +164,7 @@ def _run(store: Store) -> bool:
     print(f"Checking {len(entries)} URL(s)...")
     jobs = plan_jobs(store, entries, st.old_status, st.http_cache, now, force=bool(only))
     fetched = fetch_all(jobs)
+    fetch_times = dict(FETCH_MS)
     for opts in entries:
         apply_result(store, st, opts["url"], check_url(store, st, opts, fetched))
 
@@ -169,6 +189,8 @@ def _run(store: Store) -> bool:
     store.add_history(new_history, SETTINGS.max_history)
     store.set_doc("meta", meta)
     store.set_doc("http", st.new_cache)
+    keep = {e["url"] for e in entries} | known
+    store.set_doc("health", record_health(store.doc("health", {}), st.status, set(fetched), fetch_times, keep))
     if not only:
         store.set_doc(
             "runs", record_run(store.doc("runs", []), st.stamp, time.monotonic() - started, st.status, len(st.changes), ok)

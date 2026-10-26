@@ -408,3 +408,16 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .diagnosis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; padding: 6px 10px; font-size: 13px; background: var(--hover); border-radius: 8px; }
 
 .change-summary { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--muted, #57606a); }
+
+.health-cards { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 16px; }
+.health-card { display: flex; flex-direction: column; min-width: 130px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.health-card strong { font-size: 22px; }
+.health-card span { font-size: 12px; color: var(--muted); }
+.health-card.bad { border-color: var(--danger-text); }
+.health-card.warn { border-color: #ca8a04; }
+.health-strip { display: inline-flex; gap: 1px; }
+.health-cell { width: 5px; height: 18px; border-radius: 1px; background: #16a34a; }
+.health-cell.w { background: #ca8a04; }
+.health-cell.e { background: #dc2626; }
+.health-bad { color: var(--danger-text); font-weight: 600; }
+.small { font-size: 12px; }
