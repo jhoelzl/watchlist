@@ -184,10 +184,12 @@ class PgStore:
 
     def add_history(self, entries: list[HistoryEntry], limit: int) -> None:
         for e in entries:
-            self._run(
-                "insert into watchlist_history (name, url, grp, time, diff, extra) values (%s, %s, %s, %s, %s, %s)",
-                (e.get("name"), e["url"], e.get("group"), e["time"], "\n".join(e.get("diff") or []), e.get("extra") or 0),
-            )
+            cols = ["name", "url", "grp", "time", "diff", "extra"]
+            vals = [e.get("name"), e["url"], e.get("group"), e["time"], "\n".join(e.get("diff") or []), e.get("extra") or 0]
+            if e.get("summary"):  # column added later; only written when present
+                cols.append("summary")
+                vals.append(e["summary"])
+            self._run(f"insert into watchlist_history ({', '.join(cols)}) values ({', '.join(['%s'] * len(cols))})", tuple(vals))
 
     def close(self) -> None:
         self.conn.close()
@@ -324,6 +326,7 @@ class RestStore(PgStore):
                 "time": e["time"],
                 "diff": "\n".join(e.get("diff") or []),
                 "extra": e.get("extra") or 0,
+                **({"summary": e["summary"]} if e.get("summary") else {}),
             }
             for e in entries
         ]

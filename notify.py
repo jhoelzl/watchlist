@@ -28,6 +28,11 @@ def mail_view(change: Change) -> tuple[list[str], int]:
     return diff, change["extra"] + len(change["diff"]) - len(diff)
 
 
+def summary_html(change: Change) -> str:
+    text = change.get("summary")
+    return f'<p style="margin:0 0 6px"><em>{html.escape(text)}</em></p>' if text else ""
+
+
 def merge_variants(changes: list[Change]) -> list[Change]:
     """Combines entries with identical diffs in the same group (e.g. tab variants ?tabs=stt|tts)."""
     merged: dict[tuple[Any, ...], Change] = {}
@@ -82,7 +87,10 @@ def render_text(changes: list[Change]) -> str:
             diff, extra = mail_view(c)
             added, removed = diff_counts(c["diff"])
             jump = fragment_url(c["url"], c["diff"])
-            out.append(f"{c['name']} (+{added} -{removed})\n{c['url']}")
+            out.append(f"{c['name']} (+{added} -{removed})")
+            if c.get("summary"):
+                out.append(c["summary"])
+            out.append(c["url"])
             if jump != c["url"]:
                 out.append(f"Changed section: {jump}")
             out.append(f"In the dashboard: {dashboard_link(c['url'])}")
@@ -135,7 +143,7 @@ def render_html(changes: list[Change]) -> str:
                 f'<h3 id="c{n}" style="margin:16px 0 4px">{html.escape(c["name"])} '
                 f'<span style="font-size:12px;font-weight:600"><span style="color:#116329">+{added}</span> '
                 f'<span style="color:#82071e">&minus;{removed}</span></span></h3>'
-                f'<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}{dash}</p>{more}'
+                f'{summary_html(c)}<p style="margin:0 0 8px">{safe_link(c["url"])}{jump_link}{dash}</p>{more}'
                 '<pre style="background:#f6f8fa;padding:8px;white-space:pre-wrap;'
                 'word-break:break-word;font-size:12px">'
             )

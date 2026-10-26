@@ -16,7 +16,7 @@ async function load(): Promise<Load> {
   const [urls, status, history, groupRows, freqRows, runRows] = await Promise.all([
     supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
-    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').order('id', { ascending: false }).limit(HISTORY_LIMIT),
+    supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').order('id', { ascending: false }).limit(HISTORY_LIMIT),
     supabase.from('watchlist_groups').select('name, position, color, icon'),
     supabase.from('watchlist_history').select('url, time').gte('created_at', since).limit(5000),
     supabase.from('watchlist_state').select('value').eq('key', 'runs').maybeSingle(),

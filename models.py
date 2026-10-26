@@ -12,6 +12,7 @@ class Options(TypedDict, total=False):
     selector: str | None
     js: bool
     screenshot: bool
+    summary: bool
     ignore: list[str]
     only_added: bool
     ignore_robots: bool
@@ -56,6 +57,7 @@ class Change(TypedDict):
     group: str | None
     diff: list[str]
     extra: int
+    summary: NotRequired[str]
     variants: NotRequired[list[str]]
 
 
@@ -71,6 +73,7 @@ class Pending(TypedDict):
     text: str
     entry: UrlStatus
     cache: Validators | None
+    summarize: NotRequired[bool]
 
 
 class Problem(TypedDict):

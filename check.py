@@ -19,6 +19,7 @@ from models import Change, HistoryEntry, Options, Pending, Problem, RunSummary, 
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
 from settings import SETTINGS
 from store import FileStore, PgStore, open_store
+from summarize import add_summaries
 
 ROOT = Path(__file__).parent
 # In the workflow, state/ lives on the "state" branch (checked out into a separate directory).
@@ -238,7 +239,14 @@ def check_url(store: Store, st: RunState, opts: Options, fetched: dict[str, Fetc
         if diff:
             change: Change = {"name": name, "url": url, "group": opts.get("group"), "diff": diff, "extra": extra}
             # Apply snapshot, history, and cache only after the email is sent successfully.
-            res.pending = {"change": change, "key": key, "text": text, "entry": entry, "cache": new_cache}
+            res.pending = {
+                "change": change,
+                "key": key,
+                "text": text,
+                "entry": entry,
+                "cache": new_cache,
+                "summarize": opts.get("summary") is not False,
+            }
             res.cache = cached or None
             return res
         print("            (removed lines only; no email)")
@@ -320,6 +328,7 @@ def send_change_mail(store: Store, st: RunState, history: list[HistoryEntry], ne
         return True
     print(f"Sending change email to {os.environ.get('MAIL_TO', '?')}...")
     sent_ok = True
+    add_summaries([(p["change"], p.get("summarize", True)) for p in st.pending])
     try:
         notify.send_mail(subject_for(st.changes), render_text(st.changes), render_html(st.changes))
     except Exception as ex:

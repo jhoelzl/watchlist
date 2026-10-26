@@ -28,6 +28,7 @@ export type Change = {
   time: string
   diff: string
   extra: number
+  summary?: string | null
 }
 
 export type StatusFilter = '' | Status | 'problem' | 'stuck'
