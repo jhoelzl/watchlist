@@ -73,15 +73,6 @@ export function Dashboard() {
                 {check.state === 'busy' ? 'Starting …' : check.state === 'waiting' || check.state === 'running' ? 'Check running …' : 'Check now'}
               </button>
             )}
-            <details className="menu">
-              <summary className="more-trigger" aria-label="More actions" title="Import, export, and bookmarklet">More <span aria-hidden="true">⌄</span></summary>
-              <div className="menu-items">
-                <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
-                <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
-                <a className="btn" ref={bookmarklet} href="#" onClick={(e) => e.preventDefault()} title="Drag this to your bookmarks bar">Bookmarklet: add page</a>
-                <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
-              </div>
-            </details>
           </div>
         </div>
       </div>
@@ -102,6 +93,17 @@ export function Dashboard() {
           <option value="">All groups</option>
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
+        {tab === 'urls' && (
+          <details className="menu toolbar-menu">
+            <summary className="btn">Import / Export</summary>
+            <div className="menu-items">
+              <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
+              <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
+              <a className="btn" ref={bookmarklet} href="#" onClick={(e) => e.preventDefault()} title="Drag this to your bookmarks bar">Bookmarklet: add page</a>
+              <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
+            </div>
+          </details>
+        )}
       </div>}
       {data && tab === 'overview' && (
         <OverviewTab
