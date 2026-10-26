@@ -66,7 +66,16 @@ Deno.serve(async (req) => {
     const { data: row } = await supabase.from("watchlist_urls").select("url").eq("url", only).maybeSingle();
     if (!row) return reply({ error: "URL not found." }, 404);
   }
-  const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main", ...(only ? { inputs: { url: only } } : {}) }) });
+  // Optional: check a whole group ("General" = URLs without a group).
+  const onlyGroup = !only && typeof body?.group === "string" ? body.group : "";
+  if (onlyGroup) {
+    const { data: rows } = await supabase.from("watchlist_urls").select("grp");
+    if (!(rows ?? []).some((r: { grp: string | null }) => (r.grp || "General") === onlyGroup)) {
+      return reply({ error: "Group not found." }, 404);
+    }
+  }
+  const inputs = only ? { url: only } : onlyGroup ? { group: onlyGroup } : undefined;
+  const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main", ...(inputs ? { inputs } : {}) }) });
   if (res.status !== 204) return reply({ error: `GitHub responded with ${res.status}.` }, 502);
   return reply({ status: "started", baseline: last?.id ?? 0 });
 });

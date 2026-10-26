@@ -71,9 +71,9 @@ export function useWatchlist() {
     return () => { stale = true; clearTimeout(timer) }
   }, [baseline])
 
-  const checkNow = async (url?: string) => {
+  const checkNow = async (target?: { url?: string; group?: string }) => {
     setCheck({ state: 'busy' })
-    const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check', { body: url ? { url } : {} })
+    const { data: res, error } = await supabase.functions.invoke('watchlist-trigger-check', { body: target ?? {} })
     if (error || res?.error) {
       const body = await (error as { context?: Response } | null)?.context?.json?.().catch(() => null)
       return setCheck({ state: 'error', message: res?.error ?? body?.error ?? error?.message ?? 'Unknown error' })

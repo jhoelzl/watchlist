@@ -128,13 +128,17 @@ def _run(store: Store) -> bool:
     new_history: list[HistoryEntry] = []
     meta = store.doc("meta", {})
     known: set[str] = set()
-    only = os.environ.get("WATCHLIST_ONLY_URL", "").strip()  # Single-URL check from the dashboard.
+    only_url = os.environ.get("WATCHLIST_ONLY_URL", "").strip()  # Single-URL check from the dashboard.
+    only_group = os.environ.get("WATCHLIST_ONLY_GROUP", "").strip()  # Whole-group check from the dashboard.
+    only = bool(only_url or only_group)
+    checked: set[str] = set()
     if only:
         known = {e["url"] for e in entries}
-        entries = [e for e in entries if e["url"] == only]
+        entries = [e for e in entries if (e["url"] == only_url if only_url else (e.get("group") or "General") == only_group)]
         if not entries:
-            print(f"[error]    URL is not in the configuration: {only}")
+            print(f"[error]    Not in the configuration: {only_url or 'group ' + only_group}")
             return False
+        checked = {e["url"] for e in entries}
 
     print(f"Checking {len(entries)} URL(s)...")
     jobs = plan_jobs(store, entries, st.old_status, st.http_cache, now, force=bool(only))
@@ -148,8 +152,8 @@ def _run(store: Store) -> bool:
 
     history = history[-SETTINGS.max_history :]
     if only:  # Other URLs remain unchanged; no heartbeat or run-history entry.
-        st.status = {**{u: s for u, s in st.old_status.items() if u in known and u != only}, **st.status}
-        st.new_cache = {**{u: c for u, c in st.http_cache.items() if u != only}, **st.new_cache}
+        st.status = {**{u: s for u, s in st.old_status.items() if u in known and u not in checked}, **st.status}
+        st.new_cache = {**{u: c for u, c in st.http_cache.items() if u not in checked}, **st.new_cache}
     else:
         try:
             send_heartbeat(now, entries, st.status, history, meta)

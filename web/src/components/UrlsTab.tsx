@@ -45,12 +45,13 @@ type Props = {
   setAdding: (open: boolean) => void
   onShowHistory: (url: string) => void
   onCheckUrl: (url: string) => void
+  onCheckGroup: (group: string) => void
   checkBusy: boolean
   onReload: () => void
   onRemove: (entry: Entry) => void
 }
 
-export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, checkBusy, onReload, onRemove }: Props) {
+export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, checkBusy, onReload, onRemove }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const total = data.entries.length
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
@@ -82,6 +83,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
             <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span>{metaOf(name)?.icon && <span className="group-icon">{metaOf(name)?.icon}</span>}{name}<span className="count">{items.length}</span>
           </h3>
           <span className="group-stats">
+            <span role="button" tabIndex={0} className={`icon-btn${checkBusy ? ' disabled' : ''}`} title="Check all pages in this group now" aria-label={`Check group ${name} now`} aria-disabled={checkBusy} onClick={(ev) => { ev.stopPropagation(); if (!checkBusy) onCheckGroup(name) }} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); if (!checkBusy) onCheckGroup(name) } }}>↻</span>
             {problems > 0 && (
               <span className="badge error">{problems} {problems === 1 ? 'problem' : 'problems'}</span>
             )}

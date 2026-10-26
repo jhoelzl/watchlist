@@ -393,3 +393,5 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .status-cell { display: flex; align-items: flex-start; gap: 8px; }
 .status-error { font-size: 12px; max-width: 260px; overflow-wrap: anywhere; }
+.icon-btn.disabled { opacity: .25; cursor: not-allowed; }
+.group-stats .icon-btn { opacity: 1; }
