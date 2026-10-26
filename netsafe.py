@@ -54,9 +54,11 @@ def _is_ip(value: str) -> bool:
 
 def safe_get(url: str, headers: dict[str, str], timeout: float) -> requests.Response:
     """requests.get that validates the URL and every redirect target before following it."""
+    jar = requests.cookies.RequestsCookieJar()  # Some sites (e.g. ai.google.dev) redirect forever without cookies.
     for _ in range(MAX_REDIRECTS + 1):
         ensure_public_url(url)
-        resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=False)
+        resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=False, cookies=jar)
+        jar.update(getattr(resp, "cookies", None) or {})
         location = resp.headers.get("Location")
         if resp.status_code not in REDIRECT_CODES or not location:
             return resp
