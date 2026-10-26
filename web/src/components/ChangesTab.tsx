@@ -88,8 +88,11 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     <>
   {pageUrl && (
     <div className="page-filter">
-      <span>History of <strong>{pageName}</strong></span>
-      <button className="btn" onClick={() => setPageUrl(null)}>Show all pages</button>
+      <span className="page-filter-label">
+        <span className="page-filter-tag">Filter active</span>
+        Only changes of <strong>{pageName}</strong>
+      </span>
+      <button className="btn" onClick={() => setPageUrl(null)} aria-label="Remove page filter and show all changes">✕ Remove filter · show all changes</button>
     </div>
   )}
   {pageUrl && !pageHistory && <p className="muted">Loading history …</p>}
