@@ -3,23 +3,23 @@
 begin;
 
 do $$
+declare
+  missing text;
 begin
-  if not exists (select 1 from watchlist_admins) then
+  if to_regclass('public.watchlist_admins') is not null
+    and not exists (select 1 from watchlist_admins) then
     raise exception 'Add at least one account to watchlist_admins before running this check.';
   end if;
 
-  if (
-    select count(*)
-    from pg_class c
-    join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public'
-      and c.relname = any(array[
-        'watchlist_settings', 'watchlist_urls', 'watchlist_snapshots',
-        'watchlist_counters', 'watchlist_history', 'watchlist_state',
-        'watchlist_admins', 'watchlist_groups'
-      ])
-  ) <> 8 then
-    raise exception 'One or more watchlist tables are missing.';
+  select string_agg(t, ', ' order by t) into missing
+  from unnest(array[
+    'watchlist_settings', 'watchlist_urls', 'watchlist_snapshots',
+    'watchlist_counters', 'watchlist_history', 'watchlist_state',
+    'watchlist_admins', 'watchlist_groups'
+  ]) as t
+  where to_regclass('public.' || t) is null;
+  if missing is not null then
+    raise exception 'Missing watchlist tables: %. Run supabase/schema.sql first (it is safe to repeat).', missing;
   end if;
 
   if exists (
