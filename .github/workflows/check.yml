@@ -35,7 +35,7 @@ jobs:
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
-      - name: Install Chromium (only when js: true is used)
+      - name: "Install Chromium (only when js: true is used)"
         run: |
           if uv run --frozen --no-dev check.py --needs-js; then
             uv run --frozen --no-dev --extra js playwright install --with-deps chromium
