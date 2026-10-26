@@ -110,3 +110,16 @@ drop policy if exists "admins manage groups" on watchlist_groups;
 create policy "admins manage groups" on watchlist_groups for all to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()))
   with check (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Screenshots of changed pages (option screenshot: true): the previous and the latest image as base64 JPEG.
+create table if not exists watchlist_screenshots (
+  key text primary key, -- sha1(url)[:16], same as watchlist_snapshots
+  url text not null,
+  img_before text,
+  img_after text,
+  updated_at timestamptz not null default now()
+);
+alter table watchlist_screenshots enable row level security;
+drop policy if exists "admins read screenshots" on watchlist_screenshots;
+create policy "admins read screenshots" on watchlist_screenshots for select to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));

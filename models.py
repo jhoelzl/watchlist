@@ -11,6 +11,7 @@ class Options(TypedDict, total=False):
     group: str
     selector: str | None
     js: bool
+    screenshot: bool
     ignore: list[str]
     only_added: bool
     ignore_robots: bool

@@ -4,6 +4,7 @@ import { HISTORY_LIMIT, PAGE_HISTORY_LIMIT, PERIODS, countLines, dayLabel, fragm
 import type { Data } from '../useWatchlist'
 import { DiffView } from './DiffView'
 import { Heatmap } from './Heatmap'
+import { ScreenshotCompare } from './ScreenshotCompare'
 
 type Props = {
   data: Data
@@ -52,6 +53,11 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     const more = (rows ?? []) as Change[]
     setExtra((cur) => [...cur, ...more])
     if (more.length < HISTORY_LIMIT) setNoMore(true)
+  }
+  // Only the latest change of a page has matching before/after screenshots.
+  const hasShots = (c: Change) => {
+    const e = data.entries.find((x) => x.url === c.url)
+    return e?.options?.screenshot === true && e.changed === c.time
   }
   const pageName = pageUrl ? (data.entries.find((e) => e.url === pageUrl)?.name ?? pageUrl) : ''
 
@@ -112,6 +118,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
             )}
           </p>
           <DiffView diff={c.diff} extra={c.extra} />
+          {hasShots(c) && <ScreenshotCompare url={c.url} />}
         </details>
       ))}
     </section>

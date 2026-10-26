@@ -395,3 +395,8 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .status-error { font-size: 12px; max-width: 260px; overflow-wrap: anywhere; }
 .icon-btn.disabled { opacity: .25; cursor: not-allowed; }
 .group-stats .icon-btn { opacity: 1; }
+
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin: 8px 0; }
+.shots figure { margin: 0; min-width: 0; }
+.shots figcaption { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.shots img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }

@@ -87,6 +87,7 @@ urls:
     only_added: true           # optional, email shows only new lines
     interval: weekly           # optional, daily or weekly: check less often (default: every run); failures are still checked every time
     js: true                   # optional, render page with Playwright (Chromium)
+    screenshot: true           # optional, keep before/after screenshots of changes (needs Chromium)
     min_ratio: 0.3             # optional, text guard (0 = off), see below
     ignore_robots: true        # optional, bypass robots.txt blocking
   - url: https://example.com/feed.xml   # RSS/Atom is detected automatically
@@ -95,6 +96,7 @@ urls:
 - For feeds, `only_added` is enabled by default (one entry per line; removed entries do not trigger an email).
 - A plain list of URLs without `defaults`/`urls` still works.
 - `js: true` is slower. The workflow installs Chromium only if `js: true` is configured somewhere (`check.py --needs-js`).
+- `screenshot: true` takes a full-page JPEG (1280 px wide, cut off at 3000 px) when the page is new or its change was saved, and keeps the previous one as "before". Both images are stored per URL (table `watchlist_screenshots`, run `supabase/schema.sql` again; files `state/<key>.before.jpg`/`.after.jpg` without a database). The dashboard shows them side by side under the latest change of that page (**Compare screenshots**). Failures are logged and never fail the run.
 
 ## Add a URL
 ```

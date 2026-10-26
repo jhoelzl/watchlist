@@ -195,6 +195,7 @@ describe('editing URLs', () => {
   it('applies changes and keeps unknown options', () => {
     const form = { ...toEditForm(entry), selector: '', js: true, onlyAdded: true, ignore: ' a+ \n\nb' }
     expect(applyEdit(entry.options ?? {}, form)).toEqual({ options: { ignore: ['a+', 'b'], min_ratio: 0.5, js: true, only_added: true } })
+    expect(applyEdit({}, { ...toEditForm(entry), selector: '', ignore: '', screenshot: true })).toEqual({ options: { screenshot: true } })
   })
   it('rejects invalid regex', () => {
     expect('error' in applyEdit({}, { ...toEditForm(entry), ignore: '(' })).toBe(true)
