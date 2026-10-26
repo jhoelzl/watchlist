@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../toast'
+import { GroupIcon, isImageIcon, resizeLogo } from './GroupIcon'
 import { DEFAULT_GROUP, GROUP_COLORS, groupChange, isHexColor, moveGroup, orderGroups, type Entry, type GroupMeta } from '../lib/watchlist'
 
 type Editing = { current: string | null; name: string; selected: Set<string> }
@@ -74,6 +75,21 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
     const position = metaOf(name)?.position ?? groups.findIndex(([n]) => n === name)
     void saveMeta([full(name, { position, ...patch })])
   }
+  const uploadLogo = async (name: string, file: File | undefined) => {
+    if (!file) return
+    setBusy(true)
+    try {
+      const blob = await resizeLogo(file)
+      const path = `${crypto.randomUUID()}.png`
+      const { error: up } = await supabase.storage.from('group-icons').upload(path, blob, { contentType: 'image/png' })
+      if (up) throw up
+      style(name, { icon: supabase.storage.from('group-icons').getPublicUrl(path).data.publicUrl })
+    } catch (err) {
+      setError(`Logo upload failed: ${err instanceof Error ? err.message : String(err)} (run the group-icons block of supabase/schema.sql)`)
+    } finally {
+      setBusy(false)
+    }
+  }
   const setActive = async (items: Entry[], active: boolean) => {
     const urls = items.filter((e) => (e.active !== false) !== active).map((e) => e.url)
     if (!urls.length) return
@@ -123,7 +139,7 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
             <tr key={name}>
               <td>
                 {groupsReady && <><button className="icon-btn" title="Move up" aria-label={`Move ${name} up`} disabled={busy} onClick={() => move(name, -1)}>↑</button><button className="icon-btn" title="Move down" aria-label={`Move ${name} down`} disabled={busy} onClick={() => move(name, 1)}>↓</button></>}{' '}
-                <span style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}`, paddingLeft: 8 } : undefined}>{metaOf(name)?.icon} {name}</span>
+                <span style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}`, paddingLeft: 8 } : undefined}><GroupIcon icon={metaOf(name)?.icon} />{name}</span>
               </td>
               <td>{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} paused)</span>}</td>
               <td>
@@ -131,7 +147,9 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
                   <select aria-label={`Colour of ${name}`} value={metaOf(name)?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })} style={{ width: 'auto' }}>
                     {GROUP_COLORS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>{' '}
-                  <input aria-label={`Icon of ${name}`} className="icon-input" maxLength={4} placeholder="Icon" defaultValue={metaOf(name)?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (metaOf(name)?.icon ?? '')) style(name, { icon: v || null }) }} />
+                  <input key={metaOf(name)?.icon ?? ''} aria-label={`Emoji of ${name}`} className="icon-input" maxLength={4} placeholder="Emoji" defaultValue={isImageIcon(metaOf(name)?.icon) ? '' : metaOf(name)?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== (metaOf(name)?.icon ?? '')) style(name, { icon: v }) }} />{' '}
+                  <label className="btn" title="Upload a logo (PNG, JPG, SVG, WebP)">Logo<input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => { void uploadLogo(name, e.target.files?.[0]); e.target.value = '' }} /></label>
+                  {metaOf(name)?.icon && <>{' '}<button className="icon-btn" title="Remove icon" aria-label={`Remove icon of ${name}`} onClick={() => style(name, { icon: null })}>×</button></>}
                 </>}
               </td>
               <td>

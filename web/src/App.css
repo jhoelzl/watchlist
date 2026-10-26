@@ -324,6 +324,7 @@ tr.edit-row td { opacity: 1; padding: 0; }
 
 .group-icon { margin-right: 6px; }
 .icon-input { width: 64px; }
+.group-logo { width: 18px; height: 18px; object-fit: contain; vertical-align: -3px; border-radius: 4px; }
 
 .spark { display: block; fill: var(--accent, #2563eb); }
 

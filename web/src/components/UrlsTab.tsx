@@ -5,6 +5,7 @@ import { AddUrl } from './AddUrl'
 import { BulkBar } from './BulkBar'
 import { DiagnosisHint } from './DiagnosisHint'
 import { EditUrl } from './EditUrl'
+import { GroupIcon } from './GroupIcon'
 import { RunsPanel } from './RunsPanel'
 
 function shortUrl(url: string): string {
@@ -89,7 +90,7 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
       <section className="composer-section" key={name} style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}` } : undefined}>
         <button className="section-heading" aria-expanded={!collapsed.has(name)} onClick={() => toggle(name)}>
           <h3>
-            <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span>{metaOf(name)?.icon && <span className="group-icon">{metaOf(name)?.icon}</span>}{name}<span className="count">{items.length}</span>
+            <span className="chevron">{collapsed.has(name) ? '▸' : '▾'}</span><GroupIcon icon={metaOf(name)?.icon} />{name}<span className="count">{items.length}</span>
           </h3>
           <span className="group-stats">
             <span role="button" tabIndex={0} className={`icon-btn${checkBusy ? ' disabled' : ''}`} title="Check all pages in this group now" aria-label={`Check group ${name} now`} aria-disabled={checkBusy} onClick={(ev) => { ev.stopPropagation(); if (!checkBusy) onCheckGroup(name) }} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); if (!checkBusy) onCheckGroup(name) } }}>↻</span>
