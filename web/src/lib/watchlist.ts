@@ -617,6 +617,11 @@ export function orderGroups(entries: Entry[], metas: GroupMeta[], includeEmpty =
 }
 
 /** New order after moving by one position (-1 up, +1 down). */
+export function sortGroupNames(order: string[], dir: 'asc' | 'desc' = 'asc'): string[] {
+  const sorted = [...order].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
+  return dir === 'asc' ? sorted : sorted.reverse()
+}
+
 export function moveGroup(order: string[], name: string, delta: -1 | 1): string[] {
   const i = order.indexOf(name)
   const j = i + delta

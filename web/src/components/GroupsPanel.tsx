@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../toast'
 import { GroupIcon, isImageIcon, resizeLogo } from './GroupIcon'
-import { DEFAULT_GROUP, GROUP_COLORS, groupChange, isHexColor, moveGroup, orderGroups, type Entry, type GroupMeta } from '../lib/watchlist'
+import { DEFAULT_GROUP, GROUP_COLORS, groupChange, isHexColor, moveGroup, orderGroups, sortGroupNames, type Entry, type GroupMeta } from '../lib/watchlist'
 
 type Editing = { current: string | null; name: string; selected: Set<string> }
 
@@ -71,6 +71,10 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
     const order = moveGroup(groups.map(([n]) => n), name, delta)
     void saveMeta(order.map((n, i) => full(n, { position: i })))
   }
+  const sortAll = (dir: 'asc' | 'desc') => {
+    const order = sortGroupNames(groups.map(([n]) => n), dir)
+    void saveMeta(order.map((n, i) => full(n, { position: i })))
+  }
   const style = (name: string, patch: Partial<GroupMeta>) => {
     const position = metaOf(name)?.position ?? groups.findIndex(([n]) => n === name)
     void saveMeta([full(name, { position, ...patch })])
@@ -112,7 +116,7 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
     <>
       <p className="muted">Groups are labels on the URLs. All URLs are kept when renaming or dissolving a group.</p>
       {!groupsReady && <p className="muted">Order, colour, icon and empty groups need the <code>watchlist_groups</code> table (run the block at the end of <code>supabase/schema.sql</code> in the SQL editor).</p>}
-      {!editing && <button className="btn primary" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}>New group</button>}
+      {!editing && <><button className="btn primary" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}>New group</button>{groupsReady && groups.length > 1 && <>{' '}<button className="btn" disabled={busy} title="Sort all groups alphabetically" onClick={() => sortAll('asc')}>Sort A–Z</button>{' '}<button className="btn" disabled={busy} title="Sort all groups in reverse alphabetical order" onClick={() => sortAll('desc')}>Sort Z–A</button></>}</>}
       {editing && (
         <form className="panel add-panel" onSubmit={(e) => { e.preventDefault(); void apply(editing.current, editing.name, editing.selected) }}>
           <label className="grow">Name<input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} autoFocus required /></label>

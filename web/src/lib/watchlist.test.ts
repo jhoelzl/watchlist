@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -251,6 +251,11 @@ describe('group order', () => {
     expect(orderGroups(entries, metas).map(([n]) => n)).toEqual(['Empty', 'A', 'B', 'C'])
     expect(orderGroups(entries, metas, false).map(([n]) => n)).toEqual(['A', 'B', 'C'])
   })
+  it('sortGroupNames sorts case-insensitively and naturally', () => {
+    expect(sortGroupNames(['b', 'Österreich', 'a', 'C', 'g10', 'g2'])).toEqual(['a', 'b', 'C', 'g2', 'g10', 'Österreich'])
+    expect(sortGroupNames(['a', 'c', 'b'], 'desc')).toEqual(['c', 'b', 'a'])
+  })
+
   it('moveGroup and colour validation', () => {
     expect(moveGroup(['a', 'b', 'c'], 'b', -1)).toEqual(['b', 'a', 'c'])
     expect(moveGroup(['a', 'b'], 'a', -1)).toEqual(['a', 'b'])
