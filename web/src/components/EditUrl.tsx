@@ -58,6 +58,7 @@ export function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: ()
       <label className="check"><input type="checkbox" checked={form.js} onChange={(e) => set({ js: e.target.checked })} />Render with JavaScript</label>
       <label className="check"><input type="checkbox" checked={form.screenshot} onChange={(e) => set({ screenshot: e.target.checked })} />Screenshot on changes</label>
       <label className="check"><input type="checkbox" checked={form.onlyAdded} onChange={(e) => set({ onlyAdded: e.target.checked })} />Report additions only</label>
+      <label className="check" title="Silently accept page states seen before (A/B tests)"><input type="checkbox" checked={form.abTest} onChange={(e) => set({ abTest: e.target.checked })} />A/B test page</label>
       <label className="check"><input type="checkbox" checked={form.paused} onChange={(e) => set({ paused: e.target.checked })} />Paused (not checked)</label>
       <PreviewBox preview={preview} js={form.js} />
       <div className="add-actions">
