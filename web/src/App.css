@@ -587,3 +587,47 @@ main { padding-top: 28px; }
   .overview-metric.attention .metric-icon, .overview-status.warn, .overview-status.new { color: #ffd180; background: #3b301b; }
   .overview-status.error { color: #ffaaa3; background: #3b2528; }
 }
+
+/* Compact app header and one-row section navigation */
+.site-header { position: relative; top: auto; backdrop-filter: none; }
+.header-inner { height: 48px; }
+.brand { gap: 8px; }
+.brand span { width: 27px; height: 27px; border-radius: 8px; font-size: 14px; }
+.brand h1 { font-size: 15px; }
+main { padding-top: 16px; }
+.dashboard-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -16px -24px 18px;
+  padding: 5px 24px;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+.dashboard-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 14px; max-width: 1160px; margin: 0 auto; }
+.dashboard-nav .tabs { flex: 1; width: auto; min-width: 0; margin: 0; padding: 0; overflow: visible; background: transparent; border: 0; }
+.dashboard-nav .tab { padding: 8px 12px; }
+.dashboard-nav .tab.active { background: var(--surface); }
+.dashboard-nav .intro-actions { flex: 0 0 auto; gap: 7px; }
+.dashboard-nav .intro-actions .btn { height: 36px; padding: 0 12px; font-size: 13px; }
+.more-trigger { display: inline-flex; align-items: center; gap: 5px; height: 36px; padding: 0 9px; color: var(--muted); background: transparent; border: 0; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; list-style: none; }
+.more-trigger::-webkit-details-marker { display: none; }
+.more-trigger:hover, .menu[open] > .more-trigger { color: var(--text); background: var(--hover); }
+.more-trigger span { font-size: 12px; }
+.menu-items { top: calc(100% + 4px); }
+
+@media (max-width: 760px) {
+  .dashboard-nav { margin-right: -16px; margin-left: -16px; padding: 6px 16px; }
+  .dashboard-nav-inner { display: grid; gap: 4px; }
+  .dashboard-nav .tabs { width: 100%; overflow-x: auto; }
+  .dashboard-nav .intro-actions { justify-content: flex-end; }
+}
+@media (max-width: 640px) {
+  main { padding-top: 12px; }
+  .dashboard-nav { margin-top: -12px; padding-top: 5px; }
+  .dashboard-nav .tab { padding: 7px 10px; font-size: 12px; }
+  .dashboard-nav .intro-actions { gap: 6px; }
+  .dashboard-nav .intro-actions .btn { height: 34px; padding: 0 10px; font-size: 12px; }
+  .more-trigger { height: 34px; }
+}
