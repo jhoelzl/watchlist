@@ -19,6 +19,13 @@ class Options(TypedDict, total=False):
     interval: str
 
 
+class Diagnosis(TypedDict):
+    """Suggested fix for a failing URL. fix = {"type": "js" | "url" | "ignore_robots" | "selector", "url": new URL}."""
+
+    text: str
+    fix: dict[str, str]
+
+
 class Validators(TypedDict, total=False):
     """HTTP cache values (ETag, Last-Modified) and the hash of the options they apply to."""
 
@@ -38,6 +45,7 @@ class UrlStatus(TypedDict, total=False):
     error: str
     code: str
     streak: int
+    diagnosis: Diagnosis
 
 
 class Change(TypedDict):

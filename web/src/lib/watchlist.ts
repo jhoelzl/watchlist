@@ -3,6 +3,9 @@ import settings from '../../../settings.json'
 
 export type Status = 'ok' | 'new' | 'error' | 'warn' | 'pending' | 'paused'
 
+export type Fix = { type: 'js' | 'url' | 'ignore_robots' | 'selector'; url?: string }
+export type Diagnosis = { text: string; fix: Fix }
+
 export type Entry = {
   url: string
   name: string
@@ -12,6 +15,7 @@ export type Entry = {
   status: Status
   error: string
   streak?: number
+  diagnosis?: Diagnosis
   active?: boolean
   options?: Record<string, unknown>
 }
@@ -55,6 +59,7 @@ export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
       status: u.active === false ? 'paused' : (s.status ?? 'pending'),
       error: s.error ?? '',
       streak: s.streak,
+      diagnosis: s.diagnosis,
       active: u.active !== false,
       options: u.options ?? {},
     }
@@ -439,6 +444,23 @@ export function noisyUrls(changes: Pick<Change, 'url' | 'diff'>[], entries: Entr
     if (found.length) out.set(e.url, found)
   }
   return out
+}
+
+/** Applies a suggested fix. Returns the new options and, for a moved page, the new URL. Unknown options are preserved. */
+export function applyFix(options: Record<string, unknown>, url: string, fix: Fix): { options: Record<string, unknown>; url: string } | { error: string } {
+  switch (fix.type) {
+    case 'js': return { options: { ...options, js: true }, url }
+    case 'ignore_robots': return { options: { ...options, ignore_robots: true }, url }
+    case 'selector': return { options: { ...options, selector: 'auto' }, url }
+    case 'url':
+      try {
+        const next = new URL(fix.url ?? '')
+        if (next.protocol !== 'http:' && next.protocol !== 'https:') return { error: 'The suggested URL is not http(s).' }
+        return { options, url: next.href }
+      } catch {
+        return { error: 'The suggested URL is invalid.' }
+      }
+  }
 }
 
 export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; paused: boolean; interval: string }

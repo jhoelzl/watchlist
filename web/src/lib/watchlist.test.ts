@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -402,5 +402,18 @@ describe('noise learning', () => {
     const out = noisyUrls(changes, entries)
     expect([...out.keys()]).toEqual(['https://noisy'])
     expect(out.get('https://noisy')?.[0].count).toBe(2)
+  })
+})
+
+describe('applyFix', () => {
+  it('sets options and keeps the rest', () => {
+    expect(applyFix({ min_ratio: 0.5 }, 'https://a', { type: 'js' })).toEqual({ options: { min_ratio: 0.5, js: true }, url: 'https://a' })
+    expect(applyFix({}, 'https://a', { type: 'selector' })).toEqual({ options: { selector: 'auto' }, url: 'https://a' })
+    expect(applyFix({}, 'https://a', { type: 'ignore_robots' })).toEqual({ options: { ignore_robots: true }, url: 'https://a' })
+  })
+  it('replaces the URL only with a valid http(s) address', () => {
+    expect(applyFix({ js: true }, 'https://a', { type: 'url', url: 'https://b/new' })).toEqual({ options: { js: true }, url: 'https://b/new' })
+    expect('error' in applyFix({}, 'https://a', { type: 'url', url: 'javascript:alert(1)' })).toBe(true)
+    expect('error' in applyFix({}, 'https://a', { type: 'url' })).toBe(true)
   })
 })
