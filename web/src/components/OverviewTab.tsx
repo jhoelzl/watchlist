@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { STATUS_LABEL, formatRelativeTime, groupActivityLast7Days, isStuck, summarize, type StatusFilter } from '../lib/watchlist'
+import { GroupIcon } from './GroupIcon'
 import type { Data } from '../useWatchlist'
 
 type Props = {
@@ -158,7 +159,7 @@ export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, 
                 onClick={() => onOpenGroupChanges(item.group)}
               >
                 <span className="group-activity-label">
-                  <strong>{item.group}</strong>
+                  <strong><GroupIcon icon={data.metas.find((m) => m.name === item.group)?.icon} />{item.group}</strong>
                   <small>{item.pages} monitored {item.pages === 1 ? 'page' : 'pages'}</small>
                 </span>
                 <span className="group-activity-track" aria-hidden="true">
