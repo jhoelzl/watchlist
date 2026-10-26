@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, orderGroups, sortEntries, sparkBars, type Entry, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
+import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, type Entry, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { AddUrl } from './AddUrl'
 import { EditUrl } from './EditUrl'
@@ -57,6 +57,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
   const toggle = (name: string) => setCollapsed((c) => { const n = new Set(c); if (!n.delete(name)) n.add(name); return n })
   const count = shown.reduce((n, [, items]) => n + items.length, 0)
+  const noisy = useMemo(() => noisyUrls(data.changes, data.entries), [data.changes, data.entries])
   const metaOf = (name: string) => data.metas.find((m) => m.name === name)
   return (
     <>
@@ -111,6 +112,11 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
                   {e.name === e.url
                     ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Title follows after the first check</div></>
                     : <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>}
+                  {noisy.has(e.url) && (
+                    <button className="badge warn noise-badge" title="Recurring changes that differ only in numbers or ids (timestamps, counters). Click to review the ignore suggestions." onClick={() => setEditing(e.url)}>
+                      Noisy: {noisy.get(e.url)?.length} ignore {noisy.get(e.url)?.length === 1 ? 'suggestion' : 'suggestions'}
+                    </button>
+                  )}
                   {(e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) > 1 && (
                     <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Permanently broken for several days' : undefined}>{isStuck(e) ? 'Permanently broken, ' : ''}{e.streak} runs in a row</span>
                   )}

@@ -389,8 +389,13 @@ const MAX_SUGGESTION_LENGTH = 160
 function lineToPattern(line: string): string {
   return line
     .trim()
-    .split(/(\d+|\s+)/)
-    .map((part) => (/^\d+$/.test(part) ? '\\d+' : /^\s+$/.test(part) ? '\\s+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .split(/(\b[0-9a-f]{8,}\b|\d+|\s+)/)
+    .map((part) => {
+      if (/^\d+$/.test(part)) return '\\d+'
+      if (/^\s+$/.test(part)) return '\\s+'
+      if (/^[0-9a-f]{8,}$/.test(part) && /\d/.test(part)) return '[0-9a-f]+' // build hashes, session or commit ids
+      return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    })
     .join('')
 }
 
@@ -420,6 +425,20 @@ export function suggestIgnores(diffs: string[], existing: string[] = [], minCoun
     .filter(([pattern, v]) => !existing.includes(pattern) && !compiled.some((re) => re.test(v.example)))
     .map(([pattern, v]) => ({ pattern, example: v.example, count: v.entries }))
     .sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern))
+}
+
+/** Noise suggestions for every URL, from the changes already loaded. Only URLs with at least one suggestion are returned. */
+export function noisyUrls(changes: Pick<Change, 'url' | 'diff'>[], entries: Entry[]): Map<string, IgnoreSuggestion[]> {
+  const diffs = new Map<string, string[]>()
+  for (const c of changes) diffs.set(c.url, [...(diffs.get(c.url) ?? []), c.diff])
+  const out = new Map<string, IgnoreSuggestion[]>()
+  for (const e of entries) {
+    const ignore = e.options?.ignore
+    const existing = Array.isArray(ignore) ? ignore.filter((x): x is string => typeof x === 'string') : typeof ignore === 'string' ? [ignore] : []
+    const found = suggestIgnores(diffs.get(e.url) ?? [], existing)
+    if (found.length) out.set(e.url, found)
+  }
+  return out
 }
 
 export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; paused: boolean; interval: string }
