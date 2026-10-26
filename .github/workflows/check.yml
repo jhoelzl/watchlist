@@ -9,6 +9,10 @@ on:
         description: "Check only this URL (leave blank for all)"
         required: false
         default: ""
+      group:
+        description: "Check only this group (leave blank for all)"
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -43,6 +47,7 @@ jobs:
       - run: uv run --frozen --no-dev --extra js check.py
         env:
           WATCHLIST_ONLY_URL: ${{ inputs.url }}
+          WATCHLIST_ONLY_GROUP: ${{ inputs.group }}
       - name: Alert on failure
         if: failure()
         run: |

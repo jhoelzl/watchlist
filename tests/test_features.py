@@ -655,6 +655,29 @@ def test_run_single_url_only_touches_that_url(env, monkeypatch):
         assert json.loads((tmp / "state" / "runs.json").read_text()) == runs_before
 
 
+def test_run_single_group(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text(
+        "urls:\n  - url: https://a\n    group: G\n  - url: https://b\n    group: G\n  - url: https://c\n"
+    )
+    calls: list[str] = []
+
+    def fake_fetch(url, *a, **k):
+        calls.append(url)
+        return ("T", "some text " * 30, False, {})
+
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
+    monkeypatch.setenv("WATCHLIST_ONLY_GROUP", "G")
+    assert check.run() is True
+    assert sorted(calls) == ["https://a", "https://b"]
+    calls.clear()
+    monkeypatch.setenv("WATCHLIST_ONLY_GROUP", "General")
+    assert check.run() is True
+    assert calls == ["https://c"]
+    monkeypatch.setenv("WATCHLIST_ONLY_GROUP", "Nope")
+    assert check.run() is False
+
+
 def test_run_single_url_unknown_fails(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n")
