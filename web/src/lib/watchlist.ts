@@ -757,3 +757,38 @@ export function parseAddHash(hash: string): Prefill | null {
 export function bookmarkletCode(dashboard: string): string {
   return `javascript:(()=>{window.open(${JSON.stringify(dashboard)}+'#add='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'_blank')})()`
 }
+
+export type BulkOption = { id: string; label: string; key: string; value: unknown }
+
+/** Options that can be set (or removed again) on several URLs at once; value undefined removes the key. */
+export const BULK_OPTIONS: BulkOption[] = [
+  { id: 'js-on', label: 'Render with JavaScript: on', key: 'js', value: true },
+  { id: 'js-off', label: 'Render with JavaScript: off', key: 'js', value: undefined },
+  { id: 'shot-on', label: 'Screenshot on changes: on', key: 'screenshot', value: true },
+  { id: 'shot-off', label: 'Screenshot on changes: off', key: 'screenshot', value: undefined },
+  { id: 'added-on', label: 'Only added text: on', key: 'only_added', value: true },
+  { id: 'added-off', label: 'Only added text: off', key: 'only_added', value: undefined },
+  { id: 'summary-off', label: 'AI summary: off', key: 'summary', value: false },
+  { id: 'summary-on', label: 'AI summary: on (default)', key: 'summary', value: undefined },
+  { id: 'daily', label: 'Check interval: daily', key: 'interval', value: 'daily' },
+  { id: 'weekly', label: 'Check interval: weekly', key: 'interval', value: 'weekly' },
+  { id: 'every-run', label: 'Check interval: every run', key: 'interval', value: undefined },
+]
+
+export function applyBulkOption(options: Record<string, unknown>, opt: BulkOption): Record<string, unknown> {
+  const next = { ...options }
+  if (opt.value === undefined) delete next[opt.key]
+  else next[opt.key] = opt.value
+  return next
+}
+
+/** Selection after a click on a group checkbox: selects all of the group's URLs, or none if all were selected. */
+export function toggleGroupSelection(selected: Set<string>, urls: string[]): Set<string> {
+  const next = new Set(selected)
+  const all = urls.length > 0 && urls.every((u) => next.has(u))
+  for (const u of urls) {
+    if (all) next.delete(u)
+    else next.add(u)
+  }
+  return next
+}

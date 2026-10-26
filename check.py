@@ -149,15 +149,16 @@ def _run(store: Store) -> bool:
     new_history: list[HistoryEntry] = []
     meta = store.doc("meta", {})
     known: set[str] = set()
-    only_url = os.environ.get("WATCHLIST_ONLY_URL", "").strip()  # Single-URL check from the dashboard.
+    # Check of one or several URLs from the dashboard (newline-separated).
+    only_urls = {u.strip() for u in os.environ.get("WATCHLIST_ONLY_URL", "").splitlines() if u.strip()}
     only_group = os.environ.get("WATCHLIST_ONLY_GROUP", "").strip()  # Whole-group check from the dashboard.
-    only = bool(only_url or only_group)
+    only = bool(only_urls or only_group)
     checked: set[str] = set()
     if only:
         known = {e["url"] for e in entries}
-        entries = [e for e in entries if (e["url"] == only_url if only_url else (e.get("group") or "General") == only_group)]
+        entries = [e for e in entries if (e["url"] in only_urls if only_urls else (e.get("group") or "General") == only_group)]
         if not entries:
-            print(f"[error]    Not in the configuration: {only_url or 'group ' + only_group}")
+            print(f"[error]    Not in the configuration: {', '.join(sorted(only_urls)) or 'group ' + only_group}")
             return False
         checked = {e["url"] for e in entries}
 

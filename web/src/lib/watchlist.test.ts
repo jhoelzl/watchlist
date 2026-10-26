@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -457,5 +457,30 @@ describe('bookmarklet', () => {
     expect(code.startsWith('javascript:')).toBe(true)
     expect(code).toContain('"https://x.github.io/watchlist/"')
     expect(code).toContain('encodeURIComponent(location.href)')
+  })
+})
+
+describe('bulk actions', () => {
+  const opt = (id: string) => BULK_OPTIONS.find((o) => o.id === id)!
+
+  it('sets and removes options without touching others', () => {
+    expect(applyBulkOption({ ignore: ['x'] }, opt('js-on'))).toEqual({ ignore: ['x'], js: true })
+    expect(applyBulkOption({ js: true, ignore: ['x'] }, opt('js-off'))).toEqual({ ignore: ['x'] })
+    expect(applyBulkOption({}, opt('summary-off'))).toEqual({ summary: false })
+    expect(applyBulkOption({ interval: 'daily' }, opt('every-run'))).toEqual({})
+    expect(applyBulkOption({}, opt('weekly'))).toEqual({ interval: 'weekly' })
+  })
+
+  it('does not mutate the input', () => {
+    const o = { js: true }
+    applyBulkOption(o, opt('js-off'))
+    expect(o).toEqual({ js: true })
+  })
+
+  it('toggles a whole group selection', () => {
+    const none = toggleGroupSelection(new Set(['z']), ['a', 'b'])
+    expect([...none].sort()).toEqual(['a', 'b', 'z'])
+    expect([...toggleGroupSelection(none, ['a', 'b'])]).toEqual(['z'])
+    expect([...toggleGroupSelection(new Set(['a']), ['a', 'b'])].sort()).toEqual(['a', 'b'])
   })
 })

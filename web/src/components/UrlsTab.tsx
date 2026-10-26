@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, type Entry, type Prefill, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
+import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, toggleGroupSelection, type Entry, type Prefill, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { AddUrl } from './AddUrl'
+import { BulkBar } from './BulkBar'
 import { DiagnosisHint } from './DiagnosisHint'
 import { EditUrl } from './EditUrl'
 import { RunsPanel } from './RunsPanel'
@@ -48,13 +49,17 @@ type Props = {
   onShowHistory: (url: string) => void
   onCheckUrl: (url: string) => void
   onCheckGroup: (group: string) => void
+  onCheckUrls: (urls: string[]) => void
   checkBusy: boolean
   onReload: () => void
   onRemove: (entry: Entry) => void
 }
 
-export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, checkBusy, onReload, onRemove }: Props) {
+export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, onCheckUrls, checkBusy, onReload, onRemove }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const selectedEntries = data.entries.filter((e) => selected.has(e.url))
+  const toggleOne = (url: string) => setSelected((s) => { const n = new Set(s); if (!n.delete(url)) n.add(url); return n })
   const total = data.entries.length
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
   const toggle = (name: string) => setCollapsed((c) => { const n = new Set(c); if (!n.delete(name)) n.add(name); return n })
@@ -63,6 +68,7 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
   const metaOf = (name: string) => data.metas.find((m) => m.name === name)
   return (
     <>
+  <BulkBar selected={selectedEntries} groups={data.entries.map((e) => e.group).filter((g, i, a) => g && a.indexOf(g) === i)} checkBusy={checkBusy} onCheck={onCheckUrls} onClear={() => setSelected(new Set())} onChanged={() => { setSelected(new Set()); onReload() }} />
   <RunsPanel runs={data.runs ?? []} />
   <AddUrl prefill={prefill} entries={data.entries ?? []} open={adding} setOpen={setAdding} onAdded={() => onReload()} />
   <div className="filter-bar">
@@ -95,7 +101,7 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
           </span>
         </button>
         {!collapsed.has(name) && <table>
-          <thead><tr>{SORT_COLUMNS.map(([key, label]) => (
+          <thead><tr><th className="select-col"><input type="checkbox" aria-label={`Select all in ${name}`} checked={items.length > 0 && items.every((e) => selected.has(e.url))} onChange={() => setSelected((s) => toggleGroupSelection(s, items.map((e) => e.url)))} /></th>{SORT_COLUMNS.map(([key, label]) => (
             <th key={key} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : 'none'}>
               <button className="sort-btn" onClick={() => setSort(nextSort(sort, key))}>{label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</button>
             </th>
@@ -103,7 +109,8 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
           <tbody>
             {sortEntries(items, sort).map((e) => (
               <Fragment key={e.url}>
-              <tr className={e.active === false ? 'paused' : ''}>
+              <tr className={`${e.active === false ? 'paused' : ''}${selected.has(e.url) ? ' selected' : ''}`}>
+                <td className="select-col"><input type="checkbox" aria-label={`Select ${e.name}`} checked={selected.has(e.url)} onChange={() => toggleOne(e.url)} /></td>
                 <td>
                   <div className="status-cell">
                     <span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span>
@@ -135,7 +142,7 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
                 </td>
               </tr>
               {editing === e.url && (
-                <tr className="edit-row"><td colSpan={6}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onReload() }} /></td></tr>
+                <tr className="edit-row"><td colSpan={7}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onReload() }} /></td></tr>
               )}
               </Fragment>
             ))}

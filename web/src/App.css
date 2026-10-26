@@ -421,3 +421,9 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .health-cell.e { background: #dc2626; }
 .health-bad { color: var(--danger-text); font-weight: 600; }
 .small { font-size: 12px; }
+
+.bulk-bar { position: sticky; top: 130px; z-index: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent, #2563eb); background: var(--bg, #fff); box-shadow: 0 4px 14px rgb(0 0 0 / 12%); }
+.bulk-field { display: inline-flex; gap: 6px; align-items: center; }
+.bulk-field input { width: 190px; }
+.select-col { width: 28px; padding-right: 0; }
+tr.selected { background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent); }
