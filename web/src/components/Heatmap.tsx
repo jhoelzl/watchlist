@@ -14,7 +14,7 @@ export function Heatmap({ times, selected, onSelect }: Props) {
         {selected && <button className="btn" onClick={() => onSelect(null)}>Reset day {selected}</button>}
       </div>
       <div className="heatmap-body">
-        <div className="heatmap-weekdays" aria-hidden="true">{WEEKDAYS.map((d, i) => <span key={i}>{d}</span>)}</div>
+        <div className="heatmap-weekdays" aria-hidden="true">{WEEKDAYS.map((d, i) => <span key={i} style={{ gridRow: i + 2 }}>{d}</span>)}</div>
         <div className="heatmap-grid" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
           {months.map((m, i) => <span className="heatmap-month" key={`m${i}`} style={{ gridColumn: i + 1, gridRow: 1 }}>{m}</span>)}
           {columns.map((col, w) => col.map((cell, d) => cell

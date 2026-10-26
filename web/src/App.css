@@ -372,7 +372,6 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .heatmap-body { display: flex; gap: 8px; }
 .heatmap-weekdays { display: grid; grid-template-rows: 14px repeat(7, 1fr); gap: 3px; font-size: 10px; color: var(--muted); line-height: 1; }
 .heatmap-weekdays span { display: flex; align-items: center; }
-.heatmap-weekdays span:first-child { grid-row: 2; }
 .heatmap-grid { flex: 1; display: grid; grid-template-rows: 14px repeat(7, auto); gap: 3px; min-width: 0; }
 .heatmap-month { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: visible; }
 .heat-cell { display: block; aspect-ratio: 1; min-width: 8px; max-width: 18px; width: 100%; padding: 0; border: 0; border-radius: 3px; background: var(--line); cursor: pointer; }
