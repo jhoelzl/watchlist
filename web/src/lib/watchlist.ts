@@ -575,6 +575,30 @@ export function buildHash(v: ViewState): string {
 }
 
 export type GroupMeta = { name: string; position: number; color: string | null; icon: string | null }
+export type GroupActivity = { group: string; pages: number; changes: number }
+
+export function groupActivityLast7Days(entries: Entry[], groupChanges: Record<string, string[]>, groupNames: string[], now = Date.now()): GroupActivity[] {
+  const activity = new Map(groupNames.map((group) => [group, { pages: 0, changes: 0 }]))
+  const since = now - 7 * 24 * 60 * 60 * 1000
+
+  for (const entry of entries) {
+    const group = activity.get(entry.group) ?? { pages: 0, changes: 0 }
+    group.pages += 1
+    activity.set(entry.group, group)
+  }
+  for (const [name, values] of Object.entries(groupChanges)) {
+    const group = activity.get(name)
+    if (!group) continue
+    group.changes = values.reduce((count, value) => {
+      const time = Date.parse(value)
+      return Number.isFinite(time) && time >= since && time <= now ? count + 1 : count
+    }, 0)
+  }
+
+  return [...activity].map(([group, count]) => ({ group, ...count }))
+    .sort((a, b) => b.changes - a.changes || a.group.localeCompare(b.group, 'en-GB', { sensitivity: 'base' }))
+}
+
 export const GROUP_COLORS: [string, string][] = [
   ['', 'None'], ['#2563eb', 'Blue'], ['#16a34a', 'Green'], ['#d97706', 'Orange'], ['#dc2626', 'Red'], ['#9333ea', 'Purple'], ['#0891b2', 'Teal'], ['#64748b', 'Grey'],
 ]

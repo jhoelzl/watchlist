@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { STATUS_LABEL, formatRelativeTime, isStuck, summarize, type StatusFilter } from '../lib/watchlist'
+import { useEffect, useMemo, useState } from 'react'
+import { STATUS_LABEL, formatRelativeTime, groupActivityLast7Days, isStuck, summarize, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
   onShowHistory: (url: string) => void
   onOpenUrls: (filter: StatusFilter) => void
   onOpenChanges: () => void
+  onOpenGroupChanges: (group: string) => void
 }
 
 function displayTime(value: string): string {
@@ -19,7 +20,7 @@ function displayTime(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, onShowHistory, onOpenUrls, onOpenChanges }: Props) {
+export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, onShowHistory, onOpenUrls, onOpenChanges, onOpenGroupChanges }: Props) {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000)
@@ -27,6 +28,11 @@ export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, 
   }, [])
 
   const summary = summarize(data.entries)
+  const groupActivity = useMemo(
+    () => groupActivityLast7Days(data.entries, data.groupFreq, data.metas.map((meta) => meta.name), now),
+    [data.entries, data.groupFreq, data.metas, now],
+  )
+  const maxGroupChanges = Math.max(0, ...groupActivity.map((item) => item.changes))
   const attention = data.entries
     .filter((entry) => entry.status === 'error' || entry.status === 'warn')
     .sort((a, b) => {
@@ -136,6 +142,38 @@ export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, 
           )}
         </section>
       </div>
+
+      <section className="overview-card group-activity-card">
+        <div className="overview-card-head">
+          <div><span className="eyebrow">THE LAST 7 DAYS</span><h3>Activity by group</h3></div>
+          <span className="group-activity-hint">Select a group to view its changes</span>
+        </div>
+        {groupActivity.length ? (
+          <div className="group-activity-list">
+            {groupActivity.map((item) => (
+              <button
+                className="group-activity-row"
+                key={item.group}
+                aria-label={`View ${item.group} changes from the last 7 days`}
+                onClick={() => onOpenGroupChanges(item.group)}
+              >
+                <span className="group-activity-label">
+                  <strong>{item.group}</strong>
+                  <small>{item.pages} monitored {item.pages === 1 ? 'page' : 'pages'}</small>
+                </span>
+                <span className="group-activity-track" aria-hidden="true">
+                  <span style={{ width: maxGroupChanges ? `${(item.changes / maxGroupChanges) * 100}%` : '0%' }} />
+                </span>
+                <span className="group-activity-count">
+                  <strong>{item.changes}</strong><small>{item.changes === 1 ? 'change' : 'changes'}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="overview-empty"><span aria-hidden="true">◎</span><div><strong>No groups yet</strong><p>Organize URLs into groups to see their recent activity here.</p></div></div>
+        )}
+      </section>
     </div>
   )
 }

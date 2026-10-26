@@ -559,6 +559,18 @@ main { padding-top: 28px; }
 .change-dot { flex: 0 0 9px; width: 9px; height: 9px; margin: 0 9px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 4px var(--accent-soft); }
 .overview-arrow { color: var(--muted); font-size: 16px; }
 .overview-change-row:hover .overview-arrow { color: var(--accent); transform: translateX(2px); }
+.group-activity-hint { color: var(--muted); font-size: 11px; }
+.group-activity-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.group-activity-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(44px, .65fr) 72px; align-items: center; gap: 12px; min-width: 0; padding: 12px 8px; color: var(--text); background: transparent; border: 0; border-top: 1px solid var(--line); text-align: left; }
+.group-activity-row:nth-child(-n+2) { border-top: 0; }
+.group-activity-row:hover { background: var(--subtle); }
+.group-activity-label { display: grid; min-width: 0; gap: 3px; }
+.group-activity-label strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.group-activity-label small, .group-activity-count small { color: var(--muted); font-size: 10px; font-weight: 400; }
+.group-activity-track { display: block; height: 6px; overflow: hidden; background: var(--hover); border-radius: 99px; }
+.group-activity-track span { display: block; height: 100%; min-width: 3px; background: var(--accent); border-radius: inherit; transition: width .2s ease; }
+.group-activity-count { display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; white-space: nowrap; }
+.group-activity-count strong { font-size: 13px; font-variant-numeric: tabular-nums; }
 
 @media (max-width: 820px) {
   .overview-hero-art { right: 2%; opacity: .7; }
@@ -585,6 +597,11 @@ main { padding-top: 28px; }
   .metric-value { font-size: 21px; }
   .metric-label { font-size: 11px; }
   .overview-card { padding: 17px 16px; }
+  .group-activity-list { grid-template-columns: 1fr; }
+  .group-activity-row:nth-child(2) { border-top: 1px solid var(--line); }
+  .group-activity-row:first-child { border-top: 0; }
+  .group-activity-row { grid-template-columns: minmax(0, 1fr) minmax(44px, .6fr) 66px; gap: 9px; padding-right: 4px; padding-left: 4px; }
+  .group-activity-hint { display: none; }
 }
 @media (prefers-color-scheme: dark) {
   .overview-metric.good .metric-icon, .overview-empty > span { color: #7de0a8; background: #1b382b; }
