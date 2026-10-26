@@ -44,7 +44,8 @@ export function EditUrl({ entry, onClose, onSaved }: { entry: Entry; onClose: ()
       <label className="grow">Ignore (one regex per line)<textarea rows={3} value={form.ignore} onChange={(e) => set({ ignore: e.target.value })} placeholder="e.g. Last updated.*" /></label>
       {suggestions.length > 0 && (
         <div className="grow suggestions">
-          <strong>Ignore suggestions</strong> <span className="muted">(recurring lines that differ only in numbers)</span>
+          <strong>Ignore suggestions</strong> <span className="muted">(recurring lines that differ only in numbers or ids)</span>
+          {suggestions.length > 1 && <button className="btn" type="button" onClick={() => set({ ignore: [...patterns, ...suggestions.map((s) => s.pattern)].join('\n') })}>Apply all ({suggestions.length})</button>}
           {suggestions.slice(0, 5).map((s) => (
             <div key={s.pattern} className="suggestion">
               <code>{s.pattern}</code>

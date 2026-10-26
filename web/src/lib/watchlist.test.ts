@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -376,5 +376,31 @@ describe('heatmap', () => {
     const h = heatmap(['2026-01-01 06:00 UTC'], new Date('2026-10-21T12:00:00Z'), 2)
     expect(h.columns[1].slice(3)).toEqual([null, null, null, null])
     expect(h.total).toBe(0)
+  })
+})
+
+describe('noise learning', () => {
+  const d = (a: string, b: string) => `@@ -1 +1 @@\n-${a}\n+${b}\n Rest`
+  it('recognizes hex ids such as build hashes', () => {
+    const s = suggestIgnores([d('Build 3fa9c01b2d', 'Build 7c1d44e9a0'), d('Build 7c1d44e9a0', 'Build 90ab12cd34')])
+    expect(s).toHaveLength(1)
+    expect(new RegExp(s[0].pattern).test('Build 1234abcd99')).toBe(true)
+  })
+  it('does not treat plain words as ids', () => {
+    expect(suggestIgnores([d('Release notes', 'Release news'), d('Release news', 'Release notes')])).toHaveLength(0)
+  })
+  it('lists only URLs with suggestions and skips patterns that are already ignored', () => {
+    const entries = toEntries([
+      { url: 'https://noisy', name: null, grp: null },
+      { url: 'https://quiet', name: null, grp: null },
+      { url: 'https://handled', name: null, grp: null, options: { ignore: ['Visitors:\\s+\\d+'] } },
+    ], {})
+    const changes = ['https://noisy', 'https://handled', 'https://quiet'].flatMap((url) =>
+      url === 'https://quiet'
+        ? [{ url, diff: d('old', 'new') }]
+        : [{ url, diff: d('Visitors: 1', 'Visitors: 2') }, { url, diff: d('Visitors: 2', 'Visitors: 3') }])
+    const out = noisyUrls(changes, entries)
+    expect([...out.keys()]).toEqual(['https://noisy'])
+    expect(out.get('https://noisy')?.[0].count).toBe(2)
   })
 })
