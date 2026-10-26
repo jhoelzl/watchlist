@@ -2,7 +2,7 @@
 
 Open improvements by area. Effort: **S** (< 1 h), **M** (a few hours), **L** (days). Priority: 🔴 high, 🟡 medium, ⚪ low.
 
-Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 148 Python tests (4 need real Postgres) and web tests for the pure helpers. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
+Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 166 Python tests (4 need real Postgres) and web tests for the pure helpers. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
 
 ## 1. Security
 
@@ -14,10 +14,14 @@ Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 
 - 🟡 **More channels:** ntfy.sh (the simplest way to send push notifications to a phone), Slack/Teams/Discord webhook, Telegram. Configurable through secrets and `options`, including per group. (M)
 - 🟡 **Digest mode:** Optional daily summary instead of immediate email, per group or URL (`notify: daily|immediate`). (M)
+- 🟡 **Condition alerts and price tracking:** extract a number with a selector or regex, chart it, and notify only when a rule matches (`alert_if: '< 100'`). (M)
+- 🟡 **Change severity:** let the LLM label each change as minor, notable or major and notify only above a per-URL threshold. (S)
+- 🟡 **RSS/Atom feed of changes:** token-protected feed (Edge Function) per group, so changes can be followed in any reader such as Feedbin. (M)
+- ⚪ **Ask your watchlist:** chat box that answers questions from history and AI summaries (for example, "what changed in pricing this month?"). (L)
+- ⚪ **Auto-pause flapping pages:** combine noise learning and the health data to suggest pausing or `ignore` for pages that change on most runs. (S)
 - 🟡 **Keyword/regex trigger:** `notify_if: 'Salzburg|Python'` sends the email only when new lines match (jobs, events). Add a field to the dashboard form. (S)
 - 🟡 **Recipients per group:** Allow `MAIL_TO` to be overridden per group. (S)
 - ⚪ **Support JSON and PDF sources** (JSON path, PDF text). (L)
-- ⚪ **Screenshots for JS pages** as artifacts, to help with layout issues. (M)
 - ⚪ **Authentication support** (headers/cookies through secrets) for protected pages. (M)
 - ⚪ **Improve `add.py`:** add multiple URLs at once (`-f list.txt`), detect duplicates using normalized URLs, suggest `ignore` patterns. (S)
 
@@ -27,6 +31,8 @@ Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 
 ## 4. Dashboard
 
+- ⚪ **Backup/restore in the dashboard:** export and import config and history as one JSON file. (S)
+- ⚪ **Saved filters and search** across history and summaries. (S)
 - ⚪ **Mark as read** in the “Recent changes” tab, with an unread counter. (M)
 - ⚪ **Accessibility:** `aria-label` for filters, keyboard navigation for diffs, status not conveyed by color alone, form focus order. (S)
 - ⚪ **Installable PWA** with an offline cache of recent data. (M)
