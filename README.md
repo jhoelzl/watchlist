@@ -49,7 +49,7 @@ With `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` (environment variables or reposit
 2. Project Settings → API Keys: use the **Project URL** as `SUPABASE_URL` and the **service_role** key as `SUPABASE_SERVICE_KEY`. The anon key is insufficient because RLS prevents it from reading or writing. The service_role key is secret (it bypasses RLS): keep it only in `.env` and as a secret, never in the frontend.
 3. Migrate locally (once; safe to repeat): `op run --env-file=.env -- uv run migrate.py --state-dir state` (the folder containing existing snapshots; not needed when starting from scratch).
 4. Add both values as repository secrets. The workflow now uses only Supabase and does not access `urls.yml`. `urls.yml` is not in the repository.
-5. New URLs: `op run --env-file=.env -- uv run add.py <url>` writes directly to `watchlist_urls`. You can also manage entries in the Supabase Table Editor (`options` includes `selector` (`auto` = detect the area automatically), `js`, `ignore`, `only_added`, `interval` (`daily`/`weekly`), `min_ratio`, and `ignore_robots`; `active = false` pauses a URL; shared options go in `watchlist_settings` under the `defaults` key). The default group is `General`.
+5. New URLs: `op run --env-file=.env -- uv run add.py <url>` writes directly to `watchlist_urls`. You can also manage entries in the Supabase Table Editor (`options` includes `selector` (`auto` = detect the area automatically), `js`, `ignore`, `only_added`, `ab_test`, `interval` (`daily`/`weekly`), `min_ratio`, and `ignore_robots`; `active = false` pauses a URL; shared options go in `watchlist_settings` under the `defaults` key). The default group is `General`.
 
 ### Dashboard login (`web/`)
 
@@ -117,6 +117,7 @@ Messages, emails, comments, and documentation are in English. Code identifiers (
 - **Text guard:** If a page suddenly returns less than 30% of its previous text (only for snapshots of at least 500 characters), it counts as a failed fetch (cookie wall, bot block). The snapshot remains unchanged, no change email is sent, the dashboard shows “Too little text”, and a warning email is sent after two consecutive runs. Adjust with `min_ratio`; `0` disables the guard for that URL.
 - **Retries:** Network errors, timeouts, HTTP 5xx, and 429 receive up to 3 attempts (delays of 2 s, 5 s, and `Retry-After` up to 30 s). Other 4xx errors are not retried. Only then is it counted as a fetch failure.
 - **Failure-safe email delivery:** The snapshot and history for a changed page are saved only after successful delivery. If Resend fails, the old snapshot remains, the change is detected again on the next run, the run fails (alert), and the page shows “Error” in the dashboard.
+- **ab_test:** For pages that serve different variants to different visitors (A/B tests, e.g. pricing pages), set `ab_test: true` (or use *Set option* in the URLs tab). The checker remembers the last 5 page states per URL; when the page flips back to a state it has already seen, it is saved silently (log line `[variant]`) and no email or history entry is created. Genuinely new content still triggers a normal change. Trade-off: a real change that reverts to one of the last 5 states is not reported.
 - **only_added:** Recommended for release notes pages with lots of text (already set in `urls.yml`); email then shows only new lines.
 
 ## Operations

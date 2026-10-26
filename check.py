@@ -25,6 +25,7 @@ ROOT = Path(__file__).parent
 # In the workflow, state/ lives on the "state" branch (checked out into a separate directory).
 STATE = Path(os.environ.get("WATCHLIST_STATE_DIR") or ROOT / "state")
 MAX_RUNS = 30
+MAX_STATES = 5  # Page states remembered per URL with ab_test.
 HEALTH_CHECKS = 60  # Results kept per URL for the health view.
 HEALTH_TIMES = 30  # Fetch durations kept per URL.
 # Content guard: a page that previously had at least GUARD_MIN_CHARS characters and drops below
@@ -44,6 +45,7 @@ class RunState:
     stamp: str
     old_status: dict[str, UrlStatus]
     http_cache: dict[str, Validators]
+    states: dict[str, list[str]] = field(default_factory=dict)
     status: dict[str, UrlStatus] = field(default_factory=dict)
     new_cache: dict[str, Validators] = field(default_factory=dict)
     changes: list[Change] = field(default_factory=list)
@@ -62,6 +64,7 @@ class Result:
     pending: Pending | None = None  # Change to apply only after the email is sent.
     problem: Problem | None = None  # Warning to report by email.
     config_error: str | None = None
+    states: list[str] | None = None  # New list of remembered page states (ab_test).
     counters: list[tuple[Any, ...]] = field(default_factory=list)  # ("set", key, name, n) or ("clear", key, name)
 
 
@@ -70,6 +73,21 @@ Store = FileStore | PgStore
 
 def url_key(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:16]
+
+
+def text_hash(text: str) -> str:
+    return hashlib.sha1(text.encode()).hexdigest()[:16]
+
+
+def remember_states(seen: list[str], *texts: str) -> list[str]:
+    """Most recent distinct page states (hashes), newest last."""
+    out = list(seen)
+    for t in texts:
+        h = text_hash(t)
+        if h in out:
+            out.remove(h)
+        out.append(h)
+    return out[-MAX_STATES:]
 
 
 def run() -> bool:
@@ -143,6 +161,7 @@ def _run(store: Store) -> bool:
         stamp=now.strftime("%Y-%m-%d %H:%M UTC"),
         old_status=store.doc("status", {}),
         http_cache=store.doc("http", {}),
+        states=store.doc("states", {}),
     )
     entries = merge_config(store.raw_config())
     history = store.history(SETTINGS.max_history)
@@ -191,6 +210,8 @@ def _run(store: Store) -> bool:
     store.set_doc("meta", meta)
     store.set_doc("http", st.new_cache)
     keep = {e["url"] for e in entries} | known
+    kept_keys = {url_key(u) for u in keep}
+    store.set_doc("states", {k: v for k, v in st.states.items() if k in kept_keys})
     store.set_doc("health", record_health(store.doc("health", {}), st.status, set(fetched), fetch_times, keep))
     if not only:
         store.set_doc(
@@ -256,6 +277,11 @@ def check_url(store: Store, st: RunState, opts: Options, fetched: dict[str, Fetc
         print(f"[new]       {name} [{kind}] (baseline saved, {len(text)} characters{hint})")
     elif old == text:
         print(f"[unchanged] {name} [{kind}] ({len(text)} characters)")
+        if opts.get("ab_test"):
+            res.states = remember_states(st.states.get(key, []), text)
+    elif opts.get("ab_test") and text_hash(text) in st.states.get(key, []):
+        print(f"[variant]  {name} [{kind}] (known earlier page state, A/B test; no email)")
+        res.states = remember_states(st.states.get(key, []), old, text)
     else:
         print(f"[changed]  {name} [{kind}] ({len(old)} -> {len(text)} characters)")
         diff, extra = make_diff(old, text, opts.get("only_added", feed))
@@ -270,6 +296,8 @@ def check_url(store: Store, st: RunState, opts: Options, fetched: dict[str, Fetc
                 "cache": new_cache,
                 "summarize": opts.get("summary") is not False,
             }
+            if opts.get("ab_test"):
+                res.pending["states"] = remember_states(st.states.get(key, []), old, text)
             res.cache = cached or None
             return res
         print("            (removed lines only; no email)")
@@ -336,6 +364,8 @@ def apply_result(store: Store, st: RunState, url: str, res: Result) -> None:
         store.set_snapshot(url_key(url), url, res.snapshot)
     if res.cache is not None:
         st.new_cache[url] = res.cache
+    if res.states is not None:
+        st.states[url_key(url)] = res.states
     if res.pending:
         st.changes.append(res.pending["change"])
         st.pending.append(res.pending)
@@ -369,6 +399,8 @@ def send_change_mail(store: Store, st: RunState, history: list[HistoryEntry], ne
             new_history.append(record)
             if p["cache"]:
                 st.new_cache[p["change"]["url"]] = p["cache"]
+            if "states" in p:
+                st.states[p["key"]] = p["states"]
         else:
             p["entry"].update({"status": "error", "error": "Change detected, email delivery failed (will retry)"})
     return sent_ok

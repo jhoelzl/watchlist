@@ -18,6 +18,7 @@ class Options(TypedDict, total=False):
     ignore_robots: bool
     min_ratio: float
     interval: str
+    ab_test: bool
 
 
 class Diagnosis(TypedDict):
@@ -74,6 +75,7 @@ class Pending(TypedDict):
     entry: UrlStatus
     cache: Validators | None
     summarize: NotRequired[bool]
+    states: NotRequired[list[str]]
 
 
 class Problem(TypedDict):
