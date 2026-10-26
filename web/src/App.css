@@ -425,5 +425,6 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .bulk-bar { position: sticky; top: 130px; z-index: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent, #2563eb); background: var(--bg, #fff); box-shadow: 0 4px 14px rgb(0 0 0 / 12%); }
 .bulk-field { display: inline-flex; gap: 6px; align-items: center; }
 .bulk-field input { width: 190px; }
-.select-col { width: 28px; padding-right: 0; }
+.select-col { width: 32px; padding-right: 0; }
+.select-col input { width: 16px; height: 16px; padding: 0; margin: 0; accent-color: var(--accent, #2563eb); cursor: pointer; }
 tr.selected { background: color-mix(in srgb, var(--accent, #2563eb) 8%, transparent); }
