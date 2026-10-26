@@ -1,4 +1,5 @@
-import { STATUS_LABEL, isStuck, summarize, type StatusFilter } from '../lib/watchlist'
+import { useEffect, useState } from 'react'
+import { STATUS_LABEL, formatRelativeTime, isStuck, summarize, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 
 type Props = {
@@ -19,6 +20,12 @@ function displayTime(value: string): string {
 }
 
 export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, onShowHistory, onOpenUrls, onOpenChanges }: Props) {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const summary = summarize(data.entries)
   const attention = data.entries
     .filter((entry) => entry.status === 'error' || entry.status === 'warn')
@@ -50,7 +57,7 @@ export function OverviewTab({ data, checking, onCheckAll, onCheckUrl, onAddUrl, 
                 ? 'Add pages you want to keep an eye on, then check them anytime.'
                 : summary.pending > 0
                   ? 'Run a check to establish a baseline for pages that have not been checked yet.'
-                  : `${summary.ok} of ${summary.total} monitored pages are healthy. Last updated ${displayTime(data.updated ?? '')}.`}
+                  : `${summary.ok} of ${summary.total} monitored pages are healthy.${data.updated ? ` Last updated ${formatRelativeTime(data.updated, now)}.` : ' No check has completed yet.'}`}
           </p>
           <div className="overview-actions">
             {summary.total === 0

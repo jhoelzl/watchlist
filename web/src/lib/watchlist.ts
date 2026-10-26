@@ -236,6 +236,30 @@ export function countLines(diff: string, sign: '+' | '-'): number {
 
 export type RunRecord = { time: string; seconds: number; total: number; errors: number; warns: number; changes: number; ok: boolean }
 
+export function formatRelativeTime(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return 'No run yet'
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) return 'Unknown time'
+  const secondsAgo = (timestamp - now) / 1000
+  if (Math.abs(secondsAgo) < 60) return secondsAgo <= 0 ? 'just now' : 'in less than a minute'
+
+  const units = [
+    ['minute', 60],
+    ['hour', 60 * 60],
+    ['day', 24 * 60 * 60],
+    ['week', 7 * 24 * 60 * 60],
+    ['month', 30 * 24 * 60 * 60],
+    ['year', 365 * 24 * 60 * 60],
+  ] as const
+  const absoluteSeconds = Math.abs(secondsAgo)
+  let unit: (typeof units)[number] = units[0]
+  for (const candidate of units) {
+    if (absoluteSeconds < candidate[1]) break
+    unit = candidate
+  }
+  return new Intl.RelativeTimeFormat('en-GB', { numeric: 'always' }).format(Math.round(secondsAgo / unit[1]), unit[0])
+}
+
 export function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)} s`
   return `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`
