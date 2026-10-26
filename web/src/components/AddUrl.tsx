@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
-import { buildRow, type Entry } from '../lib/watchlist'
+import { buildRow, type Entry, type Prefill } from '../lib/watchlist'
 import { PreviewBox, usePreview } from './PreviewBox'
 
 const EMPTY_FORM = { url: '', name: '', group: '', selector: 'auto', js: false }
 
-export function AddUrl({ entries, open, setOpen, onAdded }: { entries: Entry[]; open: boolean; setOpen: (open: boolean) => void; onAdded: () => void }) {
-  const [form, setForm] = useState(EMPTY_FORM)
+export function AddUrl({ entries, open, setOpen, onAdded, prefill }: { entries: Entry[]; open: boolean; setOpen: (open: boolean) => void; onAdded: () => void; prefill?: Prefill | null }) {
+  const [form, setForm] = useState(() => (prefill ? { ...EMPTY_FORM, ...prefill } : EMPTY_FORM))
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const groups = [...new Set(entries.map((e) => e.group))]

@@ -737,3 +737,23 @@ export function healthSummary(rows: HealthRow[]): { uptime: number | null; avgMs
 }
 
 export const formatMs = (ms: number | null): string => (ms === null ? '-' : ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`)
+
+export type Prefill = { url: string; name: string }
+
+/** Link from the bookmarklet: #add=<URL>&title=<page title>. Only http(s) URLs are accepted. */
+export function parseAddHash(hash: string): Prefill | null {
+  const p = new URLSearchParams(hash.replace(/^#/, ''))
+  const url = p.get('add')?.trim()
+  if (!url) return null
+  try {
+    if (!/^https?:$/.test(new URL(url).protocol)) return null
+  } catch {
+    return null
+  }
+  return { url, name: (p.get('title') ?? '').trim().slice(0, 120) }
+}
+
+/** Bookmarklet code: opens the dashboard with the current page prefilled in the "Add URL" form. */
+export function bookmarkletCode(dashboard: string): string {
+  return `javascript:(()=>{window.open(${JSON.stringify(dashboard)}+'#add='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'_blank')})()`
+}

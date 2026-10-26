@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -440,5 +440,22 @@ describe('health', () => {
 
   it('formats milliseconds', () => {
     expect([formatMs(null), formatMs(450), formatMs(2500)]).toEqual(['-', '450 ms', '2.5 s'])
+  })
+})
+
+describe('bookmarklet', () => {
+  it('parses the add link and accepts only http(s)', () => {
+    expect(parseAddHash('#add=https%3A%2F%2Fa.example%2Fx%3Fy%3D1&title=Hello%20World')).toEqual({ url: 'https://a.example/x?y=1', name: 'Hello World' })
+    expect(parseAddHash('#add=https%3A%2F%2Fa.example')).toEqual({ url: 'https://a.example', name: '' })
+    expect(parseAddHash('#add=javascript%3Aalert(1)')).toBeNull()
+    expect(parseAddHash('#add=not-a-url')).toBeNull()
+    expect(parseAddHash('#tab=urls')).toBeNull()
+  })
+
+  it('builds code that targets the dashboard', () => {
+    const code = bookmarkletCode('https://x.github.io/watchlist/')
+    expect(code.startsWith('javascript:')).toBe(true)
+    expect(code).toContain('"https://x.github.io/watchlist/"')
+    expect(code).toContain('encodeURIComponent(location.href)')
   })
 })
