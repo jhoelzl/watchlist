@@ -20,7 +20,7 @@ export default function App() {
       <header className="site-header">
         <div className="header-inner">
           <div className="brand"><span aria-hidden="true">◎</span><h1>Watchlist</h1></div>
-          {session && <button className="link" onClick={() => void supabase.auth.signOut()}>Abmelden</button>}
+          {session && <button className="link" onClick={() => void supabase.auth.signOut()}>Sign out</button>}
         </div>
       </header>
       <ToastHost>
