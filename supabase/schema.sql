@@ -124,3 +124,9 @@ alter table watchlist_screenshots enable row level security;
 drop policy if exists "admins read screenshots" on watchlist_screenshots;
 create policy "admins read screenshots" on watchlist_screenshots for select to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Group logos: public bucket for the uploaded images (the public URL is stored in watchlist_groups.icon).
+insert into storage.buckets (id, name, public) values ('group-icons', 'group-icons', true) on conflict (id) do nothing;
+drop policy if exists "admins upload group icons" on storage.objects;
+create policy "admins upload group icons" on storage.objects for insert to authenticated
+  with check (bucket_id = 'group-icons' and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
