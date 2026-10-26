@@ -4,6 +4,7 @@ import { useWatchlist } from '../useWatchlist'
 import { ChangesTab } from './ChangesTab'
 import { HealthTab } from './HealthTab'
 import { GroupsPanel } from './GroupsPanel'
+import { OverviewTab } from './OverviewTab'
 import { UrlsTab } from './UrlsTab'
 
 export function Dashboard() {
@@ -35,6 +36,8 @@ export function Dashboard() {
     [data, query, group, status],
   )
   const showHistory = (url: string) => { setPageUrl(url); setPeriod(''); setQuery(''); setGroup(''); setTab('changes') }
+  const openUrls = (filter: StatusFilter) => { setPageUrl(null); setQuery(''); setGroup(''); setStatus(filter); setTab('urls') }
+  const openAddUrl = () => { setTab('urls'); setAdding(true) }
 
   useEffect(() => {
     writePrefs({ view: { tab, group, status, period, query, sort }, collapsed: [...collapsed] })
@@ -61,7 +64,7 @@ export function Dashboard() {
             <p>{data?.updated ? `Last updated: ${new Date(data.updated).toLocaleString('en-GB')}` : 'No run yet'}</p>
           </div>
           <div className="intro-actions">
-            <button className="btn" onClick={() => { setTab('urls'); setAdding(true) }}>Add URL</button>
+            <button className="btn" onClick={openAddUrl}>Add URL</button>
             <details className="menu">
               <summary className="btn">Import / Export</summary>
               <div className="menu-items">
@@ -77,7 +80,8 @@ export function Dashboard() {
           </div>
         </div>
         <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Recent changes<span className="count">{data?.changes.length ?? 0}</span></button>
+          <button role="tab" aria-selected={tab === 'overview'} className={`tab${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
+          <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Changes<span className="count">{data?.changes.length ?? 0}</span></button>
           <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
           <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
           <button role="tab" aria-selected={tab === 'health'} className={`tab${tab === 'health' ? ' active' : ''}`} onClick={() => setTab('health')}>Health</button>
@@ -100,7 +104,20 @@ export function Dashboard() {
           <option value="">All groups</option>
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
-      </div>}      {data && tab === 'urls' && (
+      </div>}
+      {data && tab === 'overview' && (
+        <OverviewTab
+          data={data}
+          checking={['busy', 'waiting', 'running'].includes(check.state)}
+          onCheckAll={() => void checkNow()}
+          onCheckUrl={(url) => void checkNow({ url })}
+          onAddUrl={openAddUrl}
+          onShowHistory={showHistory}
+          onOpenUrls={openUrls}
+          onOpenChanges={() => setTab('changes')}
+        />
+      )}
+      {data && tab === 'urls' && (
         <UrlsTab prefill={prefill} data={data} shown={shown} status={status} setStatus={setStatus} collapsed={collapsed} setCollapsed={setCollapsed} sort={sort} setSort={setSort} adding={adding} setAdding={setAdding} onShowHistory={showHistory} onCheckUrl={(url) => void checkNow({ url })} onCheckGroup={(group) => void checkNow({ group })} onCheckUrls={(urls) => void checkNow({ urls })} checkBusy={['busy', 'waiting', 'running'].includes(check.state)} onReload={reload} onRemove={(e) => void remove(e)} />
       )}
       {data && tab === 'changes' && (

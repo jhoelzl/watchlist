@@ -503,13 +503,13 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
   return { options: next }
 }
 
-export type Tab = 'urls' | 'changes' | 'groups' | 'health'
+export type Tab = 'overview' | 'urls' | 'changes' | 'groups' | 'health'
 export type SortKey = '' | 'name' | 'status' | 'checked' | 'changed'
 export type Sort = { key: SortKey; desc: boolean }
 export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
-export const DEFAULT_VIEW: ViewState = { tab: 'changes', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
+export const DEFAULT_VIEW: ViewState = { tab: 'overview', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
-const TABS: Tab[] = ['changes', 'urls', 'groups', 'health']
+const TABS: Tab[] = ['overview', 'changes', 'urls', 'groups', 'health']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
