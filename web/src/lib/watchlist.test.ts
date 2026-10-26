@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -287,6 +287,15 @@ describe('run history', () => {
   it('formats durations', () => {
     expect(formatDuration(42.4)).toBe('42 s')
     expect(formatDuration(125)).toBe('2 min 5 s')
+  })
+
+  it('formats timestamps as relative time', () => {
+    const now = Date.parse('2026-10-26T14:30:00Z')
+    expect(formatRelativeTime('2026-10-26T12:30:00Z', now)).toBe('2 hours ago')
+    expect(formatRelativeTime('2026-10-26T14:29:30Z', now)).toBe('just now')
+    expect(formatRelativeTime('2026-10-26T16:30:00Z', now)).toBe('in 2 hours')
+    expect(formatRelativeTime(null, now)).toBe('No run yet')
+    expect(formatRelativeTime('invalid', now)).toBe('Unknown time')
   })
 })
 
