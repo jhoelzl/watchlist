@@ -588,6 +588,36 @@ def test_run_stores_run_summary(env, monkeypatch):
     assert len(runs) == 1 and runs[0]["total"] == 1 and runs[0]["errors"] == 0
 
 
+def a_b_pages(n):
+    return "\n".join(f"{n} line {i}" for i in range(60))
+
+
+def test_ab_test_ignores_known_page_states(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    ab_test: true\n")
+    a, b, c = a_b_pages("A"), a_b_pages("B"), a_b_pages("C")
+    set_pages(monkeypatch, [a, b, a, b, c, a])
+    check.run()  # baseline A
+    check.run()  # B is new: email
+    assert len(sent) == 1
+    check.run()  # back to A: known state, no email
+    check.run()  # B again: known state, no email
+    assert len(sent) == 1
+    check.run()  # C is really new: email
+    assert len(sent) == 2
+    check.run()  # A is still remembered
+    assert len(sent) == 2
+
+
+def test_without_ab_test_every_flip_is_reported(env, monkeypatch):
+    tmp, sent = env
+    a, b = a_b_pages("A"), a_b_pages("B")
+    set_pages(monkeypatch, [a, b, a, b])
+    for _ in range(4):
+        check.run()
+    assert len(sent) == 3
+
+
 def test_is_due_respects_interval_and_problems():
     from datetime import UTC, datetime, timedelta
 

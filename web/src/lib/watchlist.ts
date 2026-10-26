@@ -821,6 +821,8 @@ export const BULK_OPTIONS: BulkOption[] = [
   { id: 'shot-off', label: 'Screenshot on changes: off', key: 'screenshot', value: undefined },
   { id: 'added-on', label: 'Only added text: on', key: 'only_added', value: true },
   { id: 'added-off', label: 'Only added text: off', key: 'only_added', value: undefined },
+  { id: 'ab-on', label: 'A/B test page (ignore known variants): on', key: 'ab_test', value: true },
+  { id: 'ab-off', label: 'A/B test page (ignore known variants): off', key: 'ab_test', value: undefined },
   { id: 'summary-off', label: 'AI summary: off', key: 'summary', value: false },
   { id: 'summary-on', label: 'AI summary: on (default)', key: 'summary', value: undefined },
   { id: 'daily', label: 'Check interval: daily', key: 'interval', value: 'daily' },
