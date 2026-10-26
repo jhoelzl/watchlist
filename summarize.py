@@ -1,7 +1,7 @@
 """Optional one-line AI summaries of detected changes (best-effort; never blocks or fails a run).
 
-Enabled with WATCHLIST_SUMMARIES=true. By default GitHub Models is used with the workflow's GITHUB_TOKEN
-(needs the `models: read` permission). Any OpenAI-compatible endpoint works via LLM_BASE_URL, LLM_API_KEY, and LLM_MODEL.
+Enabled with WATCHLIST_SUMMARIES=true. Any OpenAI-compatible endpoint works via LLM_BASE_URL, LLM_API_KEY, and LLM_MODEL.
+The default endpoint (GitHub Models) was retired on 2026-07-30 and no longer returns JSON: set LLM_BASE_URL and LLM_API_KEY.
 """
 
 import os
@@ -59,7 +59,11 @@ def summarize(diff: list[str]) -> str | None:
             timeout=TIMEOUT,
         )
         r.raise_for_status()
-        data = r.json()
+        try:
+            data = r.json()
+        except ValueError:
+            hint = " (GitHub Models is retired: set LLM_BASE_URL and LLM_API_KEY)" if "models.github.ai" in base else ""
+            raise ValueError(f"{base} did not return JSON (HTTP {r.status_code}, body {r.text[:40]!r}){hint}") from None
         text = clean(data["choices"][0]["message"]["content"] or "")
         usage = data.get("usage") or {}
         print(f"[summary] {usage.get('prompt_tokens', '?')} in / {usage.get('completion_tokens', '?')} out tokens")
