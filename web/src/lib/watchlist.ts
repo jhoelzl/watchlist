@@ -422,7 +422,7 @@ export function suggestIgnores(diffs: string[], existing: string[] = [], minCoun
     .sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern))
 }
 
-export type EditForm = { name: string; group: string; selector: string; js: boolean; ignore: string; onlyAdded: boolean; paused: boolean; interval: string }
+export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; paused: boolean; interval: string }
 
 export function toEditForm(e: Entry): EditForm {
   const o = e.options ?? {}
@@ -432,6 +432,7 @@ export function toEditForm(e: Entry): EditForm {
     group: e.group === 'General' ? '' : e.group,
     selector: typeof o.selector === 'string' ? o.selector : '',
     js: o.js === true,
+    screenshot: o.screenshot === true,
     ignore: (Array.isArray(ignore) ? ignore : typeof ignore === 'string' ? [ignore] : []).join('\n'),
     onlyAdded: o.only_added === true,
     paused: e.active === false,
@@ -453,6 +454,7 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
   }
   set('selector', form.selector.trim(), form.selector.trim() !== '')
   set('js', true, form.js)
+  set('screenshot', true, form.screenshot)
   set('only_added', true, form.onlyAdded)
   set('interval', form.interval, form.interval === 'daily' || form.interval === 'weekly')
   set('ignore', patterns, patterns.length > 0)

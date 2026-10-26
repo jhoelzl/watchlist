@@ -691,3 +691,43 @@ def test_slow_ignore_regex_times_out(monkeypatch):
     with pytest.raises(errors.CheckError) as ex:
         parse.extract(body, {"ignore": [r"(a|aa)+$"]})
     assert ex.value.code == "ignore_timeout"
+
+
+def test_screenshots_rotate_before_and_after(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    screenshot: true\n  - url: https://b\n")
+    shots = iter([b"one", b"two"])
+    captured: list[list[str]] = []
+
+    def fake_capture(urls):
+        captured.append(urls)
+        return {u: next(shots) for u in urls}
+
+    monkeypatch.setattr(check, "capture_screenshots", fake_capture)
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", PAGES[url].pop(0), False, {}))
+    PAGES = {"https://a": ["x " * 50, "x " * 50, "y " * 50], "https://b": ["z " * 50] * 3}
+    key = check.url_key("https://a")
+    state = tmp / "state"
+    check.run()  # Baseline: first image only
+    assert captured == [["https://a"]]
+    assert (state / f"{key}.after.jpg").read_bytes() == b"one" and not (state / f"{key}.before.jpg").exists()
+    check.run()  # Unchanged: nothing captured
+    assert captured[-1] == []
+    check.run()  # Changed: "after" becomes "before"
+    assert (state / f"{key}.before.jpg").read_bytes() == b"one"
+    assert (state / f"{key}.after.jpg").read_bytes() == b"two"
+
+
+def test_screenshot_failure_does_not_fail_run(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    screenshot: true\n")
+    monkeypatch.setattr(check, "capture_screenshots", lambda urls: {u: RuntimeError("boom") for u in urls})
+    set_pages(monkeypatch, ["x " * 50])
+    assert check.run() is True
+    assert not list((tmp / "state").glob("*.jpg"))
+
+
+def test_needs_js_for_screenshot(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    screenshot: true\n")
+    assert check.main(["check.py", "--needs-js"]) == 0

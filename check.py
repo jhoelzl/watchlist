@@ -13,7 +13,7 @@ import notify
 from config import config_errors, config_hash, is_due, merge_config
 from diffing import make_diff
 from errors import error_code
-from fetch import FetchResult, fetch_all
+from fetch import FetchResult, capture_screenshots, fetch_all
 from models import Change, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
 from settings import SETTINGS
@@ -147,7 +147,9 @@ def _run(store: Store) -> bool:
         apply_result(store, st, opts["url"], check_url(store, st, opts, fetched))
 
     ok = not st.config_bad
-    ok &= send_change_mail(store, st, history, new_history)
+    mail_ok = send_change_mail(store, st, history, new_history)
+    ok &= mail_ok
+    store_screenshots(store, st, entries, mail_ok)
     ok &= send_problem_mail(store, st)
 
     history = history[-SETTINGS.max_history :]
@@ -330,6 +332,26 @@ def send_change_mail(store: Store, st: RunState, history: list[HistoryEntry], ne
     return sent_ok
 
 
+def store_screenshots(store: Store, st: RunState, entries: list[Options], changes_saved: bool) -> None:
+    """Screenshots (option screenshot: true) of new and changed pages; the old one is kept as "before".
+
+    Only pages whose change was saved are captured; failures are logged and never fail the run.
+    """
+    changed = {p["change"]["url"] for p in st.pending} if changes_saved else set()
+    targets = []
+    for e in entries:
+        s = st.status.get(e["url"], {})
+        is_new = s.get("status") == "new" and s.get("checked") == st.stamp
+        if e.get("screenshot") and (is_new or e["url"] in changed):
+            targets.append(e["url"])
+    for url, shot in capture_screenshots(targets).items():
+        if isinstance(shot, Exception):
+            print(f"[screenshot] {url}: {shot}")
+        else:
+            store.rotate_screenshot(url_key(url), url, shot)
+            print(f"[screenshot] {url} ({len(shot) // 1024} KB)")
+
+
 def send_problem_mail(store: Store, st: RunState) -> bool:
     if not st.problems:
         return True
@@ -353,7 +375,7 @@ def main(argv: list[str]) -> int:
     if len(argv) >= 2 and argv[1] == "--needs-js":
         store = open_store(STATE, ROOT / "urls.yml")
         try:
-            return 0 if any(e.get("js") for e in merge_config(store.raw_config())) else 1
+            return 0 if any(e.get("js") or e.get("screenshot") for e in merge_config(store.raw_config())) else 1
         finally:
             store.close()
     return 0 if run() else 1

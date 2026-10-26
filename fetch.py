@@ -20,6 +20,9 @@ MAX_RETRY_AFTER = 30
 RETRY_JITTER = 0.25  # Up to 25% random jitter so retries do not run in lockstep.
 MAX_PER_HOST = 2  # Concurrent fetches per host (be considerate of servers).
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+SHOT_WIDTH = 1280
+SHOT_MAX_HEIGHT = 3000  # Keeps images small; very long pages are cut off at this height.
+SHOT_QUALITY = 55
 FetchResult = tuple[str | None, str | None, bool, Validators]  # (title, text, is_feed, validators); text is None on 304.
 HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "en,de;q=0.8"}
 
@@ -85,6 +88,9 @@ class BrowserPool:
     def content(self, url: str) -> str:
         return self._executor.submit(self._content, url).result()
 
+    def screenshot(self, url: str) -> bytes:
+        return self._executor.submit(self._screenshot, url).result()
+
     def close(self) -> None:
         try:
             self._executor.submit(self._stop).result()
@@ -120,6 +126,39 @@ class BrowserPool:
             return str(page.content())
         finally:
             page.close()
+
+    def _screenshot(self, url: str) -> bytes:
+        if self._browser is not None and not self._browser.is_connected():
+            self._stop()
+        if self._browser is None:
+            self._start()
+        page = self._browser.new_page(user_agent=USER_AGENT, viewport={"width": SHOT_WIDTH, "height": 800})
+        page.route("**/*", _block_internal_navigation)
+        try:
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            height = min(int(page.evaluate("document.documentElement.scrollHeight")), SHOT_MAX_HEIGHT)
+            clip = {"x": 0, "y": 0, "width": SHOT_WIDTH, "height": max(height, 1)}
+            return bytes(page.screenshot(type="jpeg", quality=SHOT_QUALITY, full_page=True, clip=clip))
+        finally:
+            page.close()
+
+
+def capture_screenshots(urls: list[str]) -> dict[str, bytes | Exception]:
+    """Takes one screenshot per URL with a single shared browser. Failures are returned, never raised."""
+    if not urls:
+        return {}
+    pool = BrowserPool()
+    out: dict[str, bytes | Exception] = {}
+    try:
+        for url in urls:
+            try:
+                ensure_public_url(url)
+                out[url] = pool.screenshot(url)
+            except Exception as ex:
+                out[url] = ex
+    finally:
+        pool.close()
+    return out
 
 
 def _block_internal_navigation(route: Any) -> None:

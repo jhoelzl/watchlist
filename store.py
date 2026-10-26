@@ -4,6 +4,7 @@ When SUPABASE_DB_URL is set, everything is stored in tables prefixed with watchl
 (Schema: supabase/schema.sql); otherwise, as before, in urls.yml and the state/ directory.
 """
 
+import base64
 import json
 import os
 from datetime import UTC, datetime
@@ -50,6 +51,13 @@ class FileStore:
 
     def clear_counter(self, key: str, kind: str) -> None:
         (self.state / f"{key}.{kind}").unlink(missing_ok=True)
+
+    def rotate_screenshot(self, key: str, url: str, image: bytes) -> None:
+        """The previous "after" image becomes "before"; the new image becomes "after"."""
+        after = self.state / f"{key}.after.jpg"
+        if after.exists():
+            after.replace(self.state / f"{key}.before.jpg")
+        after.write_bytes(image)
 
     def doc(self, name: str, default: Any) -> Any:
         path = self.state / f"{name}.json"
@@ -128,6 +136,14 @@ class PgStore:
             "insert into watchlist_snapshots (key, url, content) values (%s, %s, %s) "
             "on conflict (key) do update set url = excluded.url, content = excluded.content, updated_at = now()",
             (key, url, text),
+        )
+
+    def rotate_screenshot(self, key: str, url: str, image: bytes) -> None:
+        self._run(
+            "insert into watchlist_screenshots (key, url, img_after) values (%s, %s, %s) "
+            "on conflict (key) do update set img_before = watchlist_screenshots.img_after, "
+            "img_after = excluded.img_after, url = excluded.url, updated_at = now()",
+            (key, url, base64.b64encode(image).decode()),
         )
 
     def counter(self, key: str, kind: str) -> int:
@@ -256,6 +272,17 @@ class RestStore(PgStore):
     def set_snapshot(self, key: str, url: str, text: str) -> None:
         row = {"key": key, "url": url, "content": text, "updated_at": _now()}
         self._call("POST", "watchlist_snapshots", body=row, upsert="key")
+
+    def rotate_screenshot(self, key: str, url: str, image: bytes) -> None:
+        old = self._select("watchlist_screenshots", select="img_after", key=f"eq.{key}")
+        row = {
+            "key": key,
+            "url": url,
+            "img_before": old[0]["img_after"] if old else None,
+            "img_after": base64.b64encode(image).decode(),
+            "updated_at": _now(),
+        }
+        self._call("POST", "watchlist_screenshots", body=row, upsert="key")
 
     def counter(self, key: str, kind: str) -> int:
         rows = self._select("watchlist_counters", select="value", key=f"eq.{key}", kind=f"eq.{kind}")
