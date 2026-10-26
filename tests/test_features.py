@@ -678,6 +678,21 @@ def test_run_single_group(env, monkeypatch):
     assert check.run() is False
 
 
+def test_run_several_urls(env, monkeypatch):
+    tmp, sent = env
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n  - url: https://b\n  - url: https://c\n")
+    calls: list[str] = []
+
+    def fake_fetch(url, *a, **k):
+        calls.append(url)
+        return ("T", "some text " * 30, False, {})
+
+    monkeypatch.setattr(fetch, "fetch", fake_fetch)
+    monkeypatch.setenv("WATCHLIST_ONLY_URL", "https://a\nhttps://c\n")
+    assert check.run() is True
+    assert sorted(calls) == ["https://a", "https://c"]
+
+
 def test_run_single_url_unknown_fails(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n")

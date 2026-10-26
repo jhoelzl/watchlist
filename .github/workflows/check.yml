@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: "Check only this URL (leave blank for all)"
+        description: "Check only this URL, or several separated by newlines (leave blank for all)"
         required: false
         default: ""
       group:

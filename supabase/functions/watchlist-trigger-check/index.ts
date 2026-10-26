@@ -60,12 +60,15 @@ Deno.serve(async (req) => {
   if (last && Date.now() - new Date(last.created_at).getTime() < MIN_INTERVAL_MS) {
     return reply({ error: "Too many starts: at most one run per minute." }, 429);
   }
-  // Optional: check only one URL. It must be in the configuration (RLS: readable only by authorized accounts).
-  const only = typeof body?.url === "string" ? body.url : "";
-  if (only) {
-    const { data: row } = await supabase.from("watchlist_urls").select("url").eq("url", only).maybeSingle();
-    if (!row) return reply({ error: "URL not found." }, 404);
+  // Optional: check only one or several URLs (max. 100). All must be in the configuration (RLS: readable only by authorized accounts).
+  const list: unknown[] = Array.isArray(body?.urls) ? body.urls : typeof body?.url === "string" && body.url ? [body.url] : [];
+  const urls = [...new Set(list.filter((u): u is string => typeof u === "string" && u.length > 0 && !/[\r\n]/.test(u)))];
+  if (list.length > 100 || urls.length !== list.length) return reply({ error: "Invalid URL list." }, 400);
+  if (urls.length) {
+    const { data: rows } = await supabase.from("watchlist_urls").select("url").in("url", urls);
+    if ((rows ?? []).length !== urls.length) return reply({ error: "URL not found." }, 404);
   }
+  const only = urls.join("\n");
   // Optional: check a whole group ("General" = URLs without a group).
   const onlyGroup = !only && typeof body?.group === "string" ? body.group : "";
   if (onlyGroup) {
