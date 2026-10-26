@@ -99,12 +99,16 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
             {sortEntries(items, sort).map((e) => (
               <Fragment key={e.url}>
               <tr className={e.active === false ? 'paused' : ''}>
-                <td><span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span></td>
+                <td>
+                  <div className="status-cell">
+                    <span className={`badge ${e.status}`}>{STATUS_LABEL[e.status] ?? e.status}</span>
+                    {e.error && <span className="muted status-error">{e.error}</span>}
+                  </div>
+                </td>
                 <td>
                   {e.name === e.url
                     ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Title follows after the first check</div></>
                     : <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>}
-                  {e.error && <div className="muted">{e.error}</div>}
                   {(e.status === 'error' || e.status === 'warn') && (e.streak ?? 0) > 1 && (
                     <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Permanently broken for several days' : undefined}>{isStuck(e) ? 'Permanently broken, ' : ''}{e.streak} runs in a row</span>
                   )}
