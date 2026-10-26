@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { bookmarkletCode, buildHash, parseAddHash, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter, type Tab } from '../lib/watchlist'
+import { bookmarkletCode, buildHash, parseAddHash, parseView, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter, type Tab } from '../lib/watchlist'
 import { useWatchlist } from '../useWatchlist'
 import { ChangesTab } from './ChangesTab'
 import { HealthTab } from './HealthTab'
@@ -22,6 +22,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>(prefill ? 'urls' : initial.tab)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(prefs?.collapsed))
+  const currentRoute = useRef({ tab, pageUrl })
 
   const bookmarklet = useRef<HTMLAnchorElement>(null)
   // React blocks javascript: URLs in href, so the attribute is set directly.
@@ -56,9 +57,37 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   }, [tab, group, status, period, query, sort, collapsed])
 
   useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as { watchlist?: unknown; viewHash?: unknown; pageUrl?: unknown } | null
+      const isWatchlistState = state?.watchlist === true
+      const view = parseView(isWatchlistState && typeof state.viewHash === 'string' ? state.viewHash : window.location.hash)
+      const restoredPageUrl = isWatchlistState && typeof state.pageUrl === 'string' ? state.pageUrl : null
+
+      currentRoute.current = { tab: view.tab, pageUrl: restoredPageUrl }
+      setTab(view.tab)
+      setGroup(view.group)
+      setStatus(view.status)
+      setPeriod(view.period)
+      setQuery(view.query)
+      setSort(view.sort)
+      setPageUrl(restoredPageUrl)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
     const hash = buildHash({ tab, group, status, period, query, sort })
-    if (hash !== window.location.hash) history.replaceState(null, '', hash || window.location.pathname + window.location.search)
-  }, [tab, group, status, period, query, sort])
+    // Section/detail navigation gets its own entry; filter and search changes stay in the current entry.
+    const routeChanged = currentRoute.current.tab !== tab || currentRoute.current.pageUrl !== pageUrl
+    if (hash !== window.location.hash || routeChanged) {
+      const state = { watchlist: true, viewHash: hash, pageUrl }
+      const url = hash || window.location.pathname + window.location.search
+      if (routeChanged) history.pushState(state, '', url)
+      else history.replaceState(state, '', url)
+    }
+    currentRoute.current = { tab, pageUrl }
+  }, [tab, group, status, period, query, sort, pageUrl])
 
   if (result.state === 'loading') return <p className="muted">Loading …</p>
   if (result.state === 'denied') {
