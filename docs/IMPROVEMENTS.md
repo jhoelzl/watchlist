@@ -2,19 +2,7 @@
 
 Open improvements by area. Effort: **S** (< 1 h), **M** (a few hours), **L** (days). Priority: 🔴 high, 🟡 medium, ⚪ low.
 
-Current state: `check.py` 356 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 125 Python and 78 web tests. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
-
-## Next steps (Top 5)
-
-| # | Idea | Area | Priority | Effort |
-|---|------|------|----------|--------|
-| 1 | More channels (ntfy/Slack/Teams) and digest mode | Features | 🟡 | M |
-| 2 | Tests for `RestStore`, `add.py`, Edge Functions, and web components | Quality | 🟡 | M |
-| 3 | `timeout-minutes` and workflow-failure alert for `check.yml` | Operations | 🟡 | S |
-| 4 | Database backup (weekly export as an artifact) | Operations | 🟡 | S |
-| 5 | Monitor run duration | Reliability | 🟡 | S |
-
----
+Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 148 Python tests (4 need real Postgres) and web tests for the pure helpers. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
 
 ## 1. Security
 
@@ -55,15 +43,15 @@ Current state: `check.py` 356 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 - 🟡 **Pages that block GitHub runners:** `buch.stadt-salzburg.at` responds only from private IPs (ConnectTimeout or `goto` timeout on the runner). Options: self-hosted runner, proxy, or local launchd job. It has been removed from the list for now. (M)
 - ⚪ **Pages with A/B variants:** `deepl.com/en/pro` randomly returns one of two text variants on every fetch, causing repeated change emails (URL paused). Idea: detect when snapshots keep switching between two states and warn in the dashboard or pause automatically. (M)
 - 🟡 **Monitor run duration:** 52 URLs, many on `learn.microsoft.com` (`MAX_PER_HOST = 2`). After a few runs, review duration and adjust the limit or per-host delay if needed. (S)
-- 🟡 **Workflow-failure notification:** If `check.yml` itself fails (Supabase down, missing secret), no email is sent. Add a second job with `if: failure()` or monitor “no run in 36 h”. (S)
+- 🟡 **Workflow-failure notification:** The “Alert on failure” step in `check.yml` needs the secrets loaded from 1Password and a reachable Resend, so it stays silent when loading secrets fails (for example, an expired service-account token) or when the schedule stops. Add a separate job that does not depend on those secrets (for example, a GitHub issue via `gh`) or monitor “no run in 36 h”. (S)
 - 🟡 **Database backup:** Regularly export `watchlist_urls` and `watchlist_history` (for example, as a weekly artifact). The Supabase project is shared. (S)
 - ⚪ **Parser version in state:** Changes to `clean`/`parse_html`/`auto_root` make every page appear changed. Quietly establish a new baseline with `parser_version`. (M)
 
 ## 7. Tests and quality
 
 - 🟡 **Test web components** (Testing Library): tabs, filters, group form, error message on “Check now”, using a mocked Supabase client. Only pure helpers are tested so far. (M)
-- 🟡 **Test `RestStore`:** Use an HTTP mock (PostgREST responses), including errors. `PgStore` has tests (Python 3.12 and `pgserver`); `RestStore` does not. (M)
-- 🟡 **Test the `add.py` flow:** `main` with mocked `fetch_body`, `--feed`, `-y`, duplicates, and robots blocking. (M)
+- 🟡 **Test `RestStore` error paths:** `tests/test_reststore.py` covers the happy path (round trip, store selection, migration); add HTTP errors (401, 409 duplicate, 5xx, timeouts) and PostgREST edge cases. (S)
+- 🟡 **Test more of the `add.py` flow:** the `-y` and duplicate paths are covered (`tests/test_pgstore.py`); add `--feed`, robots blocking, and fetch errors, and run them without Postgres. (S)
 - 🟡 **Integration test** with a local HTTP server for 304, 429/5xx retries, redirects, and character encoding. (M)
 - 🟡 **Test Edge Functions** (Deno tests, `watchlist-trigger-check` and `watchlist-preview`) for 401, 403, 429, “run active”, start, and CORS. (S)
 - 🟡 **End-to-end dashboard test** (Playwright) with mocked REST responses. Playwright is already a dependency. (L)
@@ -76,12 +64,3 @@ Current state: `check.py` 356 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 - ⚪ **Dashboard and sample email screenshots** in the README. (S)
 - ⚪ **Example configurations** for common cases (release notes with `only_added`, JS page, feed, job listings with `ignore`, `selector: auto`). (S)
 - ⚪ **CHANGELOG** and version management (currently `0.1.0`). (S)
-
----
-
-## Suggested order
-
-1. Edit and pause URLs in the dashboard, show failure streaks, and provide feedback after “Check now”.
-2. Add `timeout-minutes`, workflow-failure notifications, database backups, and web checks in CI.
-3. Group tab variants, then add ntfy and digest mode.
-4. Add tests for `RestStore`, `add.py`, Edge Functions, and web components, then add coverage in CI.
