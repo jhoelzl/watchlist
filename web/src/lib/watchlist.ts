@@ -488,7 +488,7 @@ export function applyFix(options: Record<string, unknown>, url: string, fix: Fix
   }
 }
 
-export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; paused: boolean; interval: string }
+export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; abTest: boolean; paused: boolean; interval: string }
 
 export function toEditForm(e: Entry): EditForm {
   const o = e.options ?? {}
@@ -501,6 +501,7 @@ export function toEditForm(e: Entry): EditForm {
     screenshot: o.screenshot === true,
     ignore: (Array.isArray(ignore) ? ignore : typeof ignore === 'string' ? [ignore] : []).join('\n'),
     onlyAdded: o.only_added === true,
+    abTest: o.ab_test === true,
     paused: e.active === false,
     interval: o.interval === 'daily' || o.interval === 'weekly' ? o.interval : '',
   }
@@ -522,6 +523,7 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
   set('js', true, form.js)
   set('screenshot', true, form.screenshot)
   set('only_added', true, form.onlyAdded)
+  set('ab_test', true, form.abTest)
   set('interval', form.interval, form.interval === 'daily' || form.interval === 'weekly')
   set('ignore', patterns, patterns.length > 0)
   return { options: next }
