@@ -7,7 +7,7 @@ import { GroupsPanel } from './GroupsPanel'
 import { OverviewTab } from './OverviewTab'
 import { UrlsTab } from './UrlsTab'
 
-export function Dashboard() {
+export function Dashboard({ homeRequest }: { homeRequest: number }) {
   const { result, check, reload, checkNow, download, upload, remove } = useWatchlist()
   const [prefs] = useState(readPrefs)
   const [prefill] = useState(() => parseAddHash(window.location.hash))
@@ -38,6 +38,17 @@ export function Dashboard() {
   const showHistory = (url: string) => { setPageUrl(url); setPeriod(''); setQuery(''); setGroup(''); setTab('changes') }
   const openUrls = (filter: StatusFilter) => { setPageUrl(null); setQuery(''); setGroup(''); setStatus(filter); setTab('urls') }
   const openAddUrl = () => { setTab('urls'); setAdding(true) }
+
+  useEffect(() => {
+    if (!homeRequest) return
+    setTab('overview')
+    setPageUrl(null)
+    setQuery('')
+    setGroup('')
+    setStatus('')
+    setPeriod('')
+    reload()
+  }, [homeRequest, reload])
 
   useEffect(() => {
     writePrefs({ view: { tab, group, status, period, query, sort }, collapsed: [...collapsed] })

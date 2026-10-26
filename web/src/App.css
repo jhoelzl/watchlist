@@ -62,8 +62,12 @@ h1, h2, h3, p { margin: 0; }
 .site-header { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .header-inner, main { max-width: 960px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
 .header-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand span { display: grid; place-items: center; width: 30px; height: 30px; color: #fff; background: var(--accent); border-radius: 9px; font-size: 16px; }
+.brand-heading { margin: 0; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0; color: var(--text); background: transparent; border: 0; text-align: left; }
+.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; color: #fff; background: var(--accent); border-radius: 9px; font-size: 16px; }
+.brand-name { font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.brand:hover:not(:disabled) .brand-name { color: var(--accent); }
+.brand:disabled { opacity: 1; cursor: default; }
 h1 { font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
 main { padding-top: 36px; padding-bottom: 64px; }
 
@@ -180,7 +184,7 @@ button.section-heading { width: 100%; border: 0; border-bottom: 1px solid var(--
 .app-shell { background: radial-gradient(1200px 400px at 50% -120px, var(--accent-soft), transparent 70%), var(--bg); }
 .header-inner, main { max-width: 1080px; }
 main { padding-top: 28px; }
-.brand span { box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent); }
+.brand-mark { box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 45%, transparent); }
 .btn, input, select { transition: border-color .15s, box-shadow .15s, background .15s, transform .05s; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn.primary { box-shadow: 0 1px 2px rgba(0, 0, 0, .15), 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -471,8 +475,8 @@ tr.selected { background: color-mix(in srgb, var(--accent, #2563eb) 8%, transpar
 .header-inner, main { max-width: 1160px; }
 .site-header { border-bottom-color: var(--line); }
 .header-inner { height: 64px; }
-.brand span { border-radius: 10px; box-shadow: none; }
-.brand h1 { font-size: 17px; letter-spacing: -.025em; }
+.brand-mark { border-radius: 10px; box-shadow: none; }
+.brand-name { font-size: 17px; letter-spacing: -.025em; }
 main { padding-top: 28px; }
 .dashboard-nav { top: 64px; margin-top: -28px; padding-top: 18px; }
 .dashboard-nav .library-intro { align-items: center; margin-bottom: 14px; }
@@ -592,8 +596,8 @@ main { padding-top: 28px; }
 .site-header { position: relative; top: auto; backdrop-filter: none; }
 .header-inner { height: 48px; }
 .brand { gap: 8px; }
-.brand span { width: 27px; height: 27px; border-radius: 8px; font-size: 14px; }
-.brand h1 { font-size: 15px; }
+.brand-mark { width: 27px; height: 27px; border-radius: 8px; font-size: 14px; }
+.brand-name { font-size: 15px; }
 main { padding-top: 16px; }
 .dashboard-nav {
   position: sticky;

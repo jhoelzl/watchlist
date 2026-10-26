@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { useToast } from './toast'
 import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type HealthRecord, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
@@ -45,8 +45,8 @@ export function useWatchlist() {
   const [result, setResult] = useState<Load>({ state: 'loading' })
   const [check, setCheck] = useState<CheckState>({ state: 'idle' })
   const [baseline, setBaseline] = useState<number | null>(null)
-  const reload = () => { void load().then(setResult) }
-  useEffect(reload, [])
+  const reload = useCallback(() => { void load().then(setResult) }, [])
+  useEffect(reload, [reload])
 
   // Poll the run status every 5 s until the run is done (max. 10 minutes)
   useEffect(() => {
@@ -71,7 +71,7 @@ export function useWatchlist() {
     }
     let timer = setTimeout(() => void tick(), 4000)
     return () => { stale = true; clearTimeout(timer) }
-  }, [baseline])
+  }, [baseline, reload])
 
   const checkNow = async (target?: { url?: string; urls?: string[]; group?: string }) => {
     setCheck({ state: 'busy' })
