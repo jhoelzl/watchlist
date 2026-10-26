@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 
 import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, type Entry, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { AddUrl } from './AddUrl'
+import { DiagnosisHint } from './DiagnosisHint'
 import { EditUrl } from './EditUrl'
 import { RunsPanel } from './RunsPanel'
 
@@ -112,6 +113,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
                   {e.name === e.url
                     ? <><a href={e.url} target="_blank" rel="noreferrer noopener">{shortUrl(e.url)}</a><div className="muted">Title follows after the first check</div></>
                     : <a href={e.url} target="_blank" rel="noreferrer noopener">{e.name}</a>}
+                  {(e.status === 'error' || e.status === 'warn') && <DiagnosisHint entry={e} onApplied={onReload} />}
                   {noisy.has(e.url) && (
                     <button className="badge warn noise-badge" title="Recurring changes that differ only in numbers or ids (timestamps, counters). Click to review the ignore suggestions." onClick={() => setEditing(e.url)}>
                       Noisy: {noisy.get(e.url)?.length} ignore {noisy.get(e.url)?.length === 1 ? 'suggestion' : 'suggestions'}

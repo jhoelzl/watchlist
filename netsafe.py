@@ -63,4 +63,4 @@ def safe_get(url: str, headers: dict[str, str], timeout: float) -> requests.Resp
         if resp.status_code not in REDIRECT_CODES or not location:
             return resp
         url = urljoin(url, location)
-    raise CheckError(f"Too many redirects (more than {MAX_REDIRECTS})", "blocked_url")
+    raise CheckError(f"Too many redirects (more than {MAX_REDIRECTS})", "redirects")

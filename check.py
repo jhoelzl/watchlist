@@ -11,6 +11,7 @@ from typing import Any
 
 import notify
 from config import config_errors, config_hash, is_due, merge_config
+from diagnose import DIAGNOSE_AFTER, diagnose
 from diffing import make_diff
 from errors import error_code
 from fetch import FetchResult, capture_screenshots, fetch_all
@@ -150,6 +151,7 @@ def _run(store: Store) -> bool:
     mail_ok = send_change_mail(store, st, history, new_history)
     ok &= mail_ok
     store_screenshots(store, st, entries, mail_ok)
+    diagnose_failures(store, st, entries)
     ok &= send_problem_mail(store, st)
 
     history = history[-SETTINGS.max_history :]
@@ -252,6 +254,7 @@ def failed_result(store: Store, res: Result, prev: UrlStatus, url: str, ex: Exce
     res.entry.update(
         {"status": "error", "error": str(ex)[:200], "code": error_code(ex), "checked": prev.get("checked", "-"), "streak": n}
     )
+    carry_diagnosis(res.entry, prev)
     print(f"[error]    {url} (attempt {n} in a row): {ex}")
     if n == (PERMANENT_ALERT_AFTER if error_code(ex) in PERMANENT_CODES else FAIL_ALERT_AFTER):
         res.problem = {
@@ -260,6 +263,12 @@ def failed_result(store: Store, res: Result, prev: UrlStatus, url: str, ex: Exce
             "value": n,
         }
     return res
+
+
+def carry_diagnosis(entry: UrlStatus, prev: UrlStatus) -> None:
+    """Keeps an existing diagnosis visible while the same kind of failure continues."""
+    if prev.get("diagnosis") and prev.get("code") == entry.get("code"):
+        entry["diagnosis"] = prev["diagnosis"]
 
 
 def is_too_short(old: str | None, text: str, opts: Options) -> bool:
@@ -273,6 +282,7 @@ def short_text_result(store: Store, res: Result, prev: UrlStatus, url: str, name
     res.counters.append(("set", key, "short", n))
     msg = f"only {len(text)} instead of {len(old)} characters (cookie wall or bot block?)"
     res.entry.update({"status": "warn", "error": msg, "code": "content", "checked": prev.get("checked", "-"), "streak": n})
+    carry_diagnosis(res.entry, prev)
     print(f"[warning]   {name} [{kind}] {msg}, snapshot remains unchanged (attempt {n} in a row)")
     if n == GUARD_ALERT_AFTER:
         res.problem = {
@@ -350,6 +360,31 @@ def store_screenshots(store: Store, st: RunState, entries: list[Options], change
         else:
             store.rotate_screenshot(url_key(url), url, shot)
             print(f"[screenshot] {url} ({len(shot) // 1024} KB)")
+
+
+def diagnose_failures(store: Store, st: RunState, entries: list[Options]) -> None:
+    """Diagnoses URLs that just reached DIAGNOSE_AFTER failed runs in a row and adds the suggestion to the problem mail."""
+    for opts in entries:
+        url = opts["url"]
+        entry = st.status.get(url)
+        if not entry or entry.get("status") not in ("error", "warn") or "diagnosis" in entry:
+            continue
+        if entry.get("streak", 0) != DIAGNOSE_AFTER:
+            continue
+        code = entry.get("code", "")
+        min_chars = 0
+        if code == "content":
+            old = store.snapshot(url_key(url)) or ""
+            min_chars = int(len(old) * float(opts.get("min_ratio", DEFAULT_MIN_RATIO)))
+        found = diagnose(opts, code, entry.get("error", ""), min_chars)
+        if found:
+            entry["diagnosis"] = found
+            print(f"[diagnosis] {url}: {found['text']}")
+    key_to_diag = {url_key(u): s["diagnosis"] for u, s in st.status.items() if "diagnosis" in s}
+    for p in st.problems:
+        diag = key_to_diag.get(p["counter"][0])
+        if diag and "Suggested fix" not in p["text"]:
+            p["text"] += f"\n  Suggested fix: {diag['text']}"
 
 
 def send_problem_mail(store: Store, st: RunState) -> bool:

@@ -195,6 +195,7 @@ HINTS = {
     "blocked_url": (
         "Only public http(s) addresses are allowed (no localhost, private networks, or redirects into them): check the URL."
     ),
+    "redirects": "The server keeps redirecting (login or consent loop?): try 'js: true' or check the URL in your browser.",
     "robots": "The page blocks automated fetches. Only if permitted, set 'ignore_robots: true'.",
     "selector": (
         "The selector no longer matches (was the page redesigned?), or content is loaded with JavaScript: "
