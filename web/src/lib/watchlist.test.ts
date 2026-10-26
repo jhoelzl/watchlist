@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -415,5 +415,30 @@ describe('applyFix', () => {
     expect(applyFix({ js: true }, 'https://a', { type: 'url', url: 'https://b/new' })).toEqual({ options: { js: true }, url: 'https://b/new' })
     expect('error' in applyFix({}, 'https://a', { type: 'url', url: 'javascript:alert(1)' })).toBe(true)
     expect('error' in applyFix({}, 'https://a', { type: 'url' })).toBe(true)
+  })
+})
+
+describe('health', () => {
+  const a = entry({ url: 'https://a', name: 'A' })
+  const b = entry({ url: 'https://b', name: 'B', status: 'error', streak: 9 })
+  const c = entry({ url: 'https://c', name: 'C', active: false })
+  const health = { 'https://a': { h: 'ooeo', ms: [100, 300] }, 'https://b': { h: 'eeee', ms: [] } }
+
+  it('computes uptime, average time and flags; stuck pages first; inactive ones hidden', () => {
+    const rows = healthRows([a, b, c], health, new Set(['https://a']))
+    expect(rows.map((r) => r.entry.url)).toEqual(['https://b', 'https://a'])
+    expect(rows[1]).toMatchObject({ checks: 4, uptime: 75, avgMs: 200, noisy: true, stuck: false })
+    expect(rows[0]).toMatchObject({ uptime: 0, avgMs: null, stuck: true })
+  })
+
+  it('handles URLs without data and summarizes', () => {
+    const rows = healthRows([a], {}, new Set())
+    expect(rows[0]).toMatchObject({ checks: 0, uptime: null, avgMs: null })
+    expect(healthSummary(rows)).toEqual({ uptime: null, avgMs: null, stuck: 0, noisy: 0 })
+    expect(healthSummary(healthRows([a, b], health, new Set()))).toMatchObject({ uptime: 37.5, avgMs: 200, stuck: 1 })
+  })
+
+  it('formats milliseconds', () => {
+    expect([formatMs(null), formatMs(450), formatMs(2500)]).toEqual(['-', '450 ms', '2.5 s'])
   })
 })

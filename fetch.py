@@ -216,6 +216,9 @@ def fetch(url: str, opts: Options, cond: Validators | None = None) -> FetchResul
     return title, text, feed, validators
 
 
+FETCH_MS: dict[str, int] = {}  # Fetch duration per URL of the latest fetch_all call.
+
+
 def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult | Exception]:
     """Fetches all pages in parallel. jobs: [(opts, cond)]. Returns {url: result tuple or exception}.
 
@@ -229,6 +232,7 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
     def work(opts: Options, cond: Validators) -> tuple[str, FetchResult | Exception]:
         url = opts["url"]
         with host_limits[urlparse(url).netloc]:
+            started = time.monotonic()
             try:
                 if not opts.get("ignore_robots"):
                     with robots_lock:
@@ -241,8 +245,11 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
                 return url, fetch(url, opts, cond)
             except Exception as ex:
                 return url, ex
+            finally:
+                FETCH_MS[url] = round((time.monotonic() - started) * 1000)
 
     global _browser_pool
+    FETCH_MS.clear()
     if not jobs:
         return {}
     _browser_pool = BrowserPool() if any(o.get("js") for o, _ in jobs) else None

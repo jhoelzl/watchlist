@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { buildHash, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter } from '../lib/watchlist'
+import { buildHash, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter, type Tab } from '../lib/watchlist'
 import { useWatchlist } from '../useWatchlist'
 import { ChangesTab } from './ChangesTab'
+import { HealthTab } from './HealthTab'
 import { GroupsPanel } from './GroupsPanel'
 import { UrlsTab } from './UrlsTab'
 
@@ -17,7 +18,7 @@ export function Dashboard() {
   const [adding, setAdding] = useState(false)
   const [sort, setSort] = useState<Sort>(initial.sort)
   const [pageUrl, setPageUrl] = useState<string | null>(null)
-  const [tab, setTab] = useState<'urls' | 'changes' | 'groups'>(initial.tab)
+  const [tab, setTab] = useState<Tab>(initial.tab)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(prefs?.collapsed))
 
   const data = result.state === 'ready' ? result.data : null
@@ -71,6 +72,7 @@ export function Dashboard() {
           <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Recent changes<span className="count">{data?.changes.length ?? 0}</span></button>
           <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
           <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
+          <button role="tab" aria-selected={tab === 'health'} className={`tab${tab === 'health' ? ' active' : ''}`} onClick={() => setTab('health')}>Health</button>
         </div>
       </div>
       {check.state === 'waiting' && <p className="muted">Check started, waiting for the run on GitHub …</p>}
@@ -80,7 +82,8 @@ export function Dashboard() {
       {check.state === 'timeout' && <p className="error">The run is taking unusually long. Please check GitHub.</p>}
       {check.state === 'error' && <p className="error">Check could not be started: {check.message}</p>}
       {tab === 'groups' && <GroupsPanel entries={data?.entries ?? []} metas={data?.metas ?? []} groupsReady={data?.groupsReady ?? false} onChanged={() => reload()} />}
-      {tab !== 'groups' && <div className="toolbar">
+      {tab === 'health' && data && <HealthTab data={data} onShowHistory={showHistory} />}
+      {(tab === 'urls' || tab === 'changes') && <div className="toolbar">
         <div className="search-field">
           <span aria-hidden="true">⌕</span>
           <input type="search" placeholder="Search (name, URL, text)" value={query} onChange={(e) => setQuery(e.target.value)} />
