@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { buildHash, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter, type Tab } from '../lib/watchlist'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { bookmarkletCode, buildHash, parseAddHash, pickView, readPrefs, writePrefs, matches, orderGroups, type Period, type Sort, type StatusFilter, type Tab } from '../lib/watchlist'
 import { useWatchlist } from '../useWatchlist'
 import { ChangesTab } from './ChangesTab'
 import { HealthTab } from './HealthTab'
@@ -9,17 +9,24 @@ import { UrlsTab } from './UrlsTab'
 export function Dashboard() {
   const { result, check, reload, checkNow, download, upload, remove } = useWatchlist()
   const [prefs] = useState(readPrefs)
-  const [initial] = useState(() => pickView(window.location.hash, prefs))
+  const [prefill] = useState(() => parseAddHash(window.location.hash))
+  const [initial] = useState(() => pickView(prefill ? '' : window.location.hash, prefs))
   const [mailTarget] = useState(() => /^#changes:(.+)$/.exec(window.location.hash))
   const [query, setQuery] = useState(initial.query)
   const [group, setGroup] = useState(initial.group)
   const [status, setStatus] = useState<StatusFilter>(initial.status)
   const [period, setPeriod] = useState<Period>(initial.period)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState(prefill !== null)
   const [sort, setSort] = useState<Sort>(initial.sort)
   const [pageUrl, setPageUrl] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>(initial.tab)
+  const [tab, setTab] = useState<Tab>(prefill ? 'urls' : initial.tab)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(prefs?.collapsed))
+
+  const bookmarklet = useRef<HTMLAnchorElement>(null)
+  // React blocks javascript: URLs in href, so the attribute is set directly.
+  useEffect(() => {
+    bookmarklet.current?.setAttribute('href', bookmarkletCode(window.location.origin + window.location.pathname))
+  })
 
   const data = result.state === 'ready' ? result.data : null
   const groups = useMemo(() => orderGroups(data?.entries ?? [], data?.metas ?? []), [data])
@@ -60,6 +67,7 @@ export function Dashboard() {
               <div className="menu-items">
                 <button className="btn" onClick={() => void download('yaml')}>Export as YAML</button>
                 <button className="btn" onClick={() => void download('json')}>Export as JSON</button>
+                <a className="btn" ref={bookmarklet} href="#" onClick={(e) => e.preventDefault()} title="Drag this to your bookmarks bar">Bookmarklet: add page</a>
                 <label className="btn">Import (YAML/JSON)<input type="file" accept=".yml,.yaml,.json,text/*" hidden onChange={(e) => { void upload(e.target.files?.[0]); e.target.value = '' }} /></label>
               </div>
             </details>
@@ -93,7 +101,7 @@ export function Dashboard() {
           {groups.map(([g]) => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>}      {data && tab === 'urls' && (
-        <UrlsTab data={data} shown={shown} status={status} setStatus={setStatus} collapsed={collapsed} setCollapsed={setCollapsed} sort={sort} setSort={setSort} adding={adding} setAdding={setAdding} onShowHistory={showHistory} onCheckUrl={(url) => void checkNow({ url })} onCheckGroup={(group) => void checkNow({ group })} checkBusy={['busy', 'waiting', 'running'].includes(check.state)} onReload={reload} onRemove={(e) => void remove(e)} />
+        <UrlsTab prefill={prefill} data={data} shown={shown} status={status} setStatus={setStatus} collapsed={collapsed} setCollapsed={setCollapsed} sort={sort} setSort={setSort} adding={adding} setAdding={setAdding} onShowHistory={showHistory} onCheckUrl={(url) => void checkNow({ url })} onCheckGroup={(group) => void checkNow({ group })} checkBusy={['busy', 'waiting', 'running'].includes(check.state)} onReload={reload} onRemove={(e) => void remove(e)} />
       )}
       {data && tab === 'changes' && (
         <ChangesTab data={data} pageUrl={pageUrl} setPageUrl={setPageUrl} query={query} group={group} period={period} setPeriod={setPeriod} mailTarget={mailTarget} />

@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, type Entry, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
+import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, type Entry, type Prefill, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { AddUrl } from './AddUrl'
 import { DiagnosisHint } from './DiagnosisHint'
@@ -34,6 +34,7 @@ function Spark({ times }: { times: string[] }) {
 }
 
 type Props = {
+  prefill?: Prefill | null
   data: Data
   shown: ReturnType<typeof orderGroups>
   status: StatusFilter
@@ -52,7 +53,7 @@ type Props = {
   onRemove: (entry: Entry) => void
 }
 
-export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, checkBusy, onReload, onRemove }: Props) {
+export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, checkBusy, onReload, onRemove }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
   const total = data.entries.length
   const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
@@ -63,7 +64,7 @@ export function UrlsTab({ data, shown, status, setStatus, collapsed, setCollapse
   return (
     <>
   <RunsPanel runs={data.runs ?? []} />
-  <AddUrl entries={data.entries ?? []} open={adding} setOpen={setAdding} onAdded={() => onReload()} />
+  <AddUrl prefill={prefill} entries={data.entries ?? []} open={adding} setOpen={setAdding} onAdded={() => onReload()} />
   <div className="filter-bar">
     {STATUS_FILTERS.map(([value, label]) => (
       <button key={value} className={`filter-pill${status === value ? ' active' : ''}`} onClick={() => setStatus(value)}>
