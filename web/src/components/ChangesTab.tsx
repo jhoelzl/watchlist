@@ -30,7 +30,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     if (!pageUrl) return setPageHistory(null)
     let stale = false
     setPageHistory(null)
-    void supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').eq('url', pageUrl).order('id', { ascending: false }).limit(PAGE_HISTORY_LIMIT)
+    void supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').eq('url', pageUrl).order('id', { ascending: false }).limit(PAGE_HISTORY_LIMIT)
       .then(({ data: rows, error }) => { if (!stale) setPageHistory(error ? { error: error.message } : ((rows ?? []) as Change[])) })
     return () => { stale = true }
   }, [pageUrl])
@@ -45,7 +45,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     if (lastId === undefined) return
     setLoadingMore(true)
     setMoreError('')
-    let q = supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra').lt('id', lastId).order('id', { ascending: false }).limit(HISTORY_LIMIT)
+    let q = supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').lt('id', lastId).order('id', { ascending: false }).limit(HISTORY_LIMIT)
     if (pageUrl) q = q.eq('url', pageUrl)
     const { data: rows, error } = await q
     setLoadingMore(false)
@@ -112,6 +112,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
         <details className="change" key={c.id} data-url={c.url}>
           <summary>
             {c.time.slice(11)} – {c.name ?? c.url}
+            {c.summary && <span className="change-summary">{c.summary}</span>}
             <span className="diff-stat"><span className="plus">+{countLines(c.diff, '+')}</span> <span className="minus">−{countLines(c.diff, '-')}</span></span>
           </summary>
           <p>

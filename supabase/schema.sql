@@ -42,6 +42,7 @@ create table if not exists watchlist_history (
   extra integer not null default 0, -- Number of truncated lines
   created_at timestamptz not null default now()
 );
+alter table watchlist_history add column if not exists summary text; -- optional one-line AI summary
 create index if not exists watchlist_history_url_idx on watchlist_history (url, id desc);
 
 create table if not exists watchlist_state (

@@ -406,3 +406,5 @@ tr.edit-row td { opacity: 1; padding: 0; }
 .noise-badge { border: 0; cursor: pointer; margin-right: 6px; }
 
 .diagnosis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0; padding: 6px 10px; font-size: 13px; background: var(--hover); border-radius: 8px; }
+
+.change-summary { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: var(--muted, #57606a); }
