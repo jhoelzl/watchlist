@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { useToast } from './toast'
-import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type HealthRecord, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
+import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, groupOf, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type HealthRecord, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
 
-export type Data = { health: Record<string, HealthRecord>; runs: RunRecord[]; freq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
+export type Data = { health: Record<string, HealthRecord>; runs: RunRecord[]; freq: Record<string, string[]>; groupFreq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
 export type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 export type CheckState = { state: 'idle' | 'busy' | 'waiting' | 'running' | 'success' | 'failed' | 'timeout'; url?: string } | { state: 'error'; message: string }
@@ -18,7 +18,7 @@ async function load(): Promise<Load> {
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').order('id', { ascending: false }).limit(HISTORY_LIMIT),
     supabase.from('watchlist_groups').select('name, position, color, icon'),
-    supabase.from('watchlist_history').select('url, time').gte('created_at', since).limit(5000),
+    supabase.from('watchlist_history').select('url, time, grp').gte('created_at', since).order('id', { ascending: false }).limit(5000),
     supabase.from('watchlist_state').select('value').eq('key', 'runs').maybeSingle(),
     supabase.from('watchlist_state').select('value').eq('key', 'health').maybeSingle(),
   ])
@@ -33,6 +33,7 @@ async function load(): Promise<Load> {
       runs: Array.isArray(runRows.data?.value) ? (runRows.data.value as RunRecord[]) : [],
       health: (healthRow.data?.value && !Array.isArray(healthRow.data.value) ? healthRow.data.value : {}) as Record<string, HealthRecord>,
       freq: ((freqRows.data ?? []) as { url: string; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[r.url] ??= []).push(r.time); return acc }, {}),
+      groupFreq: ((freqRows.data ?? []) as { grp: string | null; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[groupOf(r.grp)] ??= []).push(r.time); return acc }, {}),
       metas: (groupRows.data ?? []) as GroupMeta[],
       groupsReady: !groupRows.error,
     },

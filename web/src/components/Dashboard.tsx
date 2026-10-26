@@ -37,6 +37,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   )
   const showHistory = (url: string) => { setPageUrl(url); setPeriod(''); setQuery(''); setGroup(''); setTab('changes') }
   const openUrls = (filter: StatusFilter) => { setPageUrl(null); setQuery(''); setGroup(''); setStatus(filter); setTab('urls') }
+  const openGroupChanges = (name: string) => { setPageUrl(null); setPeriod('7d'); setQuery(''); setGroup(name); setStatus(''); setTab('changes') }
   const openAddUrl = () => { setTab('urls'); setAdding(true) }
 
   useEffect(() => {
@@ -126,6 +127,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
           onShowHistory={showHistory}
           onOpenUrls={openUrls}
           onOpenChanges={() => setTab('changes')}
+          onOpenGroupChanges={openGroupChanges}
         />
       )}
       {data && tab === 'urls' && (

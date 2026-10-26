@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -43,6 +43,23 @@ describe('watchlist helpers', () => {
   it('groups entries sorted ascending by name', () => {
     const groups = groupEntries([entry({ group: 'B' }), entry({ group: 'A', url: 'x' }), entry({ group: 'B', url: 'y' })])
     expect(groups.map(([g, items]) => [g, items.length])).toEqual([['A', 1], ['B', 2]])
+  })
+
+  it('counts group changes from the last seven days, including empty groups', () => {
+    const now = Date.parse('2026-10-26T12:00:00Z')
+    const activity = groupActivityLast7Days(
+      [entry({ url: 'a', group: 'Product' }), entry({ url: 'b', group: 'Product' }), entry({ url: 'c', group: 'News' })],
+      {
+        Product: ['2026-10-26T11:00:00Z', '2026-10-20T12:00:00Z', '2026-10-18T11:59:59Z', '2026-10-26T12:00:01Z'],
+      },
+      ['News', 'Research'],
+      now,
+    )
+    expect(activity).toEqual([
+      { group: 'Product', pages: 2, changes: 2 },
+      { group: 'News', pages: 1, changes: 0 },
+      { group: 'Research', pages: 0, changes: 0 },
+    ])
   })
 
   it('classifies diff lines', () => {
