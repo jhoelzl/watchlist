@@ -93,3 +93,18 @@ def test_send_change_mail_adds_summary(on, monkeypatch):
     hist, new = [], []
     assert check.send_change_mail(store, st, hist, new)
     assert "Short" in mails[0] and new[0]["summary"] == "Short"
+
+
+def test_non_json_response_explains_the_cause(on, monkeypatch, capsys):
+    class Plain(Resp):
+        status_code, text = 200, "OK"
+
+        def json(self):
+            raise ValueError("no json")
+
+    monkeypatch.setattr(summarize.requests, "post", lambda *a, **k: Plain())
+    c = change()
+    summarize.add_summaries([(c, True)])
+    assert "summary" not in c
+    out = capsys.readouterr().out
+    assert "did not return JSON" in out and "GitHub Models is retired" in out
