@@ -12,7 +12,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   const [prefs] = useState(readPrefs)
   const [prefill] = useState(() => parseAddHash(window.location.hash))
   const [initial] = useState(() => pickView(prefill ? '' : window.location.hash, prefs))
-  const [mailTarget] = useState(() => /^#changes:(.+)$/.exec(window.location.hash))
+  const [target] = useState(initial.target)
   const [query, setQuery] = useState(initial.query)
   const [group, setGroup] = useState(initial.group)
   const [status, setStatus] = useState<StatusFilter>(initial.status)
@@ -53,7 +53,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   }, [homeRequest, reload])
 
   useEffect(() => {
-    writePrefs({ view: { tab, group, status, period, query, sort }, collapsed: [...collapsed] })
+    writePrefs({ view: { tab, group, status, period, query, sort, target: '' }, collapsed: [...collapsed] })
   }, [tab, group, status, period, query, sort, collapsed])
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
   }, [])
 
   useEffect(() => {
-    const hash = buildHash({ tab, group, status, period, query, sort })
+    const hash = buildHash({ tab, group, status, period, query, sort, target: tab === 'changes' && !pageUrl ? target : '' })
     // Section/detail navigation gets its own entry; filter and search changes stay in the current entry.
     const routeChanged = currentRoute.current.tab !== tab || currentRoute.current.pageUrl !== pageUrl
     if (hash !== window.location.hash || routeChanged) {
@@ -87,7 +87,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
       else history.replaceState(state, '', url)
     }
     currentRoute.current = { tab, pageUrl }
-  }, [tab, group, status, period, query, sort, pageUrl])
+  }, [tab, group, status, period, query, sort, pageUrl, target])
 
   if (result.state === 'loading') return <p className="muted">Loading …</p>
   if (result.state === 'denied') {
@@ -163,7 +163,7 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
         <UrlsTab prefill={prefill} data={data} shown={shown} status={status} setStatus={setStatus} collapsed={collapsed} setCollapsed={setCollapsed} sort={sort} setSort={setSort} adding={adding} setAdding={setAdding} onShowHistory={showHistory} onCheckUrl={(url) => void checkNow({ url })} onCheckGroup={(group) => void checkNow({ group })} onCheckUrls={(urls) => void checkNow({ urls })} checkBusy={['busy', 'waiting', 'running'].includes(check.state)} onReload={reload} onRemove={(e) => void remove(e)} />
       )}
       {data && tab === 'changes' && (
-        <ChangesTab data={data} pageUrl={pageUrl} setPageUrl={setPageUrl} query={query} group={group} period={period} setPeriod={setPeriod} mailTarget={mailTarget} />
+        <ChangesTab data={data} pageUrl={pageUrl} setPageUrl={setPageUrl} query={query} group={group} period={period} setPeriod={setPeriod} target={target} />
       )}
     </>
   )

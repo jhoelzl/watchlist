@@ -532,17 +532,21 @@ export function applyEdit(options: Record<string, unknown>, form: EditForm): { o
 export type Tab = 'overview' | 'urls' | 'changes' | 'groups' | 'health'
 export type SortKey = '' | 'name' | 'status' | 'checked' | 'changed'
 export type Sort = { key: SortKey; desc: boolean }
-export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort }
-export const DEFAULT_VIEW: ViewState = { tab: 'overview', group: '', status: '', period: '', query: '', sort: { key: '', desc: false } }
+export type ViewState = { tab: Tab; group: string; status: StatusFilter; period: Period; query: string; sort: Sort; target: string }
+export const DEFAULT_VIEW: ViewState = { tab: 'overview', group: '', status: '', period: '', query: '', sort: { key: '', desc: false }, target: '' }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
 const TABS: Tab[] = ['overview', 'changes', 'urls', 'groups', 'health']
 const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
-// Format: #t=changes&g=Azure&s=problem&p=7d&q=text. The old mail format #changes[:URL] remains valid.
+// Format: #t=changes&g=Azure&s=problem&p=7d&q=text&u=<URL of the entry to open>. The old mail format #changes[:URL] remains valid.
 export function parseView(hash: string): ViewState {
   const raw = hash.replace(/^#/, '')
-  if (raw.startsWith('changes')) return { ...DEFAULT_VIEW, tab: 'changes' }
+  if (raw.startsWith('changes')) {
+    let target = ''
+    try { target = decodeURIComponent(raw.replace(/^changes:?/, '')) } catch { /* malformed link: no target */ }
+    return { ...DEFAULT_VIEW, tab: 'changes', target }
+  }
   const p = new URLSearchParams(raw)
   const t = p.get('t') as Tab
   const s = p.get('s') ?? ''
@@ -554,6 +558,7 @@ export function parseView(hash: string): ViewState {
     period: (PERIOD_VALUES.includes(per) ? per : '') as Period,
     query: p.get('q') ?? '',
     sort: parseSort(p.get('o') ?? ''),
+    target: p.get('u') ?? '',
   }
 }
 
@@ -572,6 +577,7 @@ export function buildHash(v: ViewState): string {
   if (v.period) p.set('p', v.period)
   if (v.query) p.set('q', v.query)
   if (v.sort.key) p.set('o', (v.sort.desc ? '-' : '') + v.sort.key)
+  if (v.target) p.set('u', v.target)
   const out = p.toString()
   return out ? `#${out}` : ''
 }
