@@ -14,10 +14,10 @@ type Props = {
   group: string
   period: Period
   setPeriod: (period: Period) => void
-  mailTarget: RegExpExecArray | null
+  target: string
 }
 
-export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, setPeriod, mailTarget }: Props) {
+export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, setPeriod, target }: Props) {
   const [extra, setExtra] = useState<Change[]>([])
   const [noMore, setNoMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -74,15 +74,15 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
 
   // Mail link #changes:<URL> opens the matching entry (once, as soon as it is in the list)
   useEffect(() => {
-    if (!mailTarget || scrolled.current) return
-    const url = decodeURIComponent(mailTarget[1])
+    if (!target || scrolled.current) return
+    const url = target
     const el = Array.from(document.querySelectorAll<HTMLDetailsElement>('details.change')).find((d) => d.dataset.url === url)
     if (el) {
       scrolled.current = true
       el.open = true
       el.scrollIntoView({ block: 'center' })
     }
-  }, [days, mailTarget])
+  }, [days, target])
 
   return (
     <>

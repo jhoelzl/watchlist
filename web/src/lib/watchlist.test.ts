@@ -226,7 +226,7 @@ describe('editing URLs', () => {
 
 describe('view hash', () => {
   it('roundtrip', () => {
-    const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b', sort: { key: 'changed' as const, desc: true } }
+    const v = { tab: 'changes' as const, group: 'Azure & Co', status: 'problem' as const, period: '7d' as const, query: 'a b', sort: { key: 'changed' as const, desc: true }, target: 'https://a.de/x?y=1' }
     expect(parseView(buildHash(v))).toEqual(v)
   })
   it('default is empty', () => {
@@ -236,6 +236,7 @@ describe('view hash', () => {
     expect(parseView('#t=x&s=zzz&p=1y').tab).toBe('overview')
     expect(parseView('#s=zzz').status).toBe('')
     expect(parseView('#changes:https%3A%2F%2Fa.de').tab).toBe('changes')
+    expect(parseView('#changes:https%3A%2F%2Fa.de').target).toBe('https://a.de')
   })
 })
 
@@ -370,7 +371,7 @@ describe('runPhase', () => {
 })
 
 describe('pickView', () => {
-  const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '', sort: { key: '' as const, desc: false } }, collapsed: [] }
+  const stored = { view: { tab: 'groups' as const, group: 'A', status: '' as const, period: '' as const, query: '', sort: { key: '' as const, desc: false }, target: '' }, collapsed: [] }
   it('the hash takes precedence, otherwise the stored view', () => {
     expect(pickView('#t=changes', stored).tab).toBe('changes')
     expect(pickView('', stored).tab).toBe('groups')
