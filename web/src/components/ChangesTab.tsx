@@ -18,6 +18,8 @@ type Props = {
   onReload: () => void
 }
 
+const ignoreList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : typeof v === 'string' ? [v] : [])
+
 export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, setPeriod, target, onReload }: Props) {
   const [extra, setExtra] = useState<Change[]>([])
   const [noMore, setNoMore] = useState(false)
@@ -133,7 +135,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
               <> · <a href={fragmentUrl(c.url, c.diff)} target="_blank" rel="noreferrer noopener">to the changed spot</a></>
             )}
           </p>
-          <DiffView diff={c.diff} extra={c.extra} onIgnore={data.entries.some((e) => e.url === c.url) ? (p) => ignorePattern(c.url, p) : undefined} />
+          <DiffView diff={c.diff} extra={c.extra} ignored={ignoreList(data.entries.find((e) => e.url === c.url)?.options?.ignore)} onIgnore={data.entries.some((e) => e.url === c.url) ? (p) => ignorePattern(c.url, p) : undefined} />
           {hasShots(c) && <ScreenshotCompare url={c.url} />}
         </details>
       ))}
