@@ -27,8 +27,9 @@ function IgnoreForm({ line, onSave, onCancel }: { line: string; onSave: (pattern
   )
 }
 
-export function DiffView({ diff, extra, onIgnore }: { diff: string; extra: number; onIgnore?: (pattern: string) => Promise<string | null> }) {
+export function DiffView({ diff, extra, onIgnore, ignored = [] }: { diff: string; extra: number; onIgnore?: (pattern: string) => Promise<string | null>; ignored?: string[] }) {
   const [ignoring, setIgnoring] = useState<number | null>(null)
+  const regexes = useMemo(() => ignored.flatMap((p) => { try { return [new RegExp(p)] } catch { return [] } }), [ignored])
   const [side, setSide] = useState(false)
   const [onlyChanged, setOnlyChanged] = useState(false)
   const lines = useMemo(() => diff.split('\n'), [diff])
@@ -64,12 +65,14 @@ export function DiffView({ diff, extra, onIgnore }: { diff: string; extra: numbe
           {visible.map(({ segs, line }, i) => {
             const text = segs.map((s) => s.text).join('')
             const changed = (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---') && line.slice(1).trim() !== ''
+            const already = changed && regexes.some((re) => re.test(line.slice(1).trim()))
             return (
               <Fragment key={i}>
-                <div className={`${diffClass(text)}${onIgnore && changed ? ' ignorable' : ''}`}>
+                <div className={`${diffClass(text)}${onIgnore && changed && !already ? ' ignorable' : ''}${already ? ' is-ignored' : ''}`}>
                   <Segments segs={segs} />
                   {segs.length === 0 || segs[0].text === '' ? ' ' : ''}
-                  {onIgnore && changed && <button type="button" className="ignore-btn" title="Ignore this line in future checks" onClick={() => setIgnoring(i)}>Ignore</button>}
+                  {already && <span className="ignored-tag" title="An ignore rule of this URL already matches this line. Future checks drop it.">ignored</span>}
+                  {onIgnore && changed && !already && <button type="button" className="ignore-btn" title="Ignore this line in future checks" onClick={() => setIgnoring(i)}>Ignore</button>}
                 </div>
                 {ignoring === i && onIgnore && (
                   <IgnoreForm line={line.slice(1).trim()} onCancel={() => setIgnoring(null)} onSave={async (p) => { const err = await onIgnore(p); if (!err) setIgnoring(null); return err }} />
