@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, addIgnore, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -514,5 +514,15 @@ describe('bulk actions', () => {
     expect([...none].sort()).toEqual(['a', 'b', 'z'])
     expect([...toggleGroupSelection(none, ['a', 'b'])]).toEqual(['z'])
     expect([...toggleGroupSelection(new Set(['a']), ['a', 'b'])].sort()).toEqual(['a', 'b'])
+  })
+})
+
+describe('addIgnore', () => {
+  it('appends, deduplicates and validates', () => {
+    expect(addIgnore({ js: true }, 'Morgen')).toEqual({ options: { js: true, ignore: ['Morgen'] } })
+    expect(addIgnore({ ignore: ['a'] }, 'b')).toEqual({ options: { ignore: ['a', 'b'] } })
+    expect(addIgnore({ ignore: ['a'] }, 'a')).toEqual({ options: { ignore: ['a'] } })
+    expect('error' in addIgnore({}, '(')).toBe(true)
+    expect('error' in addIgnore({}, ' ')).toBe(true)
   })
 })

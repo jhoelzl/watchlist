@@ -653,3 +653,9 @@ main { padding-top: 16px; }
   .dashboard-nav .intro-actions .btn { height: 34px; padding: 0 10px; font-size: 12px; }
   .toolbar-menu { align-self: flex-end; }
 }
+
+.change pre .ignorable { position: relative; }
+.ignore-btn { display: none; position: absolute; right: 6px; top: 0; font-size: 11px; padding: 0 8px; line-height: 18px; border: 1px solid var(--border, #d0d7de); border-radius: 6px; background: var(--bg, #fff); color: inherit; cursor: pointer; }
+.ignorable:hover .ignore-btn, .ignore-btn:focus { display: inline-block; }
+.ignore-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 12px; font-family: sans-serif; }
+.ignore-form input { flex: 1 1 260px; font-family: monospace; font-size: 12px; }
