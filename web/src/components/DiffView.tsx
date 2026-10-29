@@ -1,11 +1,34 @@
 import { Fragment, useMemo, useState } from 'react'
-import { annotateDiff, diffClass, sideBySide } from '../lib/watchlist'
+import { annotateDiff, diffClass, lineToPattern, sideBySide } from '../lib/watchlist'
 
 function Segments({ segs }: { segs: { text: string; changed: boolean }[] }) {
   return <>{segs.map((s, n) => (s.changed ? <mark key={n}>{s.text}</mark> : s.text))}</>
 }
 
-export function DiffView({ diff, extra }: { diff: string; extra: number }) {
+function IgnoreForm({ line, onSave, onCancel }: { line: string; onSave: (pattern: string) => Promise<string | null>; onCancel: () => void }) {
+  const [pattern, setPattern] = useState(() => lineToPattern(line))
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  let matches = false
+  try { matches = pattern !== '' && new RegExp(pattern).test(line) } catch { /* shown on save */ }
+  const submit = async () => {
+    setBusy(true)
+    const failed = await onSave(pattern)
+    setBusy(false)
+    if (failed) setError(failed)
+  }
+  return (
+    <div className="ignore-form">
+      <input value={pattern} onChange={(e) => { setPattern(e.target.value); setError('') }} aria-label="Ignore regex" />
+      <button className="btn" type="button" disabled={busy || !matches} onClick={() => void submit()}>Ignore in future checks</button>
+      <button className="btn" type="button" onClick={onCancel}>Cancel</button>
+      <span className={error || !matches ? 'error' : 'muted'}>{error || (matches ? 'Matches this line. Removed from the text before comparing.' : 'Does not match this line.')}</span>
+    </div>
+  )
+}
+
+export function DiffView({ diff, extra, onIgnore }: { diff: string; extra: number; onIgnore?: (pattern: string) => Promise<string | null> }) {
+  const [ignoring, setIgnoring] = useState<number | null>(null)
   const [side, setSide] = useState(false)
   const [onlyChanged, setOnlyChanged] = useState(false)
   const lines = useMemo(() => diff.split('\n'), [diff])
@@ -38,12 +61,22 @@ export function DiffView({ diff, extra }: { diff: string; extra: number }) {
         </div>
       ) : (
         <pre>
-          {visible.map(({ segs }, i) => (
-            <div key={i} className={diffClass(segs.map((s) => s.text).join(''))}>
-              <Segments segs={segs} />
-              {segs.length === 0 || segs[0].text === '' ? ' ' : ''}
-            </div>
-          ))}
+          {visible.map(({ segs, line }, i) => {
+            const text = segs.map((s) => s.text).join('')
+            const changed = (line.startsWith('+') || line.startsWith('-')) && !line.startsWith('+++') && !line.startsWith('---') && line.slice(1).trim() !== ''
+            return (
+              <Fragment key={i}>
+                <div className={`${diffClass(text)}${onIgnore && changed ? ' ignorable' : ''}`}>
+                  <Segments segs={segs} />
+                  {segs.length === 0 || segs[0].text === '' ? ' ' : ''}
+                  {onIgnore && changed && <button type="button" className="ignore-btn" title="Ignore this line in future checks" onClick={() => setIgnoring(i)}>Ignore</button>}
+                </div>
+                {ignoring === i && onIgnore && (
+                  <IgnoreForm line={line.slice(1).trim()} onCancel={() => setIgnoring(null)} onSave={async (p) => { const err = await onIgnore(p); if (!err) setIgnoring(null); return err }} />
+                )}
+              </Fragment>
+            )
+          })}
           {extra > 0 && <div className="muted">… and {extra} more lines</div>}
         </pre>
       )}

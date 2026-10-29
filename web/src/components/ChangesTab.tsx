@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import { HISTORY_LIMIT, PAGE_HISTORY_LIMIT, PERIODS, countLines, dayLabel, fragmentUrl, groupByDay, groupOf, inPeriod, matches, type Change, type Period } from '../lib/watchlist'
+import { HISTORY_LIMIT, addIgnore, PAGE_HISTORY_LIMIT, PERIODS, countLines, dayLabel, fragmentUrl, groupByDay, groupOf, inPeriod, matches, type Change, type Period } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { DiffView } from './DiffView'
 import { Heatmap } from './Heatmap'
@@ -15,9 +15,10 @@ type Props = {
   period: Period
   setPeriod: (period: Period) => void
   target: string
+  onReload: () => void
 }
 
-export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, setPeriod, target }: Props) {
+export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, setPeriod, target, onReload }: Props) {
   const [extra, setExtra] = useState<Change[]>([])
   const [noMore, setNoMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -25,6 +26,17 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
   const [pageHistory, setPageHistory] = useState<Change[] | { error: string } | null>(null)
   const [day, setDay] = useState<string | null>(null)
   const scrolled = useRef(false)
+  const ignorePattern = async (url: string, pattern: string): Promise<string | null> => {
+    const entry = data.entries.find((e) => e.url === url)
+    if (!entry) return 'URL not found.'
+    const built = addIgnore(entry.options ?? {}, pattern)
+    if ('error' in built) return built.error
+    const { data: saved, error } = await supabase.from('watchlist_urls').update({ options: built.options }).eq('url', url).select('url')
+    if (error) return error.message
+    if (!saved?.length) return 'No change saved. Is the “admins update urls” policy missing (supabase/schema.sql)?'
+    onReload()
+    return null
+  }
   // History of a single page: loaded in full from the database instead of only the latest 100 overall
   useEffect(() => {
     if (!pageUrl) return setPageHistory(null)
@@ -121,7 +133,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
               <> · <a href={fragmentUrl(c.url, c.diff)} target="_blank" rel="noreferrer noopener">to the changed spot</a></>
             )}
           </p>
-          <DiffView diff={c.diff} extra={c.extra} />
+          <DiffView diff={c.diff} extra={c.extra} onIgnore={data.entries.some((e) => e.url === c.url) ? (p) => ignorePattern(c.url, p) : undefined} />
           {hasShots(c) && <ScreenshotCompare url={c.url} />}
         </details>
       ))}

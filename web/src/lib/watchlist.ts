@@ -416,7 +416,7 @@ export type IgnoreSuggestion = { pattern: string; example: string; count: number
 const MAX_SUGGESTION_LENGTH = 160
 
 /** Regex that matches the line and leaves every digit sequence (date, counter, time) open. */
-function lineToPattern(line: string): string {
+export function lineToPattern(line: string): string {
   return line
     .trim()
     .split(/(\b[0-9a-f]{8,}\b|\d+|\s+)/)
@@ -486,6 +486,21 @@ export function applyFix(options: Record<string, unknown>, url: string, fix: Fix
         return { error: 'The suggested URL is invalid.' }
       }
   }
+}
+
+/** Adds an ignore regex to the options. Validates it and skips duplicates. */
+export function addIgnore(options: Record<string, unknown>, pattern: string): { options: Record<string, unknown> } | { error: string } {
+  const p = pattern.trim()
+  if (!p) return { error: 'The expression is empty.' }
+  if (p.length > 200) return { error: 'The expression is too long.' }
+  try {
+    new RegExp(p)
+  } catch {
+    return { error: `Invalid expression: ${p}` }
+  }
+  const cur = options.ignore
+  const list = Array.isArray(cur) ? cur.filter((x): x is string => typeof x === 'string') : typeof cur === 'string' ? [cur] : []
+  return { options: { ...options, ignore: list.includes(p) ? list : [...list, p] } }
 }
 
 export type EditForm = { name: string; group: string; selector: string; js: boolean; screenshot: boolean; ignore: string; onlyAdded: boolean; abTest: boolean; paused: boolean; interval: string }
