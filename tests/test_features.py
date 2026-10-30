@@ -776,3 +776,13 @@ def test_needs_js_for_screenshot(env, monkeypatch):
     tmp, sent = env
     (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    screenshot: true\n")
     assert check.main(["check.py", "--needs-js"]) == 0
+
+
+def test_new_ignore_rule_does_not_report_old_snapshot_line(env, monkeypatch):
+    tmp, sent = env
+    body = "alpha beta gamma\n" * 5
+    set_pages(monkeypatch, [body + "Morgen\n", body])
+    check.run()
+    (tmp / "urls.yml").write_text("urls:\n  - url: https://a\n    group: G\n    ignore: ['Morgen']\n")
+    check.run()
+    assert sent == []

@@ -89,9 +89,14 @@ def extract(body: str, opts: Options) -> tuple[str, str, bool]:
     """Body -> (title, text, is_feed). Then removes ignore patterns and blank lines."""
     feed = is_feed(body)
     title, text = parse_feed(body) if feed else parse_html(body, opts.get("selector"))
+    return title, apply_ignore(text, opts), feed
+
+
+def apply_ignore(text: str, opts: Options) -> str:
+    """Removes the ignore patterns and blank lines. Also applied to old snapshots after the ignore list changed."""
     for pattern in opts.get("ignore", []):
         try:
             text = regex.sub(pattern, "", text, timeout=IGNORE_TIMEOUT)
         except TimeoutError as ex:
             raise CheckError(f"ignore regex took too long (>{IGNORE_TIMEOUT} s): {pattern[:60]}", "ignore_timeout") from ex
-    return title, drop_blank_lines(text), feed
+    return drop_blank_lines(text)
