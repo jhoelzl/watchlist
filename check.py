@@ -17,6 +17,7 @@ from errors import error_code
 from fetch import FETCH_MS, FetchResult, capture_screenshots, fetch_all
 from models import Change, HealthEntry, HistoryEntry, Options, Pending, Problem, RunSummary, UrlStatus, Validators
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
+from parse import apply_ignore
 from settings import SETTINGS
 from store import FileStore, PgStore, open_store
 from summarize import add_summaries
@@ -266,6 +267,8 @@ def check_url(store: Store, st: RunState, opts: Options, fetched: dict[str, Fetc
     entry["name"] = name
     kind = "Feed" if feed else "page"
     old = store.snapshot(key)
+    if old is not None and opts.get("ignore"):
+        old = apply_ignore(old, opts)
     if old is not None and is_too_short(old, text, opts):
         return short_text_result(store, res, prev, url, name, kind, old, text)
     res.counters.append(("clear", key, "short"))
