@@ -2,7 +2,7 @@
 
 Open improvements by area. Effort: **S** (< 1 h), **M** (a few hours), **L** (days). Priority: 🔴 high, 🟡 medium, ⚪ low.
 
-Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 323, `add.py` 216, web dashboard in `web/` (React, Supabase), 166 Python tests (4 need real Postgres) and web tests for the pure helpers. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
+Current state: `check.py` 487 lines (plus `config.py`, `fetch.py`, `parse.py`, `diffing.py`, `notify.py`, `errors.py`), `store.py` 353, `add.py` 216, web dashboard in `web/` (React, Supabase), 174 Python tests (4 need real Postgres) and web tests for the pure helpers. Known A/B page variants can be suppressed with `ab_test: true`. Data is stored in Supabase (`watchlist_*` tables). The repository is public; personal data (URL list) is kept only in the database.
 
 ## 1. Security
 
@@ -47,7 +47,6 @@ Current state: `check.py` 359 lines (plus `config.py`, `fetch.py`, `parse.py`, `
 
 - 🟡 **Set `timeout-minutes`** for the `check` job so a stuck Playwright run cannot block for hours (currently unset). (S)
 - 🟡 **Pages that block GitHub runners:** `buch.stadt-salzburg.at` responds only from private IPs (ConnectTimeout or `goto` timeout on the runner). Options: self-hosted runner, proxy, or local launchd job. It has been removed from the list for now. (M)
-- ⚪ **Pages with A/B variants:** `deepl.com/en/pro` randomly returns one of two text variants on every fetch, causing repeated change emails (URL paused). Idea: detect when snapshots keep switching between two states and warn in the dashboard or pause automatically. (M)
 - 🟡 **Monitor run duration:** 52 URLs, many on `learn.microsoft.com` (`MAX_PER_HOST = 2`). After a few runs, review duration and adjust the limit or per-host delay if needed. (S)
 - 🟡 **Workflow-failure notification:** The “Alert on failure” step in `check.yml` needs the secrets loaded from 1Password and a reachable Resend, so it stays silent when loading secrets fails (for example, an expired service-account token) or when the schedule stops. Add a separate job that does not depend on those secrets (for example, a GitHub issue via `gh`) or monitor “no run in 36 h”. (S)
 - 🟡 **Database backup:** Regularly export `watchlist_urls` and `watchlist_history` (for example, as a weekly artifact). The Supabase project is shared. (S)
