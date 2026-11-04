@@ -319,6 +319,23 @@ def test_fetch_all_runs_in_parallel_and_respects_host_limit(monkeypatch):
     assert 1 < running["max"] <= SETTINGS.max_workers
 
 
+def test_fetch_all_checks_robots_for_different_hosts_in_parallel(monkeypatch):
+    barrier = threading.Barrier(2)
+
+    def robots_allowed(url, cache):
+        barrier.wait(timeout=2)
+        return True
+
+    monkeypatch.setattr(fetch, "robots_allowed", robots_allowed)
+    monkeypatch.setattr(fetch, "fetch", lambda url, opts, cond=None: ("T", "text", False, {}))
+
+    jobs = [({"url": f"https://{host}.example/"}, {}) for host in ("a", "b")]
+    result = fetch.fetch_all(jobs)
+
+    assert set(result) == {"https://a.example/", "https://b.example/"}
+    assert all(not isinstance(value, Exception) for value in result.values())
+
+
 def test_fetch_all_returns_exceptions_per_url(monkeypatch):
     def fake_fetch(url, opts, cond=None):
         if url.endswith("bad"):

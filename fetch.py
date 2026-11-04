@@ -226,7 +226,11 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
     (using one shared Playwright browser per run; see BrowserPool). Evaluation remains serial and deterministic in run().
     """
     robots: dict[str, RobotFileParser] = {}
-    robots_lock, js_lock = threading.Lock(), threading.Lock()
+    robots_locks: dict[str, threading.Lock] = {}
+    for opts, _ in jobs:
+        parts = urlparse(opts["url"])
+        robots_locks.setdefault(f"{parts.scheme}://{parts.netloc}", threading.Lock())
+    js_lock = threading.Lock()
     host_limits = {urlparse(o["url"]).netloc: threading.Semaphore(MAX_PER_HOST) for o, _ in jobs}
 
     def work(opts: Options, cond: Validators) -> tuple[str, FetchResult | Exception]:
@@ -235,7 +239,8 @@ def fetch_all(jobs: list[tuple[Options, Validators]]) -> dict[str, FetchResult |
             started = time.monotonic()
             try:
                 if not opts.get("ignore_robots"):
-                    with robots_lock:
+                    parts = urlparse(url)
+                    with robots_locks[f"{parts.scheme}://{parts.netloc}"]:
                         allowed = robots_allowed(url, robots)
                     if not allowed:
                         raise CheckError("robots.txt blocks the fetch (set ignore_robots: true to override)", "robots")
