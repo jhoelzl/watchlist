@@ -4,6 +4,8 @@ App/output
 App/App/public
 DerivedData
 xcuserdata
+signing.local.xcconfig
+App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
