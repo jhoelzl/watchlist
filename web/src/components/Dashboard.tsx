@@ -101,11 +101,11 @@ export function Dashboard({ homeRequest }: { homeRequest: number }) {
       <div className="dashboard-nav">
         <div className="dashboard-nav-inner">
           <div className="tabs" role="tablist" aria-label="Watchlist sections">
-            <button role="tab" aria-selected={tab === 'overview'} className={`tab${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
-            <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}>Changes<span className="count">{data?.changes.length ?? 0}</span></button>
-            <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}>URLs<span className="count">{total}</span></button>
-            <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}>Groups<span className="count">{groups.length}</span></button>
-            <button role="tab" aria-selected={tab === 'health'} className={`tab${tab === 'health' ? ' active' : ''}`} onClick={() => setTab('health')}>Health</button>
+            <button role="tab" aria-selected={tab === 'overview'} className={`tab${tab === 'overview' ? ' active' : ''}`} onClick={() => setTab('overview')}><span className="tab-icon" aria-hidden="true">⌂</span>Overview</button>
+            <button role="tab" aria-selected={tab === 'changes'} className={`tab${tab === 'changes' ? ' active' : ''}`} onClick={() => setTab('changes')}><span className="tab-icon" aria-hidden="true">◷</span>Changes<span className="count">{data?.changes.length ?? 0}</span></button>
+            <button role="tab" aria-selected={tab === 'urls'} className={`tab${tab === 'urls' ? ' active' : ''}`} onClick={() => setTab('urls')}><span className="tab-icon" aria-hidden="true">☷</span>URLs<span className="count">{total}</span></button>
+            <button role="tab" aria-selected={tab === 'groups'} className={`tab${tab === 'groups' ? ' active' : ''}`} onClick={() => setTab('groups')}><span className="tab-icon" aria-hidden="true">▦</span>Groups<span className="count">{groups.length}</span></button>
+            <button role="tab" aria-selected={tab === 'health'} className={`tab${tab === 'health' ? ' active' : ''}`} onClick={() => setTab('health')}><span className="tab-icon" aria-hidden="true">♡</span>Health</button>
           </div>
           <div className="intro-actions">
             <button className="btn" onClick={openAddUrl}>Add URL</button>

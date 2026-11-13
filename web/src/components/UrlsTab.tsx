@@ -83,6 +83,20 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
     </button>
     <span className="muted count-text">{count} of {total}</span>
   </div>
+  <div className="mobile-sort">
+    <label htmlFor="mobile-url-sort">Sort pages</label>
+    <select id="mobile-url-sort" value={sort.key ? `${sort.key}:${sort.desc ? 'desc' : 'asc'}` : ''} onChange={(event) => {
+      const [key, direction] = event.target.value.split(':')
+      const column = SORT_COLUMNS.find(([value]) => value === key)
+      setSort(column ? { key: column[0], desc: direction === 'desc' } : { key: '', desc: false })
+    }}>
+      <option value="">Original order</option>
+      {SORT_COLUMNS.flatMap(([key, label]) => [
+        <option key={`${key}:asc`} value={`${key}:asc`}>{label} ↑</option>,
+        <option key={`${key}:desc`} value={`${key}:desc`}>{label} ↓</option>,
+      ])}
+    </select>
+  </div>
   <div className="composer-list">
     {shown.map(([name, items]) => {
       const problems = items.filter((e) => e.status === 'error' || e.status === 'warn').length
@@ -101,6 +115,10 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
             {items.some((e) => e.status === 'pending') && <span className="muted">{items.filter((e) => e.status === 'pending').length} pending</span>}
           </span>
         </button>
+        {!collapsed.has(name) && <label className="mobile-select-group">
+          <input type="checkbox" checked={items.length > 0 && items.every((e) => selected.has(e.url))} onChange={() => setSelected((s) => toggleGroupSelection(s, items.map((e) => e.url)))} />
+          Select all in {name}
+        </label>}
         {!collapsed.has(name) && <table>
           <thead><tr><th className="select-col"><input type="checkbox" aria-label={`Select all in ${name}`} checked={items.length > 0 && items.every((e) => selected.has(e.url))} onChange={() => setSelected((s) => toggleGroupSelection(s, items.map((e) => e.url)))} /></th>{SORT_COLUMNS.map(([key, label]) => (
             <th key={key} aria-sort={sort.key === key ? (sort.desc ? 'descending' : 'ascending') : 'none'}>
@@ -132,9 +150,9 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
                     <span className={`badge ${isStuck(e) ? 'error' : 'warn'}`} title={isStuck(e) ? 'Permanently broken for several days' : undefined}>{isStuck(e) ? 'Permanently broken, ' : ''}{e.streak} runs in a row</span>
                   )}
                 </td>
-                <td>{e.checked || '-'}</td>
-                <td>{e.changed || '-'}</td>
-                <td><Spark times={data.freq[e.url] ?? []} /></td>
+                <td data-label="Last checked">{e.checked || '-'}</td>
+                <td data-label="Last changed">{e.changed || '-'}</td>
+                <td data-label={`Last ${SPARK_DAYS} days`}><Spark times={data.freq[e.url] ?? []} /></td>
                 <td className="row-actions">
                   <button className="icon-btn" title="Check only this page now" aria-label={`Check ${e.name} now`} disabled={checkBusy} onClick={() => onCheckUrl(e.url)}>↻</button>
                   <button className="icon-btn" title="History of this page" aria-label={`History of ${e.name}`} onClick={() => onShowHistory(e.url)}>⏱</button>

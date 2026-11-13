@@ -17,11 +17,11 @@ export function RunsPanel({ runs }: { runs: RunRecord[] }) {
           {recent.map((r) => (
             <tr key={r.time}>
               <td>{r.time}{!r.ok && ' ⚠'}</td>
-              <td><span className="run-bar" style={{ width: `${Math.max(4, (r.seconds / maxSeconds) * 60)}px` }} /> {formatDuration(r.seconds)}</td>
-              <td>{r.total}</td>
-              <td>{r.errors || '-'}</td>
-              <td>{r.warns || '-'}</td>
-              <td>{r.changes || '-'}</td>
+              <td data-label="Duration"><span className="run-bar" style={{ width: `${Math.max(4, (r.seconds / maxSeconds) * 60)}px` }} /> {formatDuration(r.seconds)}</td>
+              <td data-label="URLs">{r.total}</td>
+              <td data-label="Errors">{r.errors || '-'}</td>
+              <td data-label="Warnings">{r.warns || '-'}</td>
+              <td data-label="Changes">{r.changes || '-'}</td>
             </tr>
           ))}
         </tbody>

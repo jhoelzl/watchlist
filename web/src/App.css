@@ -680,3 +680,80 @@ main { padding-top: 16px; }
 .ignore-form input { flex: 1 1 260px; font-family: monospace; font-size: 12px; }
 .change pre .is-ignored { opacity: .55; text-decoration: line-through; position: relative; }
 .ignored-tag { position: absolute; right: 6px; top: 0; font-size: 11px; font-style: normal; text-decoration: none; display: inline-block; padding: 0 8px; line-height: 18px; border-radius: 6px; background: var(--subtle); color: var(--muted); }
+
+.tab-icon, .mobile-sort, .mobile-select-group { display: none; }
+
+@media (max-width: 760px) {
+  main { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .dashboard-nav {
+    position: static;
+    margin-bottom: 12px;
+    background: transparent;
+    border-bottom: 0;
+    backdrop-filter: none;
+  }
+  .dashboard-nav .tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    display: flex;
+    width: 100%;
+    max-width: none;
+    padding: 5px env(safe-area-inset-right, 0px) calc(5px + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 0px);
+    overflow: visible;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, .06);
+  }
+  .dashboard-nav .tab {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 54px;
+    padding: 3px 0;
+    font-size: 10px;
+    box-shadow: none;
+  }
+  .dashboard-nav .tab.active { background: var(--accent-soft); }
+  .tab-icon { display: block; font-size: 21px; line-height: 22px; }
+  .dashboard-nav .tab .count { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .dashboard-nav .intro-actions .btn, .btn { min-height: 44px; height: auto; }
+  .dashboard-nav .intro-actions .btn { padding: 0 14px; font-size: 13px; }
+  .link, .text-action { min-height: 44px; }
+  .filter-pill { min-height: 44px; height: auto; }
+  .icon-btn { width: 44px; height: 44px; opacity: 1; }
+  .overview-check { flex-basis: 44px; }
+  .mobile-sort { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .mobile-sort label { white-space: nowrap; }
+  .mobile-sort select { min-width: 0; height: 44px; }
+  .mobile-select-group { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; color: var(--text); border-bottom: 1px solid var(--line); }
+  .mobile-select-group input, .select-col input { width: 20px; height: 20px; }
+  .composer-section table, .composer-section tbody { display: block; }
+  .composer-section thead { display: none; }
+  .composer-section tbody tr { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 5px 10px; padding: 14px; border-bottom: 1px solid var(--line); }
+  .composer-section td { display: block; padding: 0; border: 0; }
+  .composer-section td:nth-child(n+2) { grid-column: 2; }
+  .composer-section td[data-label] { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 12px; }
+  .composer-section td[data-label]::before { content: attr(data-label) ":"; font-weight: 600; }
+  .composer-section td:last-child { padding: 0; text-align: left; }
+  .composer-section .row-actions { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
+  .composer-section tr.edit-row td { grid-column: 1 / -1; }
+  .health-table, .groups-table, .runs table { display: block; width: 100%; overflow: visible; }
+  .health-table thead, .groups-table thead, .runs thead { display: none; }
+  .health-table tbody, .groups-table tbody, .runs tbody { display: grid; gap: 10px; }
+  .health-table tr, .groups-table tr, .runs tr { display: block; min-width: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .health-table td, .groups-table td, .runs td { display: block; min-width: 0; padding: 4px 0; border: 0; overflow-wrap: anywhere; }
+  .health-table td[data-label]::before, .groups-table td[data-label]::before, .runs td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-size: 12px; font-weight: 600; }
+  .health-strip { max-width: 100%; flex-wrap: wrap; vertical-align: middle; }
+  .change summary { min-height: 44px; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .change > p { overflow-wrap: anywhere; }
+  .toasts { bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  .bulk-bar { top: env(safe-area-inset-top, 0px); }
+}
