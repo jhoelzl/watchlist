@@ -1,26 +1,17 @@
 // Starts the GitHub "check" workflow for authorized accounts (watchlist_admins).
 // Secret: GH_DISPATCH_TOKEN (fine-grained PAT, repository jhoelzl/watchlist, Actions: Read and write).
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsFor, isAllowedOrigin } from "../_shared/cors.ts";
 
 const REPO = "jhoelzl/watchlist";
 const WORKFLOW = "check.yml";
-const ALLOWED_ORIGINS = ["https://jhoelzl.github.io", "http://localhost:5173"];
-const corsFor = (req: Request) => {
-  const origin = req.headers.get("Origin") ?? "";
-  return {
-    ...(ALLOWED_ORIGINS.includes(origin) ? { "Access-Control-Allow-Origin": origin } : {}),
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    Vary: "Origin",
-  };
-};
 const MIN_INTERVAL_MS = 60_000; // at most one start per minute
 
 Deno.serve(async (req) => {
   const CORS = corsFor(req);
   const reply = (body: Record<string, unknown>, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
-  const origin = req.headers.get("Origin");
-  if (origin && !ALLOWED_ORIGINS.includes(origin)) return reply({ error: "Origin not allowed." }, 403);
+  if (!isAllowedOrigin(req)) return reply({ error: "Origin not allowed." }, 403);
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return reply({ error: "Only POST is allowed." }, 405);
 
