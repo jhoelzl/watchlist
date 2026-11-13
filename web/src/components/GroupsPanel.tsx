@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { useToast } from '../toast'
 import { GroupIcon, isImageIcon, resizeLogo } from './GroupIcon'
@@ -13,6 +13,8 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
   const [editing, setEditing] = useState<Editing | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const editor = useRef<HTMLFormElement>(null)
+  useEffect(() => { if (editing) editor.current?.scrollIntoView({ block: 'start' }) }, [editing?.current])
   const groups = orderGroups(entries, metas)
   const metaOf = (name: string) => metas.find((m) => m.name === name)
 
@@ -113,60 +115,105 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
   })
 
   return (
-    <>
-      <p className="muted">Groups are labels on the URLs. All URLs are kept when renaming or dissolving a group.</p>
+    <div className="groups-page">
+      <div className="groups-intro">
+        <div>
+          <span className="eyebrow">YOUR COLLECTION</span>
+          <h2>Groups</h2>
+          <p>Organize your pages into collections that make sense to you.</p>
+        </div>
+        {!editing && <button className="btn primary groups-create" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}><span aria-hidden="true">+</span> New group</button>}
+      </div>
       {!groupsReady && <p className="muted">Order, colour, icon and empty groups need the <code>watchlist_groups</code> table (run the block at the end of <code>supabase/schema.sql</code> in the SQL editor).</p>}
-      {!editing && <><button className="btn primary" onClick={() => setEditing({ current: null, name: '', selected: new Set() })}>New group</button>{groupsReady && groups.length > 1 && <>{' '}<button className="btn" disabled={busy} title="Sort all groups alphabetically" onClick={() => sortAll('asc')}>Sort A–Z</button>{' '}<button className="btn" disabled={busy} title="Sort all groups in reverse alphabetical order" onClick={() => sortAll('desc')}>Sort Z–A</button></>}</>}
       {editing && (
-        <form className="panel add-panel" onSubmit={(e) => { e.preventDefault(); void apply(editing.current, editing.name, editing.selected) }}>
-          <label className="grow">Name<input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} autoFocus required /></label>
-          <fieldset className="grow">
-            <legend>URLs in this group</legend>
+        <form ref={editor} className="groups-editor" onSubmit={(e) => { e.preventDefault(); void apply(editing.current, editing.name, editing.selected) }}>
+          <div className="groups-editor-heading">
+            <h3>{editing.current === null ? 'Create a group' : `Edit ${editing.current}`}</h3>
+            <p>Choose a name and select the pages that belong in this group.</p>
+          </div>
+          <label>Group name<input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} autoFocus required /></label>
+          <fieldset>
+            <legend>Pages <span>({editing.selected.size} selected)</span></legend>
+            {!entries.length && <p className="muted">No pages yet. You can add them later.</p>}
             {entries.map((e) => (
-              <label className="check" key={e.url}>
+              <label className="groups-page-option" key={e.url}>
                 <input type="checkbox" checked={editing.selected.has(e.url)} onChange={() => toggle(e.url)} />
-                {e.name} <span className="muted">({e.group})</span>
+                <span>{e.name}<small>{e.group}</small></span>
               </label>
             ))}
           </fieldset>
-          <div className="add-actions">
-            <button className="btn primary" type="submit" disabled={busy}>Save</button>
-            <button className="btn" type="button" onClick={() => { setEditing(null); setError('') }}>Cancel</button>
+          <div className="groups-editor-actions">
+            <button className="btn" type="button" disabled={busy} onClick={() => { setEditing(null); setError('') }}>Cancel</button>
+            <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Saving …' : 'Save group'}</button>
           </div>
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      <table className="groups-table">
-        <thead><tr><th>Group</th><th>URLs</th><th>Appearance</th><th></th></tr></thead>
-        <tbody>
-          {groups.map(([name, items]) => (
-            <tr key={name}>
-              <td>
-                {groupsReady && <><button className="icon-btn" title="Move up" aria-label={`Move ${name} up`} disabled={busy} onClick={() => move(name, -1)}>↑</button><button className="icon-btn" title="Move down" aria-label={`Move ${name} down`} disabled={busy} onClick={() => move(name, 1)}>↓</button></>}{' '}
-                <span style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}`, paddingLeft: 8 } : undefined}><GroupIcon icon={metaOf(name)?.icon} />{name}</span>
-              </td>
-              <td data-label="URLs">{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} paused)</span>}</td>
-              <td data-label="Appearance">
-                {groupsReady && <>
-                  <select aria-label={`Colour of ${name}`} value={metaOf(name)?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })} style={{ width: 'auto' }}>
-                    {GROUP_COLORS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </select>{' '}
-                  <input key={metaOf(name)?.icon ?? ''} aria-label={`Emoji of ${name}`} className="icon-input" maxLength={4} placeholder="Emoji" defaultValue={isImageIcon(metaOf(name)?.icon) ? '' : metaOf(name)?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== (metaOf(name)?.icon ?? '')) style(name, { icon: v }) }} />{' '}
-                  <label className="btn" title="Upload a logo (PNG, JPG, SVG, WebP)">Logo<input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => { void uploadLogo(name, e.target.files?.[0]); e.target.value = '' }} /></label>
-                  {metaOf(name)?.icon && <>{' '}<button className="icon-btn" title="Remove icon" aria-label={`Remove icon of ${name}`} onClick={() => style(name, { icon: null })}>×</button></>}
-                </>}
-              </td>
-              <td>
-                {items.length > 0 && (items.some((e) => e.active !== false)
+      <div className="groups-list-heading">
+        <span>{groups.length} {groups.length === 1 ? 'group' : 'groups'}</span>
+        {groupsReady && groups.length > 1 && <div className="groups-sort">
+          <span>Sort</span>
+          <button className="link" disabled={busy} onClick={() => sortAll('asc')}>A–Z</button>
+          <button className="link" disabled={busy} onClick={() => sortAll('desc')}>Z–A</button>
+        </div>}
+      </div>
+      {!groups.length && <div className="groups-empty"><strong>No groups yet</strong><p>Create a group to keep related pages together.</p></div>}
+      <div className="groups-grid">
+        {groups.map(([name, items], index) => {
+          const meta = metaOf(name)
+          const paused = items.filter((entry) => entry.active === false).length
+          return (
+            <article className="group-card" key={name}>
+              <div className="group-card-top">
+                <div className="group-card-icon" style={isHexColor(meta?.color) ? { borderColor: meta.color } : undefined}>
+                  {meta?.icon ? <GroupIcon icon={meta.icon} /> : <span aria-hidden="true">▦</span>}
+                </div>
+                <div className="group-card-title">
+                  <h3>{name}</h3>
+                  <p>{items.length} {items.length === 1 ? 'page' : 'pages'}{paused > 0 && <> · {paused} paused</>}</p>
+                </div>
+              </div>
+              <div className="group-card-actions">
+                <button className="btn group-edit" disabled={busy} onClick={() => { setError(''); setEditing({ current: name, name, selected: new Set(items.map((e) => e.url)) }) }}>Edit group</button>
+                {items.length > 0 && (paused < items.length
                   ? <button className="btn" disabled={busy} onClick={() => void setActive(items, false)}>Pause all</button>
-                  : <button className="btn" disabled={busy} onClick={() => void setActive(items, true)}>Resume all</button>)}{' '}
-                <button className="btn" onClick={() => setEditing({ current: name, name, selected: new Set(items.map((e) => e.url)) })}>Edit</button>{' '}
-                {name !== DEFAULT_GROUP && <button className="btn" onClick={() => void dissolve(name)}>Dissolve</button>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
+                  : <button className="btn" disabled={busy} onClick={() => void setActive(items, true)}>Resume all</button>)}
+              </div>
+              <details className="group-settings">
+                <summary>Group settings</summary>
+                <div className="group-settings-body">
+                  {groupsReady && <>
+                    <div className="group-setting-fields">
+                      <label>Colour
+                        <select aria-label={`Colour of ${name}`} value={meta?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })}>
+                          {GROUP_COLORS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </label>
+                      <label>Emoji
+                        <input key={meta?.icon ?? ''} aria-label={`Emoji of ${name}`} maxLength={4} placeholder="Emoji" defaultValue={isImageIcon(meta?.icon) ? '' : meta?.icon ?? ''} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== (meta?.icon ?? '')) style(name, { icon: v }) }} />
+                      </label>
+                    </div>
+                    <div className="group-setting-actions">
+                      <label className="btn group-logo-upload" title="Upload a logo (PNG, JPG, SVG, WebP)">Upload logo<input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => { void uploadLogo(name, e.target.files?.[0]); e.target.value = '' }} /></label>
+                      {meta?.icon && <button className="link" disabled={busy} onClick={() => style(name, { icon: null })}>Remove icon</button>}
+                    </div>
+                    <div className="group-setting-actions">
+                      <span className="group-setting-label">Order</span>
+                      <button className="btn" aria-label={`Move ${name} up`} disabled={busy || index === 0} onClick={() => move(name, -1)}>↑ Move up</button>
+                      <button className="btn" aria-label={`Move ${name} down`} disabled={busy || index === groups.length - 1} onClick={() => move(name, 1)}>↓ Move down</button>
+                    </div>
+                  </>}
+                  {name !== DEFAULT_GROUP && <div className="group-dissolve">
+                    <button className="link danger" disabled={busy} onClick={() => void dissolve(name)}>Dissolve group</button>
+                    <span>Pages are kept in General.</span>
+                  </div>}
+                  {!groupsReady && name === DEFAULT_GROUP && <p className="muted">Group appearance and ordering are not available.</p>}
+                </div>
+              </details>
+            </article>
+          )
+        })}
+      </div>
+    </div>
   )
 }
