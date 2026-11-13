@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import { useToast } from './toast'
+import { onForeground } from './lib/foreground'
 import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, groupOf, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type HealthRecord, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
 
 export type Data = { health: Record<string, HealthRecord>; runs: RunRecord[]; freq: Record<string, string[]>; groupFreq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
@@ -46,8 +47,29 @@ export function useWatchlist() {
   const [result, setResult] = useState<Load>({ state: 'loading' })
   const [check, setCheck] = useState<CheckState>({ state: 'idle' })
   const [baseline, setBaseline] = useState<number | null>(null)
-  const reload = useCallback(() => { void load().then(setResult) }, [])
-  useEffect(reload, [reload])
+  const requestId = useRef(0)
+  const hasData = useRef(false)
+  const reload = useCallback((background = false) => {
+    const id = ++requestId.current
+    const finish = (next: Load) => {
+      if (id !== requestId.current) return
+      if (background && hasData.current && next.state === 'error') {
+        notify(`Refresh failed: ${next.message}`, { kind: 'error' })
+        return
+      }
+      hasData.current = next.state === 'ready'
+      setResult(next)
+    }
+    void load().then(finish).catch((error: unknown) => finish({ state: 'error', message: error instanceof Error ? error.message : String(error) }))
+  }, [notify])
+  useEffect(() => {
+    reload()
+    return () => { requestId.current++ }
+  }, [reload])
+  useEffect(() => onForeground(
+    () => reload(true),
+    (error) => notify(`App lifecycle listener failed: ${error instanceof Error ? error.message : String(error)}`, { kind: 'error' }),
+  ), [reload, notify])
 
   // Poll the run status every 5 s until the run is done (max. 10 minutes)
   useEffect(() => {
@@ -109,9 +131,9 @@ export function useWatchlist() {
     notify(`Imported: ${note}`, { action: { label: 'Undo', run: async () => {
       const { error: e } = await supabase.from('watchlist_urls').delete().in('url', urls)
       if (e) notify(`Undo failed: ${e.message}`, { kind: 'error' })
-      setResult(await load())
+      reload()
     } } })
-    setResult(await load())
+    reload()
   }
 
   // No confirmation dialog: the row is saved beforehand and can be restored via “Undo”.
@@ -123,9 +145,9 @@ export function useWatchlist() {
     notify(`“${e.name}” deleted.`, { action: { label: 'Undo', run: async () => {
       const { error: restoreError } = await supabase.from('watchlist_urls').insert(saved)
       if (restoreError) notify(`Restore failed: ${restoreError.message}`, { kind: 'error' })
-      setResult(await load())
+      reload()
     } } })
-    setResult(await load())
+    reload()
   }
 
   return { result, check, reload, checkNow, download, upload, remove }

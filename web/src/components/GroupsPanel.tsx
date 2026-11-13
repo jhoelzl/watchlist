@@ -145,8 +145,8 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
                 {groupsReady && <><button className="icon-btn" title="Move up" aria-label={`Move ${name} up`} disabled={busy} onClick={() => move(name, -1)}>↑</button><button className="icon-btn" title="Move down" aria-label={`Move ${name} down`} disabled={busy} onClick={() => move(name, 1)}>↓</button></>}{' '}
                 <span style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}`, paddingLeft: 8 } : undefined}><GroupIcon icon={metaOf(name)?.icon} />{name}</span>
               </td>
-              <td>{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} paused)</span>}</td>
-              <td>
+              <td data-label="URLs">{items.length}{items.some((e) => e.active === false) && <span className="muted"> ({items.filter((e) => e.active === false).length} paused)</span>}</td>
+              <td data-label="Appearance">
                 {groupsReady && <>
                   <select aria-label={`Colour of ${name}`} value={metaOf(name)?.color ?? ''} onChange={(e) => style(name, { color: e.target.value || null })} style={{ width: 'auto' }}>
                     {GROUP_COLORS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

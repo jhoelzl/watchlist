@@ -25,16 +25,16 @@ export function HealthTab({ data, onShowHistory }: { data: Data; onShowHistory: 
           {rows.map((r) => (
             <tr key={r.entry.url}>
               <td><button className="link" onClick={() => onShowHistory(r.entry.url)}>{r.entry.name}</button><div className="muted small">{r.entry.group || 'General'}</div></td>
-              <td>
+              <td data-label="Last checks">
                 {r.checks ? (
                   <span className="health-strip" aria-label={`${r.checks} checks`}>
                     {[...r.results].map((c, i) => <span key={i} className={`health-cell ${c}`} title={LABEL[c] ?? c} />)}
                   </span>
                 ) : <span className="muted">No data yet</span>}
               </td>
-              <td className={r.uptime !== null && r.uptime < 90 ? 'health-bad' : ''}>{r.uptime === null ? '-' : `${r.uptime.toFixed(0)}%`}</td>
-              <td>{formatMs(r.avgMs)}</td>
-              <td>
+              <td data-label="Uptime" className={r.uptime !== null && r.uptime < 90 ? 'health-bad' : ''}>{r.uptime === null ? '-' : `${r.uptime.toFixed(0)}%`}</td>
+              <td data-label="Avg fetch">{formatMs(r.avgMs)}</td>
+              <td data-label="Flags">
                 {r.stuck && <span className="badge error">Stuck</span>}{' '}
                 {r.noisy && <span className="badge warn">Noisy</span>}{' '}
                 {!r.stuck && (r.entry.status === 'error' || r.entry.status === 'warn') && <span className="badge warn">{STATUS_LABEL[r.entry.status]}</span>}

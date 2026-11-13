@@ -47,7 +47,7 @@ export function ChangesTab({ data, pageUrl, setPageUrl, query, group, period, se
     void supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').eq('url', pageUrl).order('id', { ascending: false }).limit(PAGE_HISTORY_LIMIT)
       .then(({ data: rows, error }) => { if (!stale) setPageHistory(error ? { error: error.message } : ((rows ?? []) as Change[])) })
     return () => { stale = true }
-  }, [pageUrl])
+  }, [pageUrl, data])
   const base = pageUrl ? (Array.isArray(pageHistory) ? pageHistory : []) : data.changes
   const baseLimit = pageUrl ? PAGE_HISTORY_LIMIT : HISTORY_LIMIT
   // Entries loaded later belong to the current base list and are discarded when new data arrives
