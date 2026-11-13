@@ -25,7 +25,10 @@ export default function App() {
               <span className="brand-mark" aria-hidden="true">◎</span><span className="brand-name">Watchlist</span>
             </button>
           </h1>
-          {session && <button className="link" onClick={() => void supabase.auth.signOut()}>Sign out</button>}
+          <div className="header-actions">
+            <button className="link" title="Reload the app without starting a page check" onClick={() => window.location.reload()}>Reload app</button>
+            {session && <button className="link" onClick={() => void supabase.auth.signOut()}>Sign out</button>}
+          </div>
         </div>
       </header>
       <ToastHost>

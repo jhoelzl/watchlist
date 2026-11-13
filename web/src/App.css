@@ -63,6 +63,7 @@ h1, h2, h3, p { margin: 0; }
 .site-header { position: sticky; top: 0; z-index: 2; background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .header-inner, main { max-width: 960px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
 .header-inner { height: 60px; display: flex; align-items: center; justify-content: space-between; }
+.header-actions { display: flex; align-items: center; gap: 4px; }
 .brand-heading { margin: 0; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0; color: var(--text); background: transparent; border: 0; text-align: left; }
 .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; color: #fff; background: var(--accent); border-radius: 9px; font-size: 16px; }
