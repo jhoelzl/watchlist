@@ -147,7 +147,7 @@ Messages, emails, comments, and documentation are in English. Code identifiers (
   - *“GH_DISPATCH_TOKEN is not set”*: The secret is missing in Supabase (`supabase secrets set GH_DISPATCH_TOKEN=… --project-ref <ref>`).
   - *GitHub message (401/403/404)*: The token expired or lacks “Actions: Read and write” for this repository. Create a new token and replace the secret.
   - *429*: The last run started less than a minute ago; wait briefly.
-  - *403 or CORS error in the browser*: The Function allows only `https://jhoelzl.github.io` (and `http://localhost:5173`). Add other addresses to `ALLOWED_ORIGINS` in the Function and redeploy it.
+  - *403 or CORS error in the browser*: The Edge Functions allow `https://jhoelzl.github.io`, `http://localhost:5173`, and the Capacitor iOS origin `capacitor://localhost`. Add other addresses to `supabase/functions/_shared/cors.ts` and redeploy both functions.
   - *“Not authorized”*: The account is not in `watchlist_admins`.
 - **Changes cannot be saved (“Missing policy …”):** The `admins update urls` or `admins add urls` policies, or the `watchlist_groups` block from `supabase/schema.sql`, have not yet been run in the SQL Editor.
 - **Repeated changes from counters or dates:** The Edit form shows ignore suggestions from history that can be applied with one click.
