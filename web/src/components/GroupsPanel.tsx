@@ -136,7 +136,7 @@ export function GroupsPanel({ entries, metas, groupsReady, onChanged }: Props) {
         </form>
       )}
       {error && <p className="error">{error}</p>}
-      <table>
+      <table className="groups-table">
         <thead><tr><th>Group</th><th>URLs</th><th>Appearance</th><th></th></tr></thead>
         <tbody>
           {groups.map(([name, items]) => (
