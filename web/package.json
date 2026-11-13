@@ -6,17 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "ios:sync": "npm run build && cap sync ios",
+    "ios:open": "cap open ios",
     "lint": "oxlint src",
     "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
     "@supabase/supabase-js": "^2.119.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@types/node": "^26.6.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
