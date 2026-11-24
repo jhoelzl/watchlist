@@ -38,6 +38,11 @@ export type Change = {
 }
 
 export type StatusFilter = '' | Status | 'problem' | 'stuck' | 'unchanged' | 'suspicious'
+export type UrlSettingFilter = 'screenshot' | 'js' | 'ab_test'
+
+export function matchesUrlSettings(e: { options?: Record<string, unknown> }, filters: readonly UrlSettingFilter[]): boolean {
+  return filters.every((filter) => e.options?.[filter] === true)
+}
 
 export function noRecordedChanges(e: { status?: Status; checked?: string; changed?: string; createdAt?: string; successfulChecks?: number; hasHistory?: boolean }, now = Date.now()): boolean {
   const created = Date.parse(e.createdAt ?? '')

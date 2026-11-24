@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, addIgnore, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, noRecordedChanges, suspiciousSnapshot, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, matchesUrlSettings, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, addIgnore, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, noRecordedChanges, suspiciousSnapshot, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -34,6 +34,15 @@ describe('watchlist helpers', () => {
     expect(matches(e, '', 'G', 'problem')).toBe(true)
     expect(matches(entry({ status: 'ok' }), '', '', 'problem')).toBe(false)
     expect(matches(entry({ status: 'new' }), '', '', 'new')).toBe(true)
+  })
+
+  it('filters URLs by enabled settings and combines selected filters', () => {
+    const configured = entry({ options: { screenshot: true, js: true, ab_test: true } })
+    expect(matchesUrlSettings(configured, [])).toBe(true)
+    expect(matchesUrlSettings(configured, ['screenshot', 'js', 'ab_test'])).toBe(true)
+    expect(matchesUrlSettings(entry({ options: { screenshot: true } }), ['screenshot'])).toBe(true)
+    expect(matchesUrlSettings(entry({ options: {} }), ['screenshot'])).toBe(false)
+    expect(matchesUrlSettings(entry({ options: { screenshot: true, js: false } }), ['screenshot', 'js'])).toBe(false)
   })
 
   it('does not filter history items by status', () => {
