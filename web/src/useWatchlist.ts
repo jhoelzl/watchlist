@@ -4,39 +4,59 @@ import { useToast } from './toast'
 import { onForeground } from './lib/foreground'
 import { HEAT_WEEKS, HISTORY_LIMIT, exportUrls, groupOf, parseImport, runPhase, toEntries, type Change, type DbUrl, type Entry, type GroupMeta, type HealthRecord, type RunInfo, type RunRecord, type UrlRow } from './lib/watchlist'
 
-export type Data = { health: Record<string, HealthRecord>; runs: RunRecord[]; freq: Record<string, string[]>; groupFreq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean }
+export type Data = { health: Record<string, HealthRecord>; runs: RunRecord[]; freq: Record<string, string[]>; groupFreq: Record<string, string[]>; entries: Entry[]; changes: Change[]; updated: string | null; metas: GroupMeta[]; groupsReady: boolean; hintsError?: string }
 export type Load = { state: 'loading' } | { state: 'denied' } | { state: 'error'; message: string } | { state: 'ready'; data: Data }
 
 export type CheckState = { state: 'idle' | 'busy' | 'waiting' | 'running' | 'success' | 'failed' | 'timeout'; url?: string } | { state: 'error'; message: string }
+
+type SnapshotHint = { url: string; chars: number; js_hint: boolean; has_history: boolean; js_enabled: boolean }
+
+async function loadHints(): Promise<{ data: SnapshotHint[]; error: string | null }> {
+  const all: SnapshotHint[] = []
+  for (;;) {
+    const page = await supabase.rpc('watchlist_snapshot_hints').order('url').range(all.length, all.length + 999)
+    if (page.error) return { data: [], error: page.error.message }
+    const rows = (page.data ?? []) as SnapshotHint[]
+    all.push(...rows)
+    if (rows.length < 1000) return { data: all, error: null }
+  }
+}
 
 async function load(): Promise<Load> {
   const admin = await supabase.from('watchlist_admins').select('user_id').maybeSingle()
   if (admin.error) return { state: 'error', message: admin.error.message }
   if (!admin.data) return { state: 'denied' }
   const since = new Date(Date.now() - HEAT_WEEKS * 7 * 86_400_000).toISOString()
-  const [urls, status, history, groupRows, freqRows, runRows, healthRow] = await Promise.all([
-    supabase.from('watchlist_urls').select('url, name, grp, active, options').order('position').order('id'),
+  const [urls, status, history, groupRows, freqRows, runRows, healthRow, hints] = await Promise.all([
+    supabase.from('watchlist_urls').select('url, name, grp, active, options, created_at').order('position').order('id'),
     supabase.from('watchlist_state').select('value, updated_at').eq('key', 'status').maybeSingle(),
     supabase.from('watchlist_history').select('id, name, url, grp, time, diff, extra, summary').order('id', { ascending: false }).limit(HISTORY_LIMIT),
     supabase.from('watchlist_groups').select('name, position, color, icon'),
     supabase.from('watchlist_history').select('url, time, grp').gte('created_at', since).order('id', { ascending: false }).limit(5000),
     supabase.from('watchlist_state').select('value').eq('key', 'runs').maybeSingle(),
     supabase.from('watchlist_state').select('value').eq('key', 'health').maybeSingle(),
+    loadHints(),
   ])
   const failed = urls.error ?? status.error ?? history.error
   if (failed) return { state: 'error', message: failed.message }
+  const health = (healthRow.data?.value && !Array.isArray(healthRow.data.value) ? healthRow.data.value : {}) as Record<string, HealthRecord>
+  const hintMap = new Map(hints.data.map((h) => [h.url, h]))
   return {
     state: 'ready',
     data: {
-      entries: toEntries((urls.data ?? []) as UrlRow[], status.data?.value ?? {}),
+      entries: toEntries((urls.data ?? []) as UrlRow[], status.data?.value ?? {}).map((e) => ({
+        ...e, successfulChecks: (health[e.url]?.h ?? '').split('').filter((v) => v === 'o').length,
+        snapshotChars: hintMap.get(e.url)?.chars, jsHint: hintMap.get(e.url)?.js_hint, hasHistory: hintMap.get(e.url)?.has_history, jsEnabled: hintMap.get(e.url)?.js_enabled,
+      })),
       changes: (history.data ?? []) as Change[],
       updated: status.data?.updated_at ?? null,
       runs: Array.isArray(runRows.data?.value) ? (runRows.data.value as RunRecord[]) : [],
-      health: (healthRow.data?.value && !Array.isArray(healthRow.data.value) ? healthRow.data.value : {}) as Record<string, HealthRecord>,
+      health,
       freq: ((freqRows.data ?? []) as { url: string; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[r.url] ??= []).push(r.time); return acc }, {}),
       groupFreq: ((freqRows.data ?? []) as { grp: string | null; time: string }[]).reduce<Record<string, string[]>>((acc, r) => { (acc[groupOf(r.grp)] ??= []).push(r.time); return acc }, {}),
       metas: (groupRows.data ?? []) as GroupMeta[],
       groupsReady: !groupRows.error,
+      hintsError: hints.error ?? undefined,
     },
   }
 }

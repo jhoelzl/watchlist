@@ -7,6 +7,7 @@ import { DiagnosisHint } from './DiagnosisHint'
 import { EditUrl } from './EditUrl'
 import { GroupIcon } from './GroupIcon'
 import { RunsPanel } from './RunsPanel'
+import { SnapshotReview } from './SnapshotReview'
 
 function shortUrl(url: string): string {
   try {
@@ -20,7 +21,7 @@ function shortUrl(url: string): string {
 const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Page'], ['checked', 'Last checked'], ['changed', 'Last changed']]
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
-  ['', 'All'], ['problem', 'Problems'], ['stuck', 'Permanently broken'], ['error', 'Errors'], ['warn', 'Too little text'], ['new', 'New'], ['ok', 'OK'], ['pending', 'Pending'], ['paused', 'Paused'],
+  ['', 'All'], ['problem', 'Problems'], ['stuck', 'Permanently broken'], ['error', 'Errors'], ['warn', 'Too little text'], ['new', 'New'], ['ok', 'OK'], ['pending', 'Pending'], ['paused', 'Paused'], ['unchanged', 'No recorded changes'], ['suspicious', 'Review content'],
 ]
 
 function Spark({ times }: { times: string[] }) {
@@ -58,6 +59,7 @@ type Props = {
 
 export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, setCollapsed, sort, setSort, adding, setAdding, onShowHistory, onCheckUrl, onCheckGroup, onCheckUrls, checkBusy, onReload, onRemove }: Props) {
   const [editing, setEditing] = useState<string | null>(null)
+  const [reviewing, setReviewing] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const selectedEntries = data.entries.filter((e) => selected.has(e.url))
   const toggleOne = (url: string) => setSelected((s) => { const n = new Set(s); if (!n.delete(url)) n.add(url); return n })
@@ -83,6 +85,9 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
     </button>
     <span className="muted count-text">{count} of {total}</span>
   </div>
+  {status === 'unchanged' && <p className="muted">Active pages at least 14 days old, with at least three successful recent checks and no change in the current status or retained history. Older or discarded history may be incomplete.</p>}
+  {status === 'suspicious' && <p className="muted">Pages without JavaScript whose saved text is short or mentions enabling JavaScript. These are hints, not proof.</p>}
+  {data.hintsError && <p className="error">Snapshot hints unavailable: {data.hintsError}. Apply the latest Supabase schema.</p>}
   <div className="mobile-sort">
     <label htmlFor="mobile-url-sort">Sort pages</label>
     <select id="mobile-url-sort" value={sort.key ? `${sort.key}:${sort.desc ? 'desc' : 'asc'}` : ''} onChange={(event) => {
@@ -156,12 +161,16 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
                 <td className="row-actions">
                   <button className="icon-btn" title="Check only this page now" aria-label={`Check ${e.name} now`} disabled={checkBusy} onClick={() => onCheckUrl(e.url)}>↻</button>
                   <button className="icon-btn" title="History of this page" aria-label={`History of ${e.name}`} onClick={() => onShowHistory(e.url)}>⏱</button>
+                  <button className="icon-btn" title="Inspect saved content" aria-label={`Inspect saved content of ${e.name}`} onClick={() => setReviewing(reviewing === e.url ? null : e.url)}>◉</button>
                   <button className="icon-btn" title="Edit" aria-label={`Edit ${e.name}`} onClick={() => setEditing(editing === e.url ? null : e.url)}><span className="flip">✎</span></button>
                   <button className="icon-btn" title="Delete" aria-label={`Delete ${e.name}`} onClick={() => onRemove(e)}>×</button>
                 </td>
               </tr>
               {editing === e.url && (
                 <tr className="edit-row"><td colSpan={7}><EditUrl entry={e} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); onReload() }} /></td></tr>
+              )}
+              {reviewing === e.url && (
+                <tr className="edit-row"><td colSpan={7}><SnapshotReview entry={e} onClose={() => setReviewing(null)} onApplied={() => { setReviewing(null); onReload() }} /></td></tr>
               )}
               </Fragment>
             ))}

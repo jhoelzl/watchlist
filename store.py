@@ -244,6 +244,9 @@ class RestStore(PgStore):
             urls.append(entry)
         return {"defaults": row[0]["value"] if row else {}, "urls": urls}
 
+    def apply_js_review(self, url: str, key: str, time: str) -> None:
+        self._call("POST", "rpc/watchlist_apply_js_review", body={"p_url": url, "p_key": key, "p_time": time})
+
     def add_url(self, entry: dict[str, Any]) -> None:
         last = self._select("watchlist_urls", select="position", order="position.desc", limit="1")
         options = {k: v for k, v in entry.items() if k not in ("url", "name", "group")}

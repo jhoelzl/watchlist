@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, addIgnore, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, type Entry } from './watchlist'
+import { groupChange, dayLabel, fragmentUrl, groupByDay, inPeriod, parseStamp, annotateDiff, countLines, summarize, buildRow, diffClass, groupEntries, groupOf, matches, toEntries, exportUrls, parseImport, applyEdit, toEditForm, buildHash, parseView, orderGroups, groupActivityLast7Days, moveGroup, sortGroupNames, isHexColor, runPhase, isStuck, suggestIgnores, addIgnore, noisyUrls, applyFix, runStats, formatDuration, formatRelativeTime, sideBySide, sortEntries, nextSort, pickView, dailyCounts, sparkBars, heatmap, healthRows, healthSummary, formatMs, parseAddHash, bookmarkletCode, applyBulkOption, toggleGroupSelection, BULK_OPTIONS, noRecordedChanges, suspiciousSnapshot, type Entry } from './watchlist'
 
 const entry = (over: Partial<Entry>): Entry => ({
   url: 'https://a', name: 'A', group: 'G', checked: '', changed: '', status: 'ok', error: '', ...over,
@@ -38,6 +38,28 @@ describe('watchlist helpers', () => {
 
   it('does not filter history items by status', () => {
     expect(matches({ url: 'https://a', group: 'G' }, '', '', 'error')).toBe(true)
+  })
+
+  it('only considers established pages with no retained change history', () => {
+    const now = Date.parse('2026-11-24T00:00:00Z')
+    const candidate = entry({ checked: '2026-11-24 00:00 UTC', createdAt: '2026-11-10T00:00:00Z', successfulChecks: 3, hasHistory: false })
+    expect(noRecordedChanges(candidate, now)).toBe(true)
+    expect(noRecordedChanges({ ...candidate, createdAt: '2026-11-10T00:00:01Z' }, now)).toBe(false)
+    expect(noRecordedChanges({ ...candidate, successfulChecks: 2 }, now)).toBe(false)
+    expect(noRecordedChanges({ ...candidate, hasHistory: true }, now)).toBe(false)
+    expect(noRecordedChanges({ ...candidate, hasHistory: undefined }, now)).toBe(false)
+    expect(noRecordedChanges({ ...candidate, changed: '2026-11-11 00:00 UTC' }, now)).toBe(false)
+    expect(noRecordedChanges({ ...candidate, status: 'paused' }, now)).toBe(false)
+  })
+
+  it('flags short snapshots and explicit JavaScript hints without treating missing data as short', () => {
+    expect(suspiciousSnapshot({ snapshotChars: 199 })).toBe(true)
+    expect(suspiciousSnapshot({ snapshotChars: 200 })).toBe(false)
+    expect(suspiciousSnapshot({ jsHint: true, snapshotChars: 500 })).toBe(true)
+    expect(suspiciousSnapshot({})).toBe(false)
+    expect(suspiciousSnapshot({ jsHint: true, options: { js: true } })).toBe(false)
+    expect(suspiciousSnapshot({ jsHint: true, jsEnabled: true })).toBe(false)
+    expect(suspiciousSnapshot({ jsHint: true, jsEnabled: false, options: { js: true } })).toBe(true)
   })
 
   it('groups entries sorted ascending by name', () => {
