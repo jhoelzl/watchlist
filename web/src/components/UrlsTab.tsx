@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, toggleGroupSelection, type Entry, type Prefill, type Sort, type SortKey, type StatusFilter } from '../lib/watchlist'
+import { SPARK_DAYS, STATUS_LABEL, dailyCounts, isHexColor, isStuck, matches, matchesUrlSettings, nextSort, noisyUrls, orderGroups, sortEntries, sparkBars, toggleGroupSelection, type Entry, type Prefill, type Sort, type SortKey, type StatusFilter, type UrlSettingFilter } from '../lib/watchlist'
 import type { Data } from '../useWatchlist'
 import { AddUrl } from './AddUrl'
 import { BulkBar } from './BulkBar'
@@ -22,6 +22,10 @@ const SORT_COLUMNS: [SortKey, string][] = [['status', 'Status'], ['name', 'Page'
 
 const STATUS_FILTERS: [StatusFilter, string][] = [
   ['', 'All'], ['problem', 'Problems'], ['stuck', 'Permanently broken'], ['error', 'Errors'], ['warn', 'Too little text'], ['new', 'New'], ['ok', 'OK'], ['pending', 'Pending'], ['paused', 'Paused'], ['unchanged', 'No recorded changes'], ['suspicious', 'Review content'],
+]
+
+const SETTING_FILTERS: [UrlSettingFilter, string][] = [
+  ['screenshot', 'Screenshots on'], ['js', 'JavaScript on'], ['ab_test', 'A/B test'],
 ]
 
 function Spark({ times }: { times: string[] }) {
@@ -61,12 +65,22 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
   const [editing, setEditing] = useState<string | null>(null)
   const [reviewing, setReviewing] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [settingFilters, setSettingFilters] = useState<Set<UrlSettingFilter>>(new Set())
   const selectedEntries = data.entries.filter((e) => selected.has(e.url))
   const toggleOne = (url: string) => setSelected((s) => { const n = new Set(s); if (!n.delete(url)) n.add(url); return n })
   const total = data.entries.length
-  const allOpen = shown.length > 0 && shown.every(([name]) => !collapsed.has(name))
+  const activeSettingFilters = useMemo(() => [...settingFilters], [settingFilters])
+  const filtered = useMemo(() => shown
+    .map(([name, items]) => [name, items.filter((e) => matchesUrlSettings(e, activeSettingFilters))] as [string, Entry[]])
+    .filter(([, items]) => items.length > 0), [shown, activeSettingFilters])
+  const allOpen = filtered.length > 0 && filtered.every(([name]) => !collapsed.has(name))
   const toggle = (name: string) => setCollapsed((c) => { const n = new Set(c); if (!n.delete(name)) n.add(name); return n })
-  const count = shown.reduce((n, [, items]) => n + items.length, 0)
+  const count = filtered.reduce((n, [, items]) => n + items.length, 0)
+  const toggleSettingFilter = (filter: UrlSettingFilter) => setSettingFilters((current) => {
+    const next = new Set(current)
+    if (!next.delete(filter)) next.add(filter)
+    return next
+  })
   const noisy = useMemo(() => noisyUrls(data.changes, data.entries), [data.changes, data.entries])
   const metaOf = (name: string) => data.metas.find((m) => m.name === name)
   return (
@@ -80,7 +94,12 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
         {label}<span className="pill-count">{(data.entries ?? []).filter((e) => matches({ ...e, text: e.error }, '', '', value)).length}</span>
       </button>
     ))}
-    <button className="filter-pill" onClick={() => setCollapsed(allOpen ? new Set(shown.map(([n]) => n)) : new Set())}>
+    {SETTING_FILTERS.map(([value, label]) => (
+      <button key={value} className={`filter-pill${settingFilters.has(value) ? ' active' : ''}`} aria-pressed={settingFilters.has(value)} onClick={() => toggleSettingFilter(value)}>
+        {label}<span className="pill-count">{data.entries.filter((e) => matchesUrlSettings(e, [value])).length}</span>
+      </button>
+    ))}
+    <button className="filter-pill" onClick={() => setCollapsed(allOpen ? new Set(filtered.map(([n]) => n)) : new Set())}>
       {allOpen ? 'Collapse all' : 'Expand all'}
     </button>
     <span className="muted count-text">{count} of {total}</span>
@@ -103,7 +122,7 @@ export function UrlsTab({ prefill, data, shown, status, setStatus, collapsed, se
     </select>
   </div>
   <div className="composer-list">
-    {shown.map(([name, items]) => {
+    {filtered.map(([name, items]) => {
       const problems = items.filter((e) => e.status === 'error' || e.status === 'warn').length
       return (
       <section className="composer-section" key={name} style={isHexColor(metaOf(name)?.color) ? { borderLeft: `4px solid ${metaOf(name)?.color}` } : undefined}>
