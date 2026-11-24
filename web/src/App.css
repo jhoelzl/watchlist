@@ -819,3 +819,11 @@ main { padding-top: 16px; }
   .group-card { padding: 16px; }
   .groups-editor { padding: 16px; }
 }
+.snapshot-review pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+}

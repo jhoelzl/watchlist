@@ -19,7 +19,7 @@ from models import Change, HealthEntry, HistoryEntry, Options, Pending, Problem,
 from notify import render_html, render_text, send_heartbeat, subject_for, with_hint
 from parse import apply_ignore
 from settings import SETTINGS
-from store import FileStore, PgStore, open_store
+from store import FileStore, PgStore, RestStore, open_store
 from summarize import add_summaries
 
 ROOT = Path(__file__).parent
@@ -471,6 +471,23 @@ def send_problem_mail(store: Store, st: RunState) -> bool:
 
 
 def main(argv: list[str]) -> int:
+    if len(argv) == 5 and argv[1] == "--apply-js-review":
+        store = open_store(STATE, ROOT / "urls.yml")
+        try:
+            if not isinstance(store, RestStore):
+                raise RuntimeError("Applying a review requires the Supabase REST store.")
+            store.apply_js_review(argv[2], argv[3], argv[4])
+            return 0
+        finally:
+            store.close()
+    if len(argv) == 3 and argv[1] == "--review-js":
+        from review import review
+
+        store = open_store(STATE, ROOT / "urls.yml")
+        try:
+            return 0 if review(store, argv[2], url_key(argv[2])) else 1
+        finally:
+            store.close()
     if len(argv) >= 3 and argv[1] == "--alert":
         notify.send_mail("Watchlist: workflow failed", argv[2])
         return 0

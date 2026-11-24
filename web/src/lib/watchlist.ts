@@ -18,6 +18,12 @@ export type Entry = {
   diagnosis?: Diagnosis
   active?: boolean
   options?: Record<string, unknown>
+  createdAt?: string
+  successfulChecks?: number
+  snapshotChars?: number
+  jsHint?: boolean
+  hasHistory?: boolean
+  jsEnabled?: boolean
 }
 
 export type Change = {
@@ -31,7 +37,17 @@ export type Change = {
   summary?: string | null
 }
 
-export type StatusFilter = '' | Status | 'problem' | 'stuck'
+export type StatusFilter = '' | Status | 'problem' | 'stuck' | 'unchanged' | 'suspicious'
+
+export function noRecordedChanges(e: { status?: Status; checked?: string; changed?: string; createdAt?: string; successfulChecks?: number; hasHistory?: boolean }, now = Date.now()): boolean {
+  const created = Date.parse(e.createdAt ?? '')
+  return e.status === 'ok' && !!e.checked && !e.changed && e.hasHistory === false && Number.isFinite(created) &&
+    now - created >= 14 * 86_400_000 && (e.successfulChecks ?? 0) >= 3
+}
+
+export function suspiciousSnapshot(e: { options?: Record<string, unknown>; jsEnabled?: boolean; snapshotChars?: number; jsHint?: boolean }): boolean {
+  return (e.jsEnabled ?? (e.options?.js === true)) === false && (e.jsHint === true || (e.snapshotChars !== undefined && e.snapshotChars < 200))
+}
 
 // Consecutive runs after which a page counts as permanently broken (settings.json)
 export const STUCK_AFTER = settings.stuck_after
@@ -43,7 +59,7 @@ export function groupOf(group: string | null | undefined): string {
   return group || 'General'
 }
 
-export type UrlRow = { url: string; name: string | null; grp: string | null; active?: boolean; options?: Record<string, unknown> | null }
+export type UrlRow = { url: string; name: string | null; grp: string | null; active?: boolean; options?: Record<string, unknown> | null; created_at?: string }
 
 type StatusDoc = Record<string, Partial<Omit<Entry, 'url'>>>
 
@@ -63,12 +79,13 @@ export function toEntries(urls: UrlRow[], status: StatusDoc): Entry[] {
       diagnosis: s.diagnosis,
       active: u.active !== false,
       options: u.options ?? {},
+      createdAt: u.created_at,
     }
   })
 }
 
 export function matches(
-  item: { name?: string | null; url: string; text?: string; group: string; status?: Status; streak?: number },
+  item: { name?: string | null; url: string; text?: string; group: string; status?: Status; streak?: number; checked?: string; changed?: string; createdAt?: string; successfulChecks?: number; hasHistory?: boolean; options?: Record<string, unknown>; jsEnabled?: boolean; snapshotChars?: number; jsHint?: boolean },
   query: string,
   group: string,
   status: StatusFilter,
@@ -77,7 +94,8 @@ export function matches(
   if (group && item.group !== group) return false
   if (status && item.status !== undefined) {
     const ok =
-      status === 'problem' ? item.status === 'error' || item.status === 'warn' : status === 'stuck' ? isStuck(item) : item.status === status
+      status === 'problem' ? item.status === 'error' || item.status === 'warn' : status === 'stuck' ? isStuck(item) :
+        status === 'unchanged' ? noRecordedChanges(item) : status === 'suspicious' ? suspiciousSnapshot(item) : item.status === status
     if (!ok) return false
   }
   return !q || `${item.name ?? ''} ${item.url} ${item.text ?? ''}`.toLowerCase().includes(q)
@@ -551,7 +569,7 @@ export type ViewState = { tab: Tab; group: string; status: StatusFilter; period:
 export const DEFAULT_VIEW: ViewState = { tab: 'overview', group: '', status: '', period: '', query: '', sort: { key: '', desc: false }, target: '' }
 const SORT_KEYS = ['name', 'status', 'checked', 'changed']
 const TABS: Tab[] = ['overview', 'changes', 'urls', 'groups', 'health']
-const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck']
+const STATUSES = ['', 'ok', 'new', 'changed', 'error', 'paused', 'problem', 'stuck', 'unchanged', 'suspicious']
 const PERIOD_VALUES = ['', 'today', '7d', '30d']
 
 // Format: #t=changes&g=Azure&s=problem&p=7d&q=text&u=<URL of the entry to open>. The old mail format #changes[:URL] remains valid.

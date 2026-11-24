@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
   if (body?.action === "status") return reply({ run: run ?? null });
 
   if (last && ["queued", "in_progress", "waiting", "requested", "pending"].includes(last.status)) {
+    if (body?.action === "review" || body?.action === "apply-review") return reply({ error: "A check is already running. Try again when it finishes." }, 409);
     return reply({ status: "running", baseline: last.id - 1, run });
   }
   if (last && Date.now() - new Date(last.created_at).getTime() < MIN_INTERVAL_MS) {
@@ -55,6 +56,7 @@ Deno.serve(async (req) => {
   const list: unknown[] = Array.isArray(body?.urls) ? body.urls : typeof body?.url === "string" && body.url ? [body.url] : [];
   const urls = [...new Set(list.filter((u): u is string => typeof u === "string" && u.length > 0 && !/[\r\n]/.test(u)))];
   if (list.length > 100 || urls.length !== list.length) return reply({ error: "Invalid URL list." }, 400);
+  if ((body?.action === "review" || body?.action === "apply-review") && urls.length !== 1) return reply({ error: "Choose one URL to review." }, 400);
   if (urls.length) {
     const { data: rows } = await supabase.from("watchlist_urls").select("url").in("url", urls);
     if ((rows ?? []).length !== urls.length) return reply({ error: "URL not found." }, 404);
@@ -68,8 +70,18 @@ Deno.serve(async (req) => {
       return reply({ error: "Group not found." }, 404);
     }
   }
-  const inputs = only ? { url: only } : onlyGroup ? { group: onlyGroup } : undefined;
+  if (body?.action === "apply-review") {
+    if (typeof body.key !== "string" || !/^review:[0-9a-f]{16}$/.test(body.key) || typeof body.time !== "string" || body.time.length > 100) {
+      return reply({ error: "Invalid comparison." }, 400);
+    }
+    const { data: review, error } = await supabase.from("watchlist_state").select("value").eq("key", body.key).maybeSingle();
+    if (error || review?.value?.url !== only || review?.value?.time !== body.time || !review?.value?.rendered) {
+      return reply({ error: "Comparison not found. Compare again." }, 400);
+    }
+  }
+  const inputs = body?.action === "apply-review" ? { apply_url: only, review_key: body.key, review_time: body.time }
+    : body?.action === "review" ? { review_url: only } : only ? { url: only } : onlyGroup ? { group: onlyGroup } : undefined;
   const res = await gh("dispatches", { method: "POST", body: JSON.stringify({ ref: "main", ...(inputs ? { inputs } : {}) }) });
   if (res.status !== 204) return reply({ error: `GitHub responded with ${res.status}.` }, 502);
-  return reply({ status: "started", baseline: last?.id ?? 0 });
+  return reply({ status: "started", baseline: last?.id ?? 0, action: body?.action ?? "check" });
 });

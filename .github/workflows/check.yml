@@ -13,6 +13,22 @@ on:
         description: "Check only this group (leave blank for all)"
         required: false
         default: ""
+      review_url:
+        description: "Compare this configured URL with JavaScript without changing its baseline"
+        required: false
+        default: ""
+      apply_url:
+        description: "Adopt a reviewed JavaScript baseline for this URL"
+        required: false
+        default: ""
+      review_key:
+        description: "Review key to adopt"
+        required: false
+        default: ""
+      review_time:
+        description: "Review timestamp to adopt"
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -43,11 +59,14 @@ jobs:
       - name: Check whether JavaScript rendering is configured
         id: js
         run: |
-          if uv run --frozen --no-dev check.py --needs-js; then
+          if [ -n "$REVIEW_URL" ] || { [ -z "$APPLY_URL" ] && uv run --frozen --no-dev check.py --needs-js; }; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           else
             echo "required=false" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          REVIEW_URL: ${{ inputs.review_url }}
+          APPLY_URL: ${{ inputs.apply_url }}
       - name: Cache Playwright browsers
         if: steps.js.outputs.required == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -58,12 +77,25 @@ jobs:
         if: steps.js.outputs.required == 'true'
         run: uv run --frozen --no-dev --extra js playwright install --with-deps chromium
       - run: uv run --frozen --no-dev --extra js check.py
+        if: ${{ !inputs.review_url && !inputs.apply_url }}
         env:
           WATCHLIST_ONLY_URL: ${{ inputs.url }}
           WATCHLIST_ONLY_GROUP: ${{ inputs.group }}
           WATCHLIST_SUMMARIES: ${{ vars.WATCHLIST_SUMMARIES }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compare with JavaScript
+        if: ${{ inputs.review_url && !inputs.apply_url }}
+        run: uv run --frozen --no-dev --extra js check.py --review-js "$REVIEW_URL"
+        env:
+          REVIEW_URL: ${{ inputs.review_url }}
+      - name: Adopt reviewed JavaScript baseline
+        if: ${{ inputs.apply_url && !inputs.review_url }}
+        run: uv run --frozen --no-dev check.py --apply-js-review "$APPLY_URL" "$REVIEW_KEY" "$REVIEW_TIME"
+        env:
+          APPLY_URL: ${{ inputs.apply_url }}
+          REVIEW_KEY: ${{ inputs.review_key }}
+          REVIEW_TIME: ${{ inputs.review_time }}
       - name: Alert on failure
-        if: failure()
+        if: ${{ failure() && !inputs.review_url && !inputs.apply_url }}
         run: |
           uv run --frozen --no-dev check.py --alert "The workflow failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

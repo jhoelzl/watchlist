@@ -60,8 +60,18 @@ on conflict (key) do nothing;
 insert into watchlist_snapshots (key, url, content)
 values (
   current_setting('watchlist.rls_check_marker'),
-  'https://rls-check.invalid/',
+  'https://rls-check.invalid/' || current_setting('watchlist.rls_check_marker'),
   'RLS check fixture'
+);
+insert into watchlist_state (key, value)
+values (
+  'review:' || current_setting('watchlist.rls_check_marker'),
+  jsonb_build_object(
+    'url', 'https://rls-check.invalid/' || current_setting('watchlist.rls_check_marker'),
+    'time', 'fixture', 'baseline', 'RLS check fixture', 'rendered', 'Rendered fixture',
+    'options', '{}'::jsonb,
+    'defaults', coalesce((select value from watchlist_settings where key = 'defaults'), '{}'::jsonb)
+  )
 );
 insert into watchlist_counters (key, kind, value)
 values (current_setting('watchlist.rls_check_marker'), 'fail', 1);
@@ -81,12 +91,19 @@ begin
     or exists (select 1 from watchlist_urls where url = 'https://rls-check.invalid/' || marker)
     or exists (select 1 from watchlist_history where url = 'https://rls-check.invalid/' || marker)
     or exists (select 1 from watchlist_state where key = 'status')
+    or exists (select 1 from watchlist_state where key = 'review:' || marker)
     or exists (select 1 from watchlist_snapshots where key = marker)
     or exists (select 1 from watchlist_counters where key = marker)
     or exists (select 1 from watchlist_settings where key = marker)
     or exists (select 1 from watchlist_groups where name = marker) then
     raise exception 'Anonymous role can read dashboard data.';
   end if;
+  begin
+    perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'fixture');
+    raise exception 'Anonymous role unexpectedly applied a comparison.';
+  exception when insufficient_privilege then
+    null;
+  end;
 
   begin
     insert into watchlist_urls (url) values ('https://rls-check.invalid/' || marker || '/anon');
@@ -125,6 +142,7 @@ begin
     or exists (select 1 from watchlist_urls where url = 'https://rls-check.invalid/' || marker)
     or exists (select 1 from watchlist_history where url = 'https://rls-check.invalid/' || marker)
     or exists (select 1 from watchlist_state where key = 'status')
+    or exists (select 1 from watchlist_state where key = 'review:' || marker)
     or exists (select 1 from watchlist_snapshots where key = marker)
     or exists (select 1 from watchlist_counters where key = marker)
     or exists (select 1 from watchlist_settings where key = marker)
@@ -165,7 +183,7 @@ end
 $$;
 reset role;
 
--- An authorized account can use dashboard data but must not read private tables.
+-- An authorized account can read snapshots but must not read counters or settings.
 select set_config('request.jwt.claim.sub', current_setting('watchlist.rls_check_admin'), true);
 set local role authenticated;
 do $$
@@ -182,14 +200,21 @@ begin
   if not exists (select 1 from watchlist_urls where url = 'https://rls-check.invalid/' || marker)
     or not exists (select 1 from watchlist_history where url = 'https://rls-check.invalid/' || marker)
     or not exists (select 1 from watchlist_state where key = 'status')
-    or not exists (select 1 from watchlist_groups where name = marker) then
+    or not exists (select 1 from watchlist_groups where name = marker)
+    or not exists (select 1 from watchlist_snapshots where key = marker) then
     raise exception 'Authorized account cannot read expected dashboard data.';
   end if;
-  if exists (select 1 from watchlist_snapshots where key = marker)
-    or exists (select 1 from watchlist_counters where key = marker)
+  if exists (select 1 from watchlist_counters where key = marker)
     or exists (select 1 from watchlist_settings where key = marker) then
     raise exception 'Authorized account can read a private watchlist table.';
   end if;
+
+  begin
+    perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'fixture');
+    raise exception 'An admin unexpectedly bypassed the serialized workflow.';
+  exception when insufficient_privilege then
+    null;
+  end;
 
   update watchlist_urls set name = 'updated by RLS check'
   where url = 'https://rls-check.invalid/' || marker;
@@ -213,6 +238,45 @@ begin
   delete from watchlist_groups where name = marker || '-admin';
   get diagnostics affected = row_count;
   if affected <> 1 then raise exception 'Authorized account cannot delete groups.'; end if;
+end
+$$;
+reset role;
+
+-- Only the service-role checker may apply a fresh comparison.
+select set_config('request.jwt.claim.role', 'service_role', true);
+set local role service_role;
+do $$
+declare
+  marker text := current_setting('watchlist.rls_check_marker');
+begin
+  begin
+    perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'wrong');
+    raise exception 'Stale comparison was unexpectedly applied.';
+  exception when raise_exception then
+    if sqlerrm = 'Stale comparison was unexpectedly applied.' then raise; end if;
+  end;
+  update watchlist_snapshots set content = 'Changed meanwhile' where key = marker;
+  begin
+    perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'fixture');
+    raise exception 'Changed snapshot was unexpectedly replaced.';
+  exception when raise_exception then
+    if sqlerrm = 'Changed snapshot was unexpectedly replaced.' then raise; end if;
+  end;
+  update watchlist_snapshots set content = 'RLS check fixture' where key = marker;
+  update watchlist_urls set options = '{"selector": "main"}'::jsonb where url = 'https://rls-check.invalid/' || marker;
+  begin
+    perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'fixture');
+    raise exception 'Changed options were unexpectedly replaced.';
+  exception when raise_exception then
+    if sqlerrm = 'Changed options were unexpectedly replaced.' then raise; end if;
+  end;
+  update watchlist_urls set options = '{}'::jsonb where url = 'https://rls-check.invalid/' || marker;
+  perform watchlist_apply_js_review('https://rls-check.invalid/' || marker, 'review:' || marker, 'fixture');
+  if not exists (select 1 from watchlist_snapshots where key = marker and content = 'Rendered fixture')
+    or not exists (select 1 from watchlist_urls where url = 'https://rls-check.invalid/' || marker and options @> '{"js": true}'::jsonb)
+    or exists (select 1 from watchlist_state where key = 'review:' || marker) then
+    raise exception 'Applying the JavaScript comparison did not update the baseline and options.';
+  end if;
 end
 $$;
 reset role;

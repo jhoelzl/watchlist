@@ -68,7 +68,11 @@ alter table watchlist_admins enable row level security;
 drop policy if exists "own admin row" on watchlist_admins;
 create policy "own admin row" on watchlist_admins for select to authenticated using (user_id = auth.uid());
 
--- Snapshots (page text), counters, and settings intentionally remain unreadable.
+-- Counters and settings remain unreadable to the dashboard.
+drop policy if exists "admins read snapshots" on watchlist_snapshots;
+create policy "admins read snapshots" on watchlist_snapshots for select to authenticated
+  using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
 drop policy if exists "admins read urls" on watchlist_urls;
 create policy "admins read urls" on watchlist_urls for select to authenticated
   using (exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
@@ -79,7 +83,61 @@ create policy "admins read history" on watchlist_history for select to authentic
 
 drop policy if exists "admins read state" on watchlist_state;
 create policy "admins read state" on watchlist_state for select to authenticated
-  using (key in ('status', 'runs', 'health') and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+  using ((key in ('status', 'runs', 'health') or key like 'review:%') and exists (select 1 from watchlist_admins a where a.user_id = auth.uid()));
+
+-- Return only metadata for the URL list; the full snapshot is fetched on demand.
+create or replace function watchlist_snapshot_hints()
+returns table(url text, chars integer, js_hint boolean, has_history boolean, js_enabled boolean)
+language sql stable security definer set search_path = public
+as $$
+  select s.url, char_length(s.content),
+    s.content ~* '(enable|turn on|activate|requires?|need(s|ed)?)\s+(your\s+)?javascript|javascript\s+(is\s+)?(disabled|required|must be enabled)',
+    exists (select 1 from watchlist_history h where h.url = s.url),
+    coalesce(u.options->'js', (select value->'js' from watchlist_settings where key = 'defaults'), 'false'::jsonb) = 'true'::jsonb
+  from watchlist_snapshots s
+  join watchlist_urls u on u.url = s.url
+  where exists (select 1 from watchlist_admins a where a.user_id = auth.uid());
+$$;
+revoke all on function watchlist_snapshot_hints() from public, anon;
+grant execute on function watchlist_snapshot_hints() to authenticated;
+
+-- The serialized check workflow adopts the reviewed content and enables JS together.
+create or replace function watchlist_apply_js_review(p_url text, p_key text, p_time text)
+returns void language plpgsql security definer set search_path = public
+as $$
+declare
+  r watchlist_state%rowtype;
+  u watchlist_urls%rowtype;
+  s watchlist_snapshots%rowtype;
+  defaults jsonb;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'Not authorized';
+  end if;
+  select * into r from watchlist_state where key = p_key and key like 'review:%' for update;
+  if not found or r.value->>'url' is distinct from p_url or r.value->>'time' is distinct from p_time
+    or r.updated_at < now() - interval '1 hour' or coalesce(r.value->>'rendered', '') = '' then
+    raise exception 'The comparison is missing or expired. Compare again.';
+  end if;
+  select * into u from watchlist_urls where url = p_url and active for update;
+  if not found or u.options is distinct from r.value->'options' or u.options @> '{"js": true}'::jsonb then
+    raise exception 'URL options changed. Compare again.';
+  end if;
+  select coalesce((select value from watchlist_settings where key = 'defaults'), '{}'::jsonb) into defaults;
+  if defaults is distinct from r.value->'defaults' then
+    raise exception 'Default options changed. Compare again.';
+  end if;
+  select * into s from watchlist_snapshots where key = substring(p_key from 8) and url = p_url for update;
+  if not found or s.content is distinct from r.value->>'baseline' then
+    raise exception 'The saved snapshot changed. Compare again.';
+  end if;
+  update watchlist_snapshots set content = r.value->>'rendered', updated_at = now() where key = s.key;
+  update watchlist_urls set options = options || '{"js": true}'::jsonb where id = u.id;
+  delete from watchlist_state where key = p_key;
+end
+$$;
+revoke all on function watchlist_apply_js_review(text, text, text) from public, anon, authenticated;
+grant execute on function watchlist_apply_js_review(text, text, text) to service_role;
 
 -- Authorize your account (replace the email; the account must already be registered):
 -- insert into watchlist_admins (user_id) select id from auth.users where email = 'you@example.com' on conflict do nothing;
