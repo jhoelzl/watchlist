@@ -16,7 +16,7 @@
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.2",
     "@capacitor/ios": "^8.6.2",
-    "@supabase/supabase-js": "^2.119.0",
+    "@supabase/supabase-js": "^2.119.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "yaml": "^2.9.1"
@@ -30,6 +30,6 @@
     "oxlint": "^1.93.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
